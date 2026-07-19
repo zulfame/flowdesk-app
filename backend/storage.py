@@ -42,6 +42,29 @@ def put_object(path: str, data: bytes, content_type: str) -> dict:
     return resp.json()
 
 
+def delete_object(path: str) -> bool:
+    """Best-effort physical deletion of a stored object so files don't pile up."""
+    try:
+        key = init_storage()
+        resp = requests.delete(
+            f"{STORAGE_URL}/objects/{path}",
+            headers={"X-Storage-Key": key},
+            timeout=30,
+        )
+        if resp.status_code == 403:
+            globals()["_storage_key"] = None
+            key = init_storage()
+            resp = requests.delete(
+                f"{STORAGE_URL}/objects/{path}",
+                headers={"X-Storage-Key": key},
+                timeout=30,
+            )
+        return resp.status_code in (200, 202, 204, 404)
+    except Exception:
+        return False
+
+
+
 def get_object(path: str):
     key = init_storage()
     resp = requests.get(

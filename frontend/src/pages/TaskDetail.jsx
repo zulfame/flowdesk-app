@@ -1,6 +1,8 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { canManage } from "@/lib/perms";
 import { StatusBadge, PriorityBadge, ProgressBar, SectionTitle } from "@/components/common";
 import DocumentManager from "@/components/DocumentManager";
 import { Card } from "@/components/ui/card";
@@ -28,6 +30,7 @@ export default function TaskDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [task, setTask] = useState(null);
+  const { user } = useAuth();
   const [comment, setComment] = useState("");
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
@@ -134,14 +137,16 @@ export default function TaskDetail() {
                 <Button variant="secondary" size="icon" onClick={duplicate} title="Duplikat" data-testid="btn-duplicate-task"><Copy className="h-4 w-4" /></Button>
                 <Button variant="secondary" size="icon" onClick={saveTemplate} title="Simpan sebagai template" data-testid="btn-save-template"><LayoutTemplate className="h-4 w-4" /></Button>
                 <Button variant="secondary" size="icon" onClick={printTask} title="Cetak / PDF" data-testid="btn-print-task"><Printer className="h-4 w-4" /></Button>
+                {canManage(user, task) && <>
                 <Button variant="secondary" size="icon" onClick={() => navigate(`/tasks/${id}/edit`)} data-testid="btn-edit-task"><Pencil className="h-4 w-4" /></Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild><Button variant="secondary" size="icon" className="text-destructive" data-testid="btn-delete-task"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
                   <AlertDialogContent>
-                    <AlertDialogHeader><AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle><AlertDialogDescription>Tugas dan semua dokumen terkait akan dihapus permanen.</AlertDialogDescription></AlertDialogHeader>
+                    <AlertDialogHeader><AlertDialogTitle>Hapus tugas ini?</AlertDialogTitle><AlertDialogDescription>Tugas dipindahkan ke Arsip dan dapat dipulihkan.</AlertDialogDescription></AlertDialogHeader>
                     <AlertDialogFooter><AlertDialogCancel>Batal</AlertDialogCancel><AlertDialogAction onClick={remove} className="bg-destructive text-destructive-foreground" data-testid="btn-confirm-delete">Hapus</AlertDialogAction></AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
+                </>}
               </div>
             </div>
 

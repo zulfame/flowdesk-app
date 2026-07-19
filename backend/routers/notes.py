@@ -6,6 +6,7 @@ from db import db
 from helpers import new_id, now_iso, log_activity
 from security import get_current_user
 from services import delete_note
+from helpers import can_manage as _can_manage
 
 router = APIRouter(prefix="/notes", tags=["notes"])
 
@@ -63,6 +64,8 @@ async def update_note(note_id: str, body: NoteUpdate, user: dict = Depends(get_c
     existing = await db.notes.find_one({"id": note_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
+    if not _can_manage(user, existing):
+        raise HTTPException(status_code=403, detail="Hanya pembuat catatan atau Admin yang dapat mengubah")
     update = {k: v for k, v in body.model_dump().items() if v is not None}
     update["updated_at"] = now_iso()
     await db.notes.update_one({"id": note_id}, {"$set": update})
@@ -72,7 +75,10 @@ async def update_note(note_id: str, body: NoteUpdate, user: dict = Depends(get_c
 
 @router.delete("/{note_id}")
 async def remove_note(note_id: str, user: dict = Depends(get_current_user)):
-    ok = await delete_note(note_id, user)
-    if not ok:
+    existing = await db.notes.find_one({"id": note_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
+    if not _can_manage(user, existing):
+        raise HTTPException(status_code=403, detail="Hanya pembuat catatan atau Admin yang dapat menghapus")
+    await delete_note(note_id, user)
     return {"message": "Catatan dihapus"}

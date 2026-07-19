@@ -7,8 +7,19 @@ from helpers import new_id, now_iso, log_activity
 from security import get_current_user
 from services import delete_meeting
 from notifications import create_notification
+from helpers import is_privileged, can_manage
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
+
+
+def _meeting_visibility(user: dict) -> dict:
+    if is_privileged(user):
+        return {}
+    return {"$or": [{"created_by": user["id"]}, {"participants": user.get("name")}]}
+
+
+def _can_see_meeting(user: dict, m: dict) -> bool:
+    return is_privileged(user) or m.get("created_by") == user["id"] or user.get("name") in (m.get("participants") or [])
 
 
 class ActionItemBody(BaseModel):
@@ -59,7 +70,7 @@ def _norm_items(items) -> list:
 
 @router.get("")
 async def list_meetings(user: dict = Depends(get_current_user)):
-    meetings = await db.meetings.find({"is_deleted": {"$ne": True}}, {"_id": 0}).sort("date", -1).to_list(1000)
+    meetings = await db.meetings.find({**_meeting_visibility(user), "is_deleted": {"$ne": True}}, {"_id": 0}).sort("date", -1).to_list(1000)
     return meetings
 
 
@@ -68,6 +79,8 @@ async def get_meeting(meeting_id: str, user: dict = Depends(get_current_user)):
     m = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not m:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
+    if not _can_see_meeting(user, m):
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
     m["attachments"] = await db.files.find(
         {"parent_id": meeting_id, "is_deleted": False}, {"_id": 0}
     ).to_list(200)
@@ -100,6 +113,8 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate, user: dict = Depe
     existing = await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
+    if not can_manage(user, existing):
+        raise HTTPException(status_code=403, detail="Hanya pembuat rapat atau Admin yang dapat mengubah")
     update = {k: v for k, v in body.model_dump().items() if v is not None}
     if "action_items" in update:
         update["action_items"] = _norm_items(body.action_items)
@@ -128,6 +143,8 @@ async def convert_action_item(meeting_id: str, item_id: str, body: ConvertBody =
     meeting = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not meeting:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
+    if not _can_see_meeting(user, meeting):
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
     item = next((i for i in meeting.get("action_items", []) if i.get("id") == item_id), None)
     if not item:
         raise HTTPException(status_code=404, detail="Action item tidak ditemukan")
@@ -173,7 +190,10 @@ async def convert_action_item(meeting_id: str, item_id: str, body: ConvertBody =
 
 @router.delete("/{meeting_id}")
 async def remove_meeting(meeting_id: str, user: dict = Depends(get_current_user)):
-    ok = await delete_meeting(meeting_id, user)
-    if not ok:
+    existing = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
+    if not can_manage(user, existing):
+        raise HTTPException(status_code=403, detail="Hanya pembuat rapat atau Admin yang dapat menghapus")
+    await delete_meeting(meeting_id, user)
     return {"message": "Rapat dihapus"}

@@ -60,6 +60,12 @@ async def purge_item(type: str, item_id: str, admin: dict = Depends(require_admi
     doc = await db[coll].find_one({"id": item_id, "is_deleted": True}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="Data terhapus tidak ditemukan")
+    # Hapus berkas fisik lampiran agar tidak menumpuk di storage
+    from storage import delete_object
+    files = await db.files.find({"parent_id": item_id}, {"_id": 0}).to_list(1000)
+    for f in files:
+        if f.get("storage_path"):
+            delete_object(f["storage_path"])
     await db[coll].delete_one({"id": item_id})
     await db.files.delete_many({"parent_id": item_id})
     await log_activity(db, admin, "delete", type, item_id, f"Menghapus permanen {type} '{doc.get(title_field, '')}'")

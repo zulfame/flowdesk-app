@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 
 from db import db
-from helpers import new_id, now_iso, log_activity
+from helpers import new_id, now_iso, log_activity, is_privileged, is_admin, can_manage, task_visibility_query
 from security import get_current_user
 from services import delete_task
 from notifications import create_notification, get_settings, _send_email, whatsapp_url
@@ -193,11 +193,18 @@ async def list_tasks(status: Optional[str] = None, pic: Optional[str] = None,
         q["priority"] = priority
     if meeting_id:
         q["meeting_id"] = meeting_id
-    tasks = await db.tasks.find({**q, "is_deleted": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    tasks = await db.tasks.find({**q, **task_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     tasks = [compute(t) for t in tasks]
     if status:
         tasks = [t for t in tasks if t["status"] == status]
     return tasks
+
+
+def _related_to_task(user: dict, task: dict) -> bool:
+    uid = user.get("id")
+    return (task.get("created_by") == uid
+            or (task.get("pic") or {}).get("user_id") == uid
+            or (task.get("requester") or {}).get("user_id") == uid)
 
 
 @router.get("/{task_id}")
@@ -205,6 +212,8 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
     task = await db.tasks.find_one({"id": task_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
+    if not is_privileged(user) and not _related_to_task(user, task):
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke tugas ini")
     task = compute(task)
     task["attachments"] = await db.files.find(
         {"parent_id": task_id, "is_deleted": False}, {"_id": 0}
@@ -308,6 +317,10 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     existing = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
+    full = can_manage(user, existing)  # admin atau pembuat
+    is_pic = (existing.get("pic") or {}).get("user_id") == user["id"]
+    if not full and not is_pic:
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses untuk mengubah tugas ini")
     update = {k: v for k, v in body.model_dump().items() if v is not None}
     if "items" in update:
         update["items"] = _norm_items(body.items)
@@ -317,6 +330,14 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
         update["requester"] = body.requester.model_dump()
     if body.pic is not None:
         update["pic"] = body.pic.model_dump()
+    # PIC (bukan pembuat/admin) hanya boleh memperbarui progres/status/checklist/dokumen
+    if not full and is_pic:
+        allowed = {"items", "documents", "status"}
+        for k in list(update.keys()):
+            if k not in allowed:
+                update.pop(k, None)
+        if not update:
+            raise HTTPException(status_code=403, detail="Sebagai PIC Anda hanya dapat memperbarui progres, status, dan checklist")
     if "deadline" in update:
         update["deadline_reminded"] = False
     update["updated_at"] = now_iso()
@@ -376,9 +397,11 @@ async def add_comment(task_id: str, body: CommentBody, user: dict = Depends(get_
 
 @router.post("/{task_id}/duplicate")
 async def duplicate_task(task_id: str, user: dict = Depends(get_current_user)):
-    src = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    src = await db.tasks.find_one({"id": task_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not src:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
+    if not is_privileged(user) and not _related_to_task(user, src):
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke tugas ini")
     new = dict(src)
     new["id"] = new_id()
     new["title"] = f"{src.get('title', '')} (Salinan)"
@@ -492,7 +515,10 @@ async def broadcast_task(task_id: str, body: BroadcastBody, user: dict = Depends
 
 @router.delete("/{task_id}")
 async def remove_task(task_id: str, user: dict = Depends(get_current_user)):
-    ok = await delete_task(task_id, user)
-    if not ok:
+    existing = await db.tasks.find_one({"id": task_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not existing:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
+    if not can_manage(user, existing):
+        raise HTTPException(status_code=403, detail="Hanya pembuat tugas atau Admin yang dapat menghapus")
+    await delete_task(task_id, user)
     return {"message": "Tugas dihapus"}

@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 
 from db import db
-from helpers import new_id, now_iso, log_activity
+from helpers import new_id, now_iso, log_activity, task_visibility_query, meeting_visibility_query, is_privileged
 from security import get_current_user
 from routers.tasks import compute
 from services import delete_event
@@ -22,19 +22,19 @@ class EventCreate(BaseModel):
 # ---------- Dashboard ----------
 @router.get("/dashboard/stats")
 async def dashboard_stats(user: dict = Depends(get_current_user)):
-    tasks = await db.tasks.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(2000)
+    tasks = await db.tasks.find({**task_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(2000)
     tasks = [compute(t) for t in tasks]
     by_status = {}
     for t in tasks:
         by_status[t["status"]] = by_status.get(t["status"], 0) + 1
 
-    total_meetings = await db.meetings.count_documents({"is_deleted": {"$ne": True}})
-    total_reminders = await db.reminders.count_documents({"done": {"$ne": True}, "is_deleted": {"$ne": True}})
+    total_meetings = await db.meetings.count_documents({**meeting_visibility_query(user), "is_deleted": {"$ne": True}})
+    total_reminders = await db.reminders.count_documents({"created_by": user["id"], "done": {"$ne": True}, "is_deleted": {"$ne": True}})
     total_notes = await db.notes.count_documents({"is_deleted": {"$ne": True}})
 
     today = datetime.now(timezone.utc).date().isoformat()
     upcoming_meetings = await db.meetings.find(
-        {"date": {"$gte": today}, "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1, "title": 1, "date": 1, "start_time": 1, "location": 1}
+        {"date": {"$gte": today}, **meeting_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1, "title": 1, "date": 1, "start_time": 1, "location": 1}
     ).sort("date", 1).limit(5).to_list(5)
 
     recent_tasks = sorted(tasks, key=lambda t: t.get("created_at", ""), reverse=True)[:5]
@@ -90,7 +90,7 @@ async def nav_badges(user: dict = Depends(get_current_user)):
     start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     nm = (start + timedelta(days=32)).replace(day=1)
     calendar_month_tasks = await db.tasks.count_documents({
-        "deadline": {"$gte": start.date().isoformat(), "$lt": nm.date().isoformat()}, "is_deleted": {"$ne": True}
+        "deadline": {"$gte": start.date().isoformat(), "$lt": nm.date().isoformat()}, **task_visibility_query(user), "is_deleted": {"$ne": True}
     })
     my_tasks = await db.tasks.count_documents({
         "pic.user_id": user["id"], "status": {"$nin": ["Completed", "Cancelled", "Archived"]}, "is_deleted": {"$ne": True}
@@ -103,7 +103,7 @@ async def nav_badges(user: dict = Depends(get_current_user)):
 async def calendar(user: dict = Depends(get_current_user)):
     events = []
 
-    meetings = await db.meetings.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    meetings = await db.meetings.find({**meeting_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
     for m in meetings:
         if m.get("date"):
             events.append({
@@ -112,7 +112,7 @@ async def calendar(user: dict = Depends(get_current_user)):
                 "link": f"/meetings/{m['id']}",
             })
 
-    tasks = await db.tasks.find({"deadline": {"$ne": None}, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    tasks = await db.tasks.find({"deadline": {"$ne": None}, **task_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
     for t in tasks:
         if t.get("deadline"):
             events.append({
@@ -120,7 +120,7 @@ async def calendar(user: dict = Depends(get_current_user)):
                 "type": "task", "color": "#F59E0B", "link": f"/tasks/{t['id']}",
             })
 
-    reminders = await db.reminders.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    reminders = await db.reminders.find({"created_by": user["id"], "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
     for r in reminders:
         if r.get("date"):
             events.append({
@@ -163,9 +163,9 @@ async def global_search(q: str, user: dict = Depends(get_current_user)):
         return {"tasks": [], "meetings": [], "reminders": [], "notes": [], "attachments": []}
     rx = {"$regex": q, "$options": "i"}
     nd = {"is_deleted": {"$ne": True}}
-    tasks = await db.tasks.find({"$or": [{"title": rx}, {"description": rx}], **nd}, {"_id": 0, "id": 1, "title": 1, "status": 1}).limit(10).to_list(10)
-    meetings = await db.meetings.find({"$or": [{"title": rx}, {"agenda": rx}, {"notes": rx}], **nd}, {"_id": 0, "id": 1, "title": 1, "date": 1}).limit(10).to_list(10)
-    reminders = await db.reminders.find({"$or": [{"title": rx}, {"description": rx}], **nd}, {"_id": 0, "id": 1, "title": 1}).limit(10).to_list(10)
+    tasks = await db.tasks.find({"$or": [{"title": rx}, {"description": rx}], **task_visibility_query(user), **nd}, {"_id": 0, "id": 1, "title": 1, "status": 1}).limit(10).to_list(10)
+    meetings = await db.meetings.find({"$or": [{"title": rx}, {"agenda": rx}, {"notes": rx}], **meeting_visibility_query(user), **nd}, {"_id": 0, "id": 1, "title": 1, "date": 1}).limit(10).to_list(10)
+    reminders = await db.reminders.find({"$or": [{"title": rx}, {"description": rx}], "created_by": user["id"], **nd}, {"_id": 0, "id": 1, "title": 1}).limit(10).to_list(10)
     notes = await db.notes.find({"$or": [{"title": rx}, {"content": rx}], **nd}, {"_id": 0, "id": 1, "title": 1}).limit(10).to_list(10)
     attachments = await db.files.find({"original_filename": rx, "is_deleted": False}, {"_id": 0, "id": 1, "original_filename": 1, "module": 1, "parent_id": 1}).limit(10).to_list(10)
     return {"tasks": tasks, "meetings": meetings, "reminders": reminders, "notes": notes, "attachments": attachments}

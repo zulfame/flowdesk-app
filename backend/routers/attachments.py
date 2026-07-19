@@ -4,7 +4,7 @@ from typing import Optional
 from db import db
 from helpers import new_id, now_iso, log_activity
 from security import get_current_user
-from storage import put_object, get_object, APP_NAME
+from storage import put_object, get_object, delete_object, APP_NAME
 
 router = APIRouter(tags=["attachments"])
 
@@ -87,6 +87,9 @@ async def delete_attachment(file_id: str, user: dict = Depends(get_current_user)
     record = await db.files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="File tidak ditemukan")
-    await db.files.update_one({"id": file_id}, {"$set": {"is_deleted": True, "deleted_at": now_iso()}})
+    # Hard delete: hapus berkas fisik dari storage lalu metadata (menghindari penumpukan)
+    if record.get("storage_path"):
+        delete_object(record["storage_path"])
+    await db.files.delete_one({"id": file_id})
     await log_activity(db, user, "delete", record["module"], record["parent_id"], f"Menghapus file '{record['original_filename']}'")
     return {"message": "File dihapus"}
