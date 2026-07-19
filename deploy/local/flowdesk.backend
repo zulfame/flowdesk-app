@@ -1,0 +1,16 @@
+# FlowDesk Backend — FastAPI (hot reload). Source di-mount via volume saat runtime.
+FROM python:3.11-slim
+
+WORKDIR /app/backend
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Dependency runtime minimal (shared local + production)
+COPY deploy/requirements.runtime.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+EXPOSE 8001
+# --reload agar perubahan kode di volume langsung ter-reload
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8001", "--reload", "--reload-dir", "/app/backend"]

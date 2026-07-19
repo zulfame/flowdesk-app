@@ -1,0 +1,92 @@
+# ============================================================
+# FlowDesk — Local Development (Docker Compose)
+# React (hot reload) + FastAPI (hot reload) + MongoDB + Mongo Express
+# Jalankan dari folder deploy/local: ./start.sh
+# ============================================================
+services:
+  # ---------- MongoDB (data persisten via volume) ----------
+  mongodb:
+    image: mongo:7
+    container_name: flowdesk_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    networks: [flowdesk_net]
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ---------- Mongo Express (GUI database, http://localhost:8081) ----------
+  mongo-express:
+    image: mongo-express:latest
+    container_name: flowdesk_mongo_express
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: ${ME_USER:-admin}
+      ME_CONFIG_BASICAUTH_PASSWORD: ${ME_PASS:-admin}
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks: [flowdesk_net]
+
+  # ---------- Backend FastAPI (hot reload via --reload) ----------
+  backend:
+    build:
+      context: ../..
+      dockerfile: deploy/local/flowdesk.backend
+    image: flowdesk/backend:local
+    container_name: flowdesk_backend
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      MONGO_URL: mongodb://mongodb:27017
+      DB_NAME: ${DB_NAME:-flowdesk}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
+      JWT_SECRET: ${JWT_SECRET:-local-dev-secret}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@flowdesk.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+    volumes:
+      # Mount source code agar hot reload bekerja
+      - ../../backend:/app/backend
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks: [flowdesk_net]
+
+  # ---------- Frontend React craco (hot reload) ----------
+  frontend:
+    build:
+      context: ../..
+      dockerfile: deploy/local/flowdesk.frontend
+    image: flowdesk/frontend:local
+    container_name: flowdesk_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:-http://localhost:8001}
+      # Polling diperlukan agar file-watcher bekerja di dalam container
+      CHOKIDAR_USEPOLLING: "true"
+      WATCHPACK_POLLING: "true"
+      WDS_SOCKET_PORT: "3000"
+    volumes:
+      # Mount source code agar hot reload bekerja (node_modules tetap milik container)
+      - ../../frontend:/app/frontend
+      - /app/frontend/node_modules
+    depends_on: [backend]
+    networks: [flowdesk_net]
+
+volumes:
+  mongo_data:   # data MongoDB tidak hilang saat container dihapus
+
+networks:
+  flowdesk_net:
+    driver: bridge
