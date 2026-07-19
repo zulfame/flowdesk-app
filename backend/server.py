@@ -87,6 +87,17 @@ async def startup():
     await db.tasks.create_index("id", unique=True)
     await db.meetings.create_index("id", unique=True)
     await seed_admin()
+    # Sinkronkan peran bawaan (idempoten): pastikan izin baru seperti 'time_schedule'
+    # ikut ditambahkan ke peran member/manager yang sudah ada di DB.
+    from routers.users import DEFAULT_ROLES
+    for r in DEFAULT_ROLES:
+        await db.roles.update_one(
+            {"name": r["name"]},
+            {"$setOnInsert": {"id": new_id()},
+             "$set": {"label": r["label"]},
+             "$addToSet": {"permissions": {"$each": r["permissions"]}}},
+            upsert=True,
+        )
     try:
         init_storage()
         logger.info("Object storage initialized")

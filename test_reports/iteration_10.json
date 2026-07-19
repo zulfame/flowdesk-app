@@ -1,0 +1,33 @@
+{
+  "summary": "Retest of iteration_9 HIGH bug (roles missing time_schedule) + iteration_10 notification wording (Telegram group => use NAME, not 'Anda'). All 17 Time Schedule tests pass; 2 new notification-wording tests pass; member UI now shows Time Schedule menu.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/test_time_schedule.py",
+    "/app/backend/tests/test_notification_wording.py",
+    "/app/test_reports/pytest/time_schedule_iter10.xml"
+  ],
+  "verified_behaviors": [
+    "POST /api/auth/login (member@flowdesk.com) returns user.permissions including 'time_schedule' (curl: ['note','meeting','reminder','task','calendar','time_schedule']).",
+    "GET /api/auth/me for member includes 'time_schedule'.",
+    "GET /api/roles has 'time_schedule' in both 'member' and 'manager' role permissions.",
+    "Startup idempotent role upsert ($addToSet) is effective on existing DB roles.",
+    "Creating a task with a PIC named 'Rina Anggota' produces in-app notification: title='Tugas Ditugaskan', message=\"Tugas '<title>' ditugaskan kepada Rina Anggota\" (NOT 'Anda').",
+    "Adding a task comment with '@rina' produces mention notification: title='Rina Anggota disebut', message=\"<actor> menyebut Rina Anggota di '<title>'\", no 'Anda'.",
+    "Member UI sidebar shows 'Time Schedule' (data-testid=nav-time-schedule) after login.",
+    "All 17 tests in test_time_schedule.py pass, including previously failing test_login_permissions_member and test_default_role_member_includes_time_schedule."
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Historical notifications created before the wording change still say 'Anda' — expected; only new notifications use the name. Consider a one-time migration if desired (not blocking).",
+    "Notifications GET returns paginated shape { items: [...] } — kept compatibility. Fine.",
+    "tasks.add_comment uses `import re` inside the function; move to top of file (nit)."
+  ],
+  "updated_files": ["/app/backend/tests/test_notification_wording.py (new)"],
+  "success_rate": {"backend": "100% (19/19: 17 time_schedule + 2 wording)", "frontend": "100% (member sidebar smoke)"},
+  "test_credentials": "admin@flowdesk.com/admin123, member@flowdesk.com/member123",
+  "seed_data_creation": "Created and deleted TEST_NOTIF_PIC_* and TEST_NOTIF_MENTION_* tasks; time_schedule tests create and delete TEST_TS_* schedules. All clean.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "iteration_9 HIGH bug (role seeding not idempotent) is fixed via server.py startup $addToSet upsert; iteration_10 wording change verified. Both fixes confirmed via backend tests and UI smoke."
+}

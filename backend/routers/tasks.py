@@ -173,7 +173,7 @@ async def _notify_pic(task: dict):
     msg = (f"Halo {name}, Anda ditugaskan sebagai PIC pada tugas '{task['title']}' "
            f"(prioritas {task.get('priority', '-')}). Mohon ditindaklanjuti.")
     await create_notification(pic.get("user_id"), "Tugas Ditugaskan",
-                              f"Tugas '{task['title']}' ditugaskan kepada Anda", "task", f"/tasks/{task['id']}")
+                              f"Tugas '{task['title']}' ditugaskan kepada {name}", "task", f"/tasks/{task['id']}")
     if pic.get("email"):
         await dispatch_email(f"Penugasan Tugas: {task['title']}", msg, to_override=pic["email"])
     if pic.get("phone"):
@@ -387,7 +387,7 @@ async def add_comment(task_id: str, body: CommentBody, user: dict = Depends(get_
             for u in all_users:
                 uname = (u.get("name") or "").lower().replace(" ", "")
                 if token and (token in uname or token == (u.get("email") or "").split("@")[0].lower()):
-                    await create_notification(u["id"], "Anda disebut", f"{user['name']} menyebut Anda di '{task['title']}'", "task", f"/tasks/{task_id}")
+                    await create_notification(u["id"], f"{u['name']} disebut", f"{user['name']} menyebut {u['name']} di '{task['title']}'", "task", f"/tasks/{task_id}")
                     break
     return comment
 
