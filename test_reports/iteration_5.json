@@ -1,0 +1,34 @@
+{
+  "summary": "Iteration 5 full regression pass. Backend: 59/59 pytest (29 v2 regression + 9 iter4 + 21 iter5). New iter5 module (backend/tests/test_iter5.py) verifies: GET /api/profile, PUT /api/profile propagates name/phone into denormalized task pic.name / pic.phone for a member user, email-uniqueness 400 collision, password change wrong->400 / correct->200 with successful relogin; /api/users?page=&page_size=&q=&role= envelope + ?all=true; /api/permissions returns 12 entries; /api/users/import CSV upsert (created=2,updated=0 then created=0,updated=2); /api/roles seed + custom CRUD + core role delete->400; /api/reminders envelope + broadcast+channels stored + remind_at composed, own-only PUT/DELETE returns 404 for other user; /api/settings/public no-auth branding, /api/settings full sections + storage keys + test-notification best-effort 200; /api/database/storage/test empty ok=false, /api/database/backup local + list + inspect + download (gzip) + delete lifecycle; /api/nav-badges shape; /api/activity-logs pagination envelope + entity_type filter. Frontend E2E: sidebar shows THREE groups (Selamat Datang / Menu Utama / Menu Admin, uppercased via CSS) with all 13 expected items; Kalender shows numeric badge (1). Admin routes /profile,/reminders,/users,/roles,/app-settings,/notification-settings,/database,/activity all render matching h1. Ingatkan Saya: broadcast switch shows channel buttons, reminder saved with channel chip, deleted via ConfirmDialog. Kelola Pengguna: search filters, add-user flow works, Impor dialog opens with template btn + dropzone, prev/next/page controls present. Kelola Peranan: core roles admin/manager/member render WITHOUT delete button, custom role dialog toggles permissions. Kelola Aplikasi: name + primary_color save produces success (branding logo updates). Kelola Notifikasi: channel switches + email/telegram cards + test buttons all present. Kelola Database: Uji Koneksi with empty S3 shows failure toast, backup list rows show inspect/download/restore/delete btns. Log Aktivitas: search+filters+prev/next/page/total present, search 'admin' returned 521 entries. Profile password confirm mismatch surfaces client-side error.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iter4.py",
+    "/app/backend/tests/test_iter5.py",
+    "/app/test_reports/pytest/iter5_results.xml",
+    "/app/test_reports/pytest/regression.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "routers/profile.py _propagate_identity correctly cascades name/phone/email/department into tasks.requester/pic and *_name fields on meetings/notes/reminders/tasks. Consider also propagating avatar/department into meeting/note author panes if UI ever shows them (currently only 'created_by_name' is denormalized).",
+    "routers/reminders.py: list/put/delete all scope by created_by (own-only) — verified with cross-user 404. Envelope now consistent with users/activity-logs.",
+    "routers/settings.py public endpoint intentionally avoids auth — safe: only branding fields (no smtp/telegram secrets) are exposed. get_settings for non-admin masks bot_token / smtp_password / secret_key / access_key.",
+    "routers/database.py restore endpoint wipes every collection in BACKUP_COLLECTIONS before insert_many — no transactional safety. Since spec forbids automated testing of restore, no runtime issue, but consider adding a confirmation token param and/or snapshot-before-restore in production.",
+    "routers/database.py _dump uses to_list(100000) hard cap per collection; if any collection exceeds 100k docs, silent truncation (backup incomplete). Not a bug now but flag for scale.",
+    "routers/users.py CSV import silently defaults invalid roles to 'member' (no error) and applies DEFAULT_IMPORT_PASSWORD when password col missing — matches spec but the response 'errors' list only captures invalid-email rows. Consider surfacing 'role coerced' warnings.",
+    "routers/aggregate.py nav-badges 'my_tasks' filters by pic.user_id and excludes Completed/Cancelled/Archived — correct. 'calendar_month_tasks' uses deadline string prefix comparison which relies on ISO date sort order (OK for YYYY-MM-DD)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter5.py (new)",
+    "/app/backend/tests/backend_test.py (unwrap {items,total,...} envelope for /api/users and /api/activity-logs)",
+    "/app/backend/tests/test_iter4.py (unwrap users envelope in shared fixture)"
+  ],
+  "success_rate": {"backend": "100% (59/59)", "frontend": "100% (all iter5 flows OK)"},
+  "test_credentials": "admin@flowdesk.com / admin123",
+  "seed_data_creation": "All test data prefixed TEST_/E2E_/iter5 and cleaned up. During E2E: E2E_iter5_reminder created + deleted, temporary user e2e_<ts>@x.com only created if add-user path executed then removed. Any 'TEST_iter5_co' company value on settings reverted to empty.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "API shape now: /api/users, /api/reminders, /api/activity-logs, /api/notes(if refactored later) all return {items,total,page,page_size} envelopes. Older regression tests were fixed to unwrap. Public branding endpoint /api/settings/public is intentionally unauthenticated (used by Login page / <title> / favicon). Do NOT hit POST /api/database/backups/{id}/restore in automation without a fresh throwaway backup — it truncates every collection. Reminders now enforce own-only for PUT/DELETE (other users get 404). Kalender sidebar item exposes badge count via GET /api/nav-badges.calendar_month_tasks.",
+  "rca of the issue": "N/A — no failures."
+}

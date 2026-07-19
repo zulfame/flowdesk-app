@@ -82,6 +82,22 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
     }
 
 
+# ---------- Nav badges ----------
+@router.get("/nav-badges")
+async def nav_badges(user: dict = Depends(get_current_user)):
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    nm = (start + timedelta(days=32)).replace(day=1)
+    calendar_month_tasks = await db.tasks.count_documents({
+        "deadline": {"$gte": start.date().isoformat(), "$lt": nm.date().isoformat()}
+    })
+    my_tasks = await db.tasks.count_documents({
+        "pic.user_id": user["id"], "status": {"$nin": ["Completed", "Cancelled", "Archived"]}
+    })
+    return {"calendar_month_tasks": calendar_month_tasks, "my_tasks": my_tasks}
+
+
 # ---------- Calendar ----------
 @router.get("/calendar")
 async def calendar(user: dict = Depends(get_current_user)):

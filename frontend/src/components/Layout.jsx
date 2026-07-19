@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback } from "react";
 import { NavLink, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useTheme } from "@/context/ThemeContext";
+import { useBranding } from "@/context/BrandingContext";
 import { api } from "@/lib/api";
 import {
-  LayoutDashboard, CheckSquare, Users2, CalendarDays, Bell, FileText,
-  Video, ScrollText, Settings, Search, Sun, Moon, LogOut, Menu, X,
-  Waves, ChevronDown, PanelLeftClose, PanelLeft
+  LayoutDashboard, CheckSquare, CalendarDays, Bell, FileText, Video, ScrollText,
+  Search, Sun, Moon, LogOut, Menu, X, Waves, ChevronDown, PanelLeftClose, PanelLeft,
+  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,17 +17,36 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
-const NAV = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
-  { to: "/tasks", label: "Tugas", icon: CheckSquare },
-  { to: "/meetings", label: "Rapat", icon: Video },
-  { to: "/calendar", label: "Kalender", icon: CalendarDays },
-  { to: "/reminders", label: "Pengingat", icon: Bell },
-  { to: "/notes", label: "Catatan", icon: FileText },
-  { to: "/notifications", label: "Notifikasi", icon: Bell },
-  { to: "/activity", label: "Log Aktivitas", icon: ScrollText },
-  { to: "/users", label: "Pengguna", icon: Users2, adminOnly: true },
-  { to: "/settings", label: "Pengaturan", icon: Settings },
+const NAV_GROUPS = [
+  {
+    title: "Selamat Datang",
+    items: [
+      { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
+      { to: "/profile", label: "Profil Pengguna", icon: UserCircle },
+    ],
+  },
+  {
+    title: "Menu Utama",
+    items: [
+      { to: "/calendar", label: "Kalender", icon: CalendarDays, badge: "calendar_month_tasks" },
+      { to: "/tasks", label: "Kelola Tugas", icon: CheckSquare, badge: "my_tasks" },
+      { to: "/meetings", label: "Kelola Rapat", icon: Video },
+      { to: "/notes", label: "Kelola Catatan", icon: FileText },
+      { to: "/reminders", label: "Ingatkan Saya", icon: Bell },
+    ],
+  },
+  {
+    title: "Menu Admin",
+    adminOnly: true,
+    items: [
+      { to: "/app-settings", label: "Kelola Aplikasi", icon: SlidersHorizontal },
+      { to: "/roles", label: "Kelola Peranan", icon: ShieldCheck },
+      { to: "/users", label: "Kelola Pengguna", icon: Users2 },
+      { to: "/database", label: "Kelola Database", icon: Database },
+      { to: "/notification-settings", label: "Kelola Notifikasi", icon: BellRing },
+      { to: "/activity", label: "Log Aktivitas", icon: ScrollText },
+    ],
+  },
 ];
 
 function initials(name = "") {
@@ -36,6 +56,7 @@ function initials(name = "") {
 export default function Layout({ children }) {
   const { user, logout } = useAuth();
   const { theme, toggle } = useTheme();
+  const { branding } = useBranding();
   const navigate = useNavigate();
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem("flowdesk_sidebar_collapsed") === "1");
@@ -44,21 +65,24 @@ export default function Layout({ children }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [unread, setUnread] = useState(0);
-  const [myTasks, setMyTasks] = useState(0);
+  const [badges, setBadges] = useState({ calendar_month_tasks: 0, my_tasks: 0 });
+
+  const appName = branding?.app_name || "FlowDesk";
 
   useEffect(() => {
     localStorage.setItem("flowdesk_sidebar_collapsed", collapsed ? "1" : "0");
     document.documentElement.style.setProperty("--sidebar-w-lg", collapsed ? "76px" : "260px");
   }, [collapsed]);
 
-  const loadUnread = useCallback(async () => {
+  const loadCounters = useCallback(async () => {
     try {
-      const { data } = await api.get("/notifications");
-      setUnread(data.unread);
+      const [n, b] = await Promise.all([api.get("/notifications"), api.get("/nav-badges")]);
+      setUnread(n.data.unread);
+      setBadges(b.data);
     } catch {}
   }, []);
 
-  useEffect(() => { loadUnread(); }, [loadUnread, location.pathname]);
+  useEffect(() => { loadCounters(); }, [loadCounters, location.pathname]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -81,36 +105,48 @@ export default function Layout({ children }) {
 
   const goto = (path) => { setSearchOpen(false); setQuery(""); navigate(path); };
 
-  const navItems = NAV.filter((n) => !n.adminOnly || user?.role === "admin");
+  const visibleGroups = NAV_GROUPS
+    .map((g) => ({ ...g }))
+    .filter((g) => !g.adminOnly || user?.role === "admin");
 
   const SidebarContent = (
     <>
       <div className={cn("flex items-center gap-2.5 px-5 h-16 shrink-0", collapsed && "lg:justify-center lg:px-0")}>
-        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-soft">
-          <Waves className="h-5 w-5 text-primary-foreground" />
+        <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center shrink-0 shadow-soft overflow-hidden">
+          {branding?.logo ? <img src={branding.logo} alt="logo" className="h-full w-full object-cover" /> : <Waves className="h-5 w-5 text-primary-foreground" />}
         </div>
-        {!collapsed && <span className="font-heading font-extrabold text-xl tracking-tight">FlowDesk</span>}
+        {!collapsed && <span className="font-heading font-extrabold text-xl tracking-tight truncate">{appName}</span>}
       </div>
-      <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.end}
-            onClick={() => setMobileOpen(false)}
-            data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, "-")}`}
-            className={({ isActive }) => cn(
-              "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors relative group",
-              isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
-              collapsed && "lg:justify-center lg:px-0"
-            )}
-          >
-            <item.icon className="h-[18px] w-[18px] shrink-0" />
-            {!collapsed && <span>{item.label}</span>}
-            {!collapsed && item.to === "/tasks" && myTasks > 0 && (
-              <span className="ml-auto text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center" data-testid="sidebar-mytasks-badge">{myTasks}</span>
-            )}
-          </NavLink>
+      <nav className="flex-1 px-3 py-3 space-y-4 overflow-y-auto">
+        {visibleGroups.map((group) => (
+          <div key={group.title}>
+            {!collapsed && <p className="px-3 mb-1.5 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">{group.title}</p>}
+            <div className="space-y-1">
+              {group.items.map((item) => {
+                const badgeVal = item.badge ? badges[item.badge] : 0;
+                return (
+                  <NavLink
+                    key={item.to}
+                    to={item.to}
+                    end={item.end}
+                    onClick={() => setMobileOpen(false)}
+                    data-testid={`nav-${item.label.toLowerCase().replace(/\s/g, "-")}`}
+                    className={({ isActive }) => cn(
+                      "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors relative group",
+                      isActive ? "bg-accent text-accent-foreground" : "text-muted-foreground hover:bg-secondary hover:text-foreground",
+                      collapsed && "lg:justify-center lg:px-0"
+                    )}
+                  >
+                    <item.icon className="h-[18px] w-[18px] shrink-0" />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                    {!collapsed && badgeVal > 0 && (
+                      <span className="ml-auto text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center" data-testid={`sidebar-badge-${item.badge}`}>{badgeVal}</span>
+                    )}
+                  </NavLink>
+                );
+              })}
+            </div>
+          </div>
         ))}
       </nav>
       <div className="p-3 border-t border-border">
@@ -127,7 +163,6 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Desktop sidebar */}
       <aside className={cn(
         "hidden lg:flex flex-col fixed inset-y-0 left-0 z-40 bg-card border-r border-border transition-all duration-300",
         collapsed ? "w-[76px]" : "w-[260px]"
@@ -135,7 +170,6 @@ export default function Layout({ children }) {
         {SidebarContent}
       </aside>
 
-      {/* Mobile sidebar */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-50 flex">
           <div className="fixed inset-0 bg-black/50" onClick={() => setMobileOpen(false)} />
@@ -147,7 +181,6 @@ export default function Layout({ children }) {
       )}
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[76px]" : "lg:pl-[260px]")}>
-        {/* Topbar */}
         <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 sm:px-6 backdrop-blur-xl bg-background/80 border-b border-border">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} data-testid="btn-mobile-menu">
             <Menu className="h-5 w-5" />
@@ -181,8 +214,8 @@ export default function Layout({ children }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 h-10 pl-1 pr-2 rounded-xl hover:bg-secondary transition-colors" data-testid="btn-user-menu">
-                <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold">
-                  {initials(user?.name)}
+                <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold overflow-hidden">
+                  {user?.avatar ? <img src={user.avatar} alt="" className="h-full w-full object-cover" /> : initials(user?.name)}
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
               </button>
@@ -193,8 +226,8 @@ export default function Layout({ children }) {
                 <div className="text-xs text-muted-foreground font-normal">{user?.email}</div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => navigate("/settings")} data-testid="menu-settings">
-                <Settings className="h-4 w-4 mr-2" /> Pengaturan
+              <DropdownMenuItem onClick={() => navigate("/profile")} data-testid="menu-profile">
+                <UserCircle className="h-4 w-4 mr-2" /> Profil Pengguna
               </DropdownMenuItem>
               <DropdownMenuItem onClick={async () => { await logout(); navigate("/login"); }} className="text-destructive" data-testid="menu-logout">
                 <LogOut className="h-4 w-4 mr-2" /> Keluar
@@ -206,7 +239,6 @@ export default function Layout({ children }) {
         <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto fade-in">{children}</main>
       </div>
 
-      {/* Search dialog */}
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
         <DialogContent className="max-w-xl p-0 gap-0 top-[20%] translate-y-0">
           <DialogTitle className="sr-only">Pencarian Global</DialogTitle>
@@ -216,16 +248,14 @@ export default function Layout({ children }) {
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Cari di seluruh FlowDesk..."
+              placeholder={`Cari di seluruh ${appName}...`}
               className="border-0 focus-visible:ring-0 h-14 text-base"
               data-testid="global-search-input"
             />
           </div>
           <div className="max-h-[400px] overflow-y-auto p-2">
             {!results && <p className="text-sm text-muted-foreground p-6 text-center">Ketik untuk mencari tugas, rapat, pengingat, catatan, dan lampiran.</p>}
-            {results && (
-              <SearchResults results={results} goto={goto} />
-            )}
+            {results && <SearchResults results={results} goto={goto} />}
           </div>
         </DialogContent>
       </Dialog>

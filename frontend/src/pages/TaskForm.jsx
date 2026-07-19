@@ -69,7 +69,7 @@ export default function TaskForm() {
   }, [editing, id, navigate]);
 
   useEffect(() => {
-    api.get("/users").then(({ data }) => setUsers(data)).catch(() => {});
+    api.get("/users?all=true").then(({ data }) => setUsers(data.items)).catch(() => {});
     loadTask();
   }, [loadTask]);
 

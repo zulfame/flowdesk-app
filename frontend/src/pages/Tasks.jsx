@@ -46,8 +46,8 @@ export default function Tasks() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [t, u] = await Promise.all([api.get("/tasks"), api.get("/users")]);
-      setTasks(t.data); setUsers(u.data);
+      const [t, u] = await Promise.all([api.get("/tasks"), api.get("/users?all=true")]);
+      setTasks(t.data); setUsers(u.data.items);
     } catch (e) { toast.error(apiError(e)); }
     finally { setLoading(false); }
   }, []);
@@ -122,7 +122,7 @@ export default function Tasks() {
 
   return (
     <div>
-      <PageHeader title="Manajemen Tugas" subtitle="Setiap tugas mewakili satu permintaan pekerjaan.">
+      <PageHeader title="Kelola Tugas" subtitle="Setiap tugas mewakili satu permintaan pekerjaan.">
         <Button variant="secondary" onClick={() => setTplOpen(true)} className="rounded-xl" data-testid="btn-templates"><LayoutTemplate className="h-4 w-4 mr-1.5" /> Template</Button>
         <Button onClick={() => navigate("/tasks/new")} className="rounded-xl" data-testid="btn-tambah-tugas"><Plus className="h-4 w-4 mr-1.5" /> Tugas Baru</Button>
       </PageHeader>

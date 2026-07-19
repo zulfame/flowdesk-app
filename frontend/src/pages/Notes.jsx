@@ -42,7 +42,7 @@ export default function Notes() {
 
   return (
     <div>
-      <PageHeader title="Catatan" subtitle="Simpan ide, catatan cepat, dan referensi penting.">
+      <PageHeader title="Kelola Catatan" subtitle="Simpan ide, catatan cepat, dan referensi penting.">
         <Button onClick={openNew} className="rounded-xl" data-testid="btn-add-note"><Plus className="h-4 w-4 mr-1.5" /> Catatan</Button>
       </PageHeader>
 

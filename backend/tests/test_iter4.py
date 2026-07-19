@@ -30,7 +30,8 @@ def admin():
 
 @pytest.fixture(scope="module")
 def users(admin):
-    lst = admin.get(f"{API}/users").json()
+    payload = admin.get(f"{API}/users?all=true").json()
+    lst = payload["items"] if isinstance(payload, dict) and "items" in payload else payload
     m = {u["email"]: u for u in lst}
     assert "budi@flowdesk.com" in m and "siti@flowdesk.com" in m, "seed users missing"
     return m

@@ -11,14 +11,30 @@ router = APIRouter(prefix="/settings", tags=["settings"])
 
 DEFAULT_SETTINGS = {
     "key": "app",
-    "general": {"app_name": "FlowDesk", "company": "", "timezone": "Asia/Jakarta", "language": "id"},
+    "general": {
+        "app_name": "FlowDesk", "company": "", "timezone": "Asia/Jakarta", "language": "id",
+        "primary_color": "#4F46E5", "favicon": "", "logo": "", "thumbnail": "",
+        "meta_description": "Sistem Manajemen Kerja Internal", "app_url": "", "date_format": "DD/MM/YYYY",
+    },
     "email": {"smtp_host": "", "smtp_port": 587, "smtp_user": "", "smtp_password": "",
               "from_email": "", "notify_email": ""},
     "telegram": {"bot_token": "", "chat_id": "", "thread_id": ""},
     "notification": {"telegram_enabled": False, "email_enabled": False, "browser_enabled": True},
-    "storage": {"max_file_mb": 50, "allowed_types": "image,pdf,office,zip,video,audio"},
+    "storage": {"max_file_mb": 50, "allowed_types": "image,pdf,office,zip,video,audio",
+                "endpoint": "", "bucket": "", "access_key": "", "secret_key": "", "region": "", "path": ""},
     "application": {"theme": "system", "primary_color": "#4F46E5", "date_format": "DD/MM/YYYY"},
 }
+
+
+def _with_defaults(s: dict) -> dict:
+    """Ensure any newly-added default keys exist on an older stored settings doc."""
+    s = dict(s)
+    for section, defaults in DEFAULT_SETTINGS.items():
+        if section == "key":
+            continue
+        merged = {**defaults, **(s.get(section) or {})}
+        s[section] = merged
+    return s
 
 
 class SettingsUpdate(BaseModel):
@@ -39,7 +55,23 @@ async def _ensure_settings():
     if not s:
         await db.settings.insert_one(dict(DEFAULT_SETTINGS))
         s = dict(DEFAULT_SETTINGS)
-    return s
+    return _with_defaults(s)
+
+
+@router.get("/public")
+async def public_settings():
+    """Branding info exposed without auth (for login page, favicon, title)."""
+    s = await _ensure_settings()
+    g = s.get("general", {})
+    return {
+        "app_name": g.get("app_name", "FlowDesk"),
+        "company": g.get("company", ""),
+        "primary_color": g.get("primary_color", "#4F46E5"),
+        "favicon": g.get("favicon", ""),
+        "logo": g.get("logo", ""),
+        "thumbnail": g.get("thumbnail", ""),
+        "meta_description": g.get("meta_description", ""),
+    }
 
 
 @router.get("")
@@ -52,6 +84,8 @@ async def get_settings_endpoint(user: dict = Depends(get_current_user)):
             s["email"] = {**s["email"], "smtp_password": ""}
         if "telegram" in s:
             s["telegram"] = {**s["telegram"], "bot_token": ""}
+        if "storage" in s:
+            s["storage"] = {**s["storage"], "secret_key": "", "access_key": ""}
     return s
 
 

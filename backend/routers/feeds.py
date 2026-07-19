@@ -44,10 +44,19 @@ async def gen_whatsapp(body: WhatsAppBody, user: dict = Depends(get_current_user
 
 @router.get("/activity-logs")
 async def activity_logs(entity_type: Optional[str] = None, action: Optional[str] = None,
-                        limit: int = 200, user: dict = Depends(get_current_user)):
-    q = {}
-    if entity_type:
-        q["entity_type"] = entity_type
-    if action:
-        q["action"] = action
-    return await db.activity_logs.find(q, {"_id": 0}).sort("created_at", -1).limit(limit).to_list(limit)
+                        q: Optional[str] = None, page: int = 1, page_size: int = 30,
+                        user: dict = Depends(get_current_user)):
+    query = {}
+    if entity_type and entity_type != "all":
+        query["entity_type"] = entity_type
+    if action and action != "all":
+        query["action"] = action
+    if q:
+        rx = {"$regex": q, "$options": "i"}
+        query["$or"] = [{"description": rx}, {"user_name": rx}]
+    total = await db.activity_logs.count_documents(query)
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    items = await db.activity_logs.find(query, {"_id": 0}).sort("created_at", -1) \
+        .skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return {"items": items, "total": total, "page": page, "page_size": page_size}

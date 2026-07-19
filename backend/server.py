@@ -14,7 +14,7 @@ from helpers import new_id, now_iso
 from security import hash_password, verify_password
 from storage import init_storage
 
-from routers import auth, users, tasks, meetings, reminders, notes, attachments, feeds, aggregate, settings
+from routers import auth, users, tasks, meetings, reminders, notes, attachments, feeds, aggregate, settings, profile, database
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("flowdesk")
@@ -38,6 +38,8 @@ api_router.include_router(attachments.router)
 api_router.include_router(feeds.router)
 api_router.include_router(aggregate.router)
 api_router.include_router(settings.router)
+api_router.include_router(profile.router)
+api_router.include_router(database.router)
 
 app.include_router(api_router)
 
@@ -93,7 +95,7 @@ async def startup():
 async def deadline_reminder_loop():
     import asyncio
     from datetime import datetime, timezone, timedelta
-    from notifications import create_notification, get_settings, _send_email
+    from notifications import create_notification, get_settings, _send_email, _send_telegram
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -113,9 +115,50 @@ async def deadline_reminder_loop():
                     settings = await get_settings()
                     _send_email(settings.get("email", {}), f"Pengingat Tenggat: {t.get('title')}", msg, to_override=pic["email"])
                 await db.tasks.update_one({"id": t["id"]}, {"$set": {"deadline_reminded": True}})
+
+            # Dispatch user reminders that are due (broadcast via email/telegram)
+            await _dispatch_reminders(now)
         except Exception as e:
             logger.error(f"deadline_reminder_loop: {e}")
-        await asyncio.sleep(1800)
+        await asyncio.sleep(300)
+
+
+async def _dispatch_reminders(now):
+    from datetime import datetime, timedelta
+    from notifications import create_notification, get_settings, _send_email, _send_telegram
+    now_local = now.isoformat()
+    cursor = db.reminders.find({
+        "done": {"$ne": True},
+        "dispatched": {"$ne": True},
+        "remind_at": {"$ne": None, "$lte": now_local},
+    })
+    async for r in cursor:
+        title = r.get("title", "Pengingat")
+        body = r.get("description") or "Waktunya pengingat Anda."
+        await create_notification(r.get("created_by"), f"Pengingat: {title}", body, "reminder", "/reminders")
+        if r.get("broadcast"):
+            settings = await get_settings()
+            channels = r.get("channels", []) or []
+            if "email" in channels:
+                _send_email(settings.get("email", {}), f"Pengingat: {title}", body)
+            if "telegram" in channels:
+                _send_telegram(settings.get("telegram", {}), f"Pengingat: {title}", body)
+        # Recurring: advance to next occurrence; otherwise mark dispatched
+        if r.get("remind_type") == "recurring" and r.get("date"):
+            try:
+                base = datetime.fromisoformat(r["date"])
+                step = {"daily": timedelta(days=1), "weekly": timedelta(weeks=1), "monthly": timedelta(days=30)}.get(r.get("recurrence"), timedelta(days=1))
+                nxt = base
+                while nxt <= now.replace(tzinfo=None):
+                    nxt = nxt + step
+                new_date = nxt.date().isoformat()
+                await db.reminders.update_one({"id": r["id"]}, {"$set": {
+                    "date": new_date, "remind_at": f"{new_date}T{r.get('time', '09:00')}:00", "dispatched": False,
+                }})
+            except Exception:
+                await db.reminders.update_one({"id": r["id"]}, {"$set": {"dispatched": True}})
+        else:
+            await db.reminders.update_one({"id": r["id"]}, {"$set": {"dispatched": True}})
 
 
 @app.on_event("shutdown")

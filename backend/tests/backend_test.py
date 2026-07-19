@@ -308,7 +308,9 @@ class TestActivity:
     def test_activity(self, admin_client):
         r = admin_client.get(f"{API}/activity-logs?entity_type=task")
         assert r.status_code == 200
-        for x in r.json():
+        payload = r.json()
+        items = payload["items"] if isinstance(payload, dict) and "items" in payload else payload
+        for x in items:
             assert x["entity_type"] == "task"
 
 
@@ -344,7 +346,8 @@ class TestUsersRoles:
         assert u["phone"] == "628111222333"
         uid = u["id"]
         # verify list returns dept/phone/email
-        lst = admin_client.get(f"{API}/users").json()
+        lst_payload = admin_client.get(f"{API}/users?all=true").json()
+        lst = lst_payload["items"] if isinstance(lst_payload, dict) else lst_payload
         me = next(x for x in lst if x["id"] == uid)
         assert me["department"] == "QA" and me["phone"] == "628111222333" and me["email"] == email
         # update department
@@ -357,7 +360,8 @@ class TestUsersRoles:
 class TestTasksIter3:
     def test_client_provided_id_and_person_objects(self, admin_client):
         # Get an existing registered user to use as requester/pic
-        users = admin_client.get(f"{API}/users").json()
+        users_payload = admin_client.get(f"{API}/users?all=true").json()
+        users = users_payload["items"] if isinstance(users_payload, dict) else users_payload
         u = next((x for x in users if x["email"] == "budi@flowdesk.com"), users[0])
         client_id = f"e2e-{int(time.time()*1000)}"
         payload = {

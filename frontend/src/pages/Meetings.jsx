@@ -45,7 +45,7 @@ export default function Meetings() {
 
   return (
     <div>
-      <PageHeader title="Manajemen Rapat" subtitle="Rapat adalah buku catatan digital, bukan sekadar jadwal.">
+      <PageHeader title="Kelola Rapat" subtitle="Rapat adalah buku catatan digital, bukan sekadar jadwal.">
         <Button onClick={() => setOpen(true)} className="rounded-xl" data-testid="btn-tambah-rapat"><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>
       </PageHeader>
 
