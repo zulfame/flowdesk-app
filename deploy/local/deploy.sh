@@ -29,6 +29,13 @@ trap 'fail "Deploy gagal pada baris $LINENO. Rollback manual: docker compose dow
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
+
+# Muat konfigurasi lokal (COMPOSE_PROJECT_NAME + port) bila ada
+[ -f "$SCRIPT_DIR/.env" ] && { set -a; . "$SCRIPT_DIR/.env"; set +a; }
+FE_PORT="${FRONTEND_PORT:-3000}"
+BE_PORT="${BACKEND_PORT:-8001}"
+MEP_PORT="${MONGO_EXPRESS_PORT:-8081}"
+
 DEPLOY_LOG="${DEPLOY_LOG:-$APP_DIR/deploy.local.log}"
 SKIP_PULL="${SKIP_PULL:-0}"
 FORCE_REBUILD="${FORCE_REBUILD:-0}"
@@ -110,18 +117,18 @@ if [ "$NO_RESTART" != "1" ]; then
   log "Menunggu backend siap (max 40 detik)"
   BACKEND_OK=0
   for i in $(seq 1 40); do
-    curl -fsS "http://localhost:8001/api/settings/public" >/dev/null 2>&1 && { BACKEND_OK=1; break; }
+    curl -fsS "http://localhost:${BE_PORT}/api/settings/public" >/dev/null 2>&1 && { BACKEND_OK=1; break; }
     sleep 1
   done
-  [ "$BACKEND_OK" = "1" ] && ok "Backend responding: http://localhost:8001/api/settings/public" || warn "Backend belum merespons — cek: docker compose logs backend"
+  [ "$BACKEND_OK" = "1" ] && ok "Backend responding: http://localhost:${BE_PORT}/api/settings/public" || warn "Backend belum merespons — cek: docker compose logs backend"
 
   log "Menunggu frontend siap (max 60 detik — compile awal CRA agak lama)"
   FRONT_OK=0
   for i in $(seq 1 60); do
-    curl -fsS "http://localhost:3000" >/dev/null 2>&1 && { FRONT_OK=1; break; }
+    curl -fsS "http://localhost:${FE_PORT}" >/dev/null 2>&1 && { FRONT_OK=1; break; }
     sleep 1
   done
-  [ "$FRONT_OK" = "1" ] && ok "Frontend responding: http://localhost:3000" || warn "Frontend belum merespons — cek: docker compose logs frontend"
+  [ "$FRONT_OK" = "1" ] && ok "Frontend responding: http://localhost:${FE_PORT}" || warn "Frontend belum merespons — cek: docker compose logs frontend"
 fi
 
 # ---------- 6. Log deploy ----------
@@ -136,9 +143,9 @@ fi
 echo ""
 echo -e "${GREEN}=====================================================${NC}"
 echo -e "${GREEN} DEPLOY LOKAL SELESAI${NC}"
-echo -e "   Frontend      : http://localhost:3000"
-echo -e "   Backend API   : http://localhost:8001/api/"
-echo -e "   Mongo Express : http://localhost:8081"
+echo -e "   Frontend      : http://localhost:${FE_PORT}"
+echo -e "   Backend API   : http://localhost:${BE_PORT}/api/"
+echo -e "   Mongo Express : http://localhost:${MEP_PORT}"
 echo -e "   Log deploy    : $DEPLOY_LOG"
 echo -e "${GREEN}=====================================================${NC}"
 echo -e "${YELLOW}Rollback bila bermasalah:${NC}"

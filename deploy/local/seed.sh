@@ -15,6 +15,10 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Muat konfigurasi lokal (COMPOSE_PROJECT_NAME/port) agar docker compose
+# menyasar stack yang benar dan ringkasan port akurat.
+[ -f .env ] && { set -a; . ./.env; set +a; }
+
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; NC='\033[0m'
 SERVICE="backend"
 

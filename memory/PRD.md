@@ -62,6 +62,7 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - ✅ Fix Docker build lokal gagal (`frontend/yarn.lock not found`): `deploy/local/flowdesk.frontend` kini `COPY frontend/package.json frontend/yarn.lock* ./` + `yarn install` (lockfile opsional; yarn.lock tak ter-track di git). README manual-build disamakan (`yarn install`).
 - ✅ Skrip reset data: `deploy/local/seed.sh` — jalankan `python seed.py --force` via `docker compose exec backend`; auto-start stack; konfirmasi 'YA' atau `-y`.
 - Catatan: build Docker & skrip tak bisa dijalankan di pod preview (docker tak tersedia); verifikasi build/seed nyata di mesin lokal user. User konfirmasi deploy lokal sudah berjalan.
+- ✅ Multi-project lokal + port konfigurable: `docker-compose.yml` namespace container/volume/network via `COMPOSE_PROJECT_NAME`; port via `FRONTEND_PORT`/`BACKEND_PORT`/`MONGO_PORT`/`MONGO_EXPRESS_PORT`. `start.sh` kini punya wizard pilih nama+port (`--reconfigure`, `-y`); `stop.sh`/`deploy.sh`/`seed.sh` memuat `.env`. Tervalidasi: bash syntax, YAML, interpolasi default & project kedua. README diperbarui.
 
 ## Update (2026-07-19c) — Akses berbasis peran/kepemilikan + pembersihan lampiran
 - ✅ **Visibilitas data (Menu Utama)**: Admin & Manajer melihat semua; Anggota hanya melihat data terkait dirinya (pembuat / PIC / pemberi tugas / peserta rapat). Diterapkan di list, detail, dashboard, kalender, dan pencarian global. `helpers.py:task_visibility_query/meeting_visibility_query`.

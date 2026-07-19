@@ -133,21 +133,38 @@ Kredensial superadmin diambil dari `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 ## Deploy Lokal dengan Docker
 Prasyarat: Docker & Docker Compose.
 
+Gunakan skrip di `deploy/local/` (mendukung banyak project di 1 mesin tanpa bentrok port/volume):
 ```bash
-# dari root proyek (/app)
+cd deploy/local
+./start.sh                # WIZARD: pilih nama project + port (setup awal)
+./start.sh --reconfigure  # jalankan wizard lagi (ganti port/nama)
+./start.sh -y             # non-interaktif: pakai port default
+./stop.sh                 # hentikan stack (data aman di volume)
+./seed.sh                 # reset data (superadmin saja) — ketik YA / ./seed.sh -y
+./deploy.sh               # pull commit terbaru + rebuild kondisional
+```
+
+Wizard menyimpan pilihan ke `deploy/local/.env`:
+- `COMPOSE_PROJECT_NAME` → prefiks unik container/volume/network (mis. `projectb_mongodb`, `projectb_mongo_data`).
+- `FRONTEND_PORT` / `BACKEND_PORT` / `MONGO_PORT` / `MONGO_EXPRESS_PORT` → port host yang dipakai.
+
+> Menjalankan >1 project Emergent di satu mesin? Cukup beri **nama project berbeda** dan **port berbeda** di wizard tiap project — container, volume MongoDB, dan network otomatis terpisah sehingga tidak ada konflik.
+
+Alternatif cepat (port default 3000/8001/27017/8081) dari root proyek:
+```bash
 docker compose up -d --build
 ```
-Layanan yang berjalan:
+Layanan (port default):
 - Frontend  → `http://localhost:3000`
 - Backend   → `http://localhost:8001`
-- MongoDB   → `localhost:27017` (volume `mongo_data`)
+- MongoDB   → `localhost:27017`
 
-Perintah berguna:
+Perintah berguna (dari `deploy/local`):
 ```bash
 docker compose logs -f backend      # lihat log
 docker compose down                 # hentikan
 docker compose down -v              # hentikan + hapus data MongoDB
-docker compose exec backend python seed.py --force   # reset data awal
+./seed.sh -y                        # reset data awal
 ```
 
 Konfigurasi env diatur di `docker-compose.yml` (ganti `JWT_SECRET` & `ADMIN_PASSWORD`). Jika mengubah `REACT_APP_BACKEND_URL`, build ulang frontend: `docker compose up -d --build frontend`.

@@ -1,16 +1,22 @@
 # ============================================================
 # FlowDesk — Local Development (Docker Compose)
 # React (hot reload) + FastAPI (hot reload) + MongoDB + Mongo Express
+#
+# Semua PORT & NAMA RESOURCE dapat dikonfigurasi lewat .env agar
+# tidak bentrok dengan project Emergent lain di mesin yang sama:
+#   COMPOSE_PROJECT_NAME  -> prefiks unik container/volume/network
+#   FRONTEND_PORT / BACKEND_PORT / MONGO_PORT / MONGO_EXPRESS_PORT
+#
 # Jalankan dari folder deploy/local: ./start.sh
 # ============================================================
 services:
   # ---------- MongoDB (data persisten via volume) ----------
   mongodb:
     image: mongo:7
-    container_name: flowdesk_mongodb
+    container_name: ${COMPOSE_PROJECT_NAME:-flowdesk}_mongodb
     restart: unless-stopped
     ports:
-      - "27017:27017"
+      - "${MONGO_PORT:-27017}:27017"
     volumes:
       - mongo_data:/data/db
     networks: [flowdesk_net]
@@ -20,13 +26,13 @@ services:
       timeout: 5s
       retries: 5
 
-  # ---------- Mongo Express (GUI database, http://localhost:8081) ----------
+  # ---------- Mongo Express (GUI database) ----------
   mongo-express:
     image: mongo-express:latest
-    container_name: flowdesk_mongo_express
+    container_name: ${COMPOSE_PROJECT_NAME:-flowdesk}_mongo_express
     restart: unless-stopped
     ports:
-      - "8081:8081"
+      - "${MONGO_EXPRESS_PORT:-8081}:8081"
     environment:
       ME_CONFIG_MONGODB_URL: mongodb://mongodb:27017/
       ME_CONFIG_BASICAUTH_USERNAME: ${ME_USER:-admin}
@@ -41,11 +47,11 @@ services:
     build:
       context: ../..
       dockerfile: deploy/local/flowdesk.backend
-    image: flowdesk/backend:local
-    container_name: flowdesk_backend
+    image: ${COMPOSE_PROJECT_NAME:-flowdesk}/backend:local
+    container_name: ${COMPOSE_PROJECT_NAME:-flowdesk}_backend
     restart: unless-stopped
     ports:
-      - "8001:8001"
+      - "${BACKEND_PORT:-8001}:8001"
     environment:
       MONGO_URL: mongodb://mongodb:27017
       DB_NAME: ${DB_NAME:-flowdesk}
@@ -66,17 +72,18 @@ services:
     build:
       context: ../..
       dockerfile: deploy/local/flowdesk.frontend
-    image: flowdesk/frontend:local
-    container_name: flowdesk_frontend
+    image: ${COMPOSE_PROJECT_NAME:-flowdesk}/frontend:local
+    container_name: ${COMPOSE_PROJECT_NAME:-flowdesk}_frontend
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
+      # URL backend yang diakses BROWSER (host), ikut BACKEND_PORT terpilih
       REACT_APP_BACKEND_URL: ${REACT_APP_BACKEND_URL:-http://localhost:8001}
       # Polling diperlukan agar file-watcher bekerja di dalam container
       CHOKIDAR_USEPOLLING: "true"
       WATCHPACK_POLLING: "true"
-      WDS_SOCKET_PORT: "3000"
+      WDS_SOCKET_PORT: "${FRONTEND_PORT:-3000}"
     volumes:
       # Mount source code agar hot reload bekerja (node_modules tetap milik container)
       - ../../frontend:/app/frontend
@@ -85,8 +92,11 @@ services:
     networks: [flowdesk_net]
 
 volumes:
-  mongo_data:   # data MongoDB tidak hilang saat container dihapus
+  mongo_data:
+    # Nama volume di-namespace agar tiap project punya data terpisah
+    name: ${COMPOSE_PROJECT_NAME:-flowdesk}_mongo_data
 
 networks:
   flowdesk_net:
+    name: ${COMPOSE_PROJECT_NAME:-flowdesk}_net
     driver: bridge
