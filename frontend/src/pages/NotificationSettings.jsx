@@ -93,6 +93,7 @@ export default function NotificationSettings() {
             <Field label="SMTP Port"><Input type="number" value={s.email.smtp_port} onChange={(e) => up("email", "smtp_port", parseInt(e.target.value) || 587)} data-testid="setting-smtp-port" /></Field>
             <Field label="SMTP User"><Input value={s.email.smtp_user} onChange={(e) => up("email", "smtp_user", e.target.value)} placeholder="you@gmail.com" data-testid="setting-smtp-user" /></Field>
             <Field label="SMTP Password"><Input type="password" value={s.email.smtp_password} onChange={(e) => up("email", "smtp_password", e.target.value)} placeholder="••••••••" data-testid="setting-smtp-pass" /></Field>
+            <Field label="Nama Pengirim"><Input value={s.email.from_name || ""} onChange={(e) => up("email", "from_name", e.target.value)} placeholder="Tim FlowDesk" data-testid="setting-from-name" /></Field>
             <Field label="Email Pengirim"><Input value={s.email.from_email} onChange={(e) => up("email", "from_email", e.target.value)} data-testid="setting-from-email" /></Field>
             <Field label="Email Penerima"><Input value={s.email.notify_email} onChange={(e) => up("email", "notify_email", e.target.value)} data-testid="setting-notify-email" /></Field>
           </div>

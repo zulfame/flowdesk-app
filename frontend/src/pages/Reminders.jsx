@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Plus, Trash2, Repeat, Clock, CalendarClock, Mail, Send, Radio, CheckCircle2, Circle } from "lucide-react";
+import { Bell, Plus, Trash2, Repeat, Clock, CalendarClock, Mail, MessageCircle, Radio, CheckCircle2, Circle } from "lucide-react";
 import { toast } from "sonner";
 
 const TYPE_LABELS = { today: "Hari Ini", tomorrow: "Besok", custom: "Tanggal Khusus", recurring: "Berulang" };
@@ -65,7 +65,7 @@ export default function Reminders() {
 
   return (
     <div>
-      <PageHeader title="Ingatkan Saya" subtitle="Pengingat pribadi Anda — bisa dikirim ke email atau Telegram tepat waktu.">
+      <PageHeader title="Ingatkan Saya" subtitle="Pengingat pribadi Anda — bisa dikirim ke email atau WhatsApp tepat waktu.">
         <Button onClick={() => { setForm(emptyForm); setOpen(true); }} className="rounded-xl" data-testid="btn-add-reminder"><Plus className="h-4 w-4 mr-1.5" /> Pengingat</Button>
       </PageHeader>
 
@@ -100,7 +100,7 @@ export default function Reminders() {
                 {r.recurrence && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Repeat className="h-3 w-3" /> {RECUR_LABELS[r.recurrence]}</span>}
                 {r.broadcast && (r.channels || []).map((c) => (
                   <span key={c} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                    {c === "email" ? <Mail className="h-3 w-3" /> : <Send className="h-3 w-3" />} {c === "email" ? "Email" : "Telegram"}
+                    {c === "email" ? <Mail className="h-3 w-3" /> : <MessageCircle className="h-3 w-3" />} {c === "email" ? "Email" : "WhatsApp"}
                   </span>
                 ))}
               </div>
@@ -146,7 +146,7 @@ export default function Reminders() {
               {form.broadcast && (
                 <>
                   <div className="flex gap-2">
-                    {[{ k: "email", label: "Email", icon: Mail }, { k: "telegram", label: "Telegram", icon: Send }].map(({ k, label, icon: Icon }) => (
+                    {[{ k: "email", label: "Email", icon: Mail }, { k: "whatsapp", label: "WhatsApp", icon: MessageCircle }].map(({ k, label, icon: Icon }) => (
                       <button key={k} type="button" onClick={() => toggleChannel(k)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm transition-colors ${form.channels.includes(k) ? "border-primary bg-primary/10 text-primary font-medium" : "border-border text-muted-foreground"}`} data-testid={`reminder-channel-${k}`}>
                         <Icon className="h-4 w-4" /> {label}
                       </button>

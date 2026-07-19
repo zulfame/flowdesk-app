@@ -2,6 +2,7 @@ import smtplib
 import ssl
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
 import requests
 
@@ -39,7 +40,9 @@ def _send_email(cfg: dict, title: str, message: str, to_override: str = None):
         return
     try:
         msg = MIMEMultipart()
-        msg["From"] = cfg.get("from_email") or user
+        from_addr = cfg.get("from_email") or user
+        from_name = (cfg.get("from_name") or "").strip()
+        msg["From"] = formataddr((from_name, from_addr)) if from_name else from_addr
         msg["To"] = to_addr
         msg["Subject"] = f"[FlowDesk] {title}"
         msg.attach(MIMEText(message, "plain"))
@@ -80,6 +83,25 @@ async def create_notification(user_id, title, message, ntype="info", link=None, 
                 pass
     doc.pop("_id", None)
     return doc
+
+
+async def dispatch_email(title, message, to_override=None):
+    """Kirim email HANYA bila kanal Email aktif di pengaturan."""
+    settings = await get_settings()
+    if not settings.get("notification", {}).get("email_enabled"):
+        return False
+    _send_email(settings.get("email", {}), title, message, to_override=to_override)
+    return True
+
+
+async def dispatch_telegram(title, message):
+    """Kirim Telegram (ke Chat/Group ID sistem) HANYA bila kanal Telegram aktif.
+    Catatan: Chat/Group ID hanya untuk info sistem, bukan tujuan ke pengguna tertentu."""
+    settings = await get_settings()
+    if not settings.get("notification", {}).get("telegram_enabled"):
+        return False
+    _send_telegram(settings.get("telegram", {}), title, message)
+    return True
 
 
 def whatsapp_url(phone: str, message: str) -> str:

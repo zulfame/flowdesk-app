@@ -7,7 +7,7 @@ from db import db
 from helpers import new_id, now_iso, log_activity, is_privileged, is_admin, can_manage, task_visibility_query
 from security import get_current_user
 from services import delete_task
-from notifications import create_notification, get_settings, _send_email, whatsapp_url
+from notifications import create_notification, get_settings, _send_email, whatsapp_url, dispatch_email
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
@@ -175,8 +175,7 @@ async def _notify_pic(task: dict):
     await create_notification(pic.get("user_id"), "Tugas Ditugaskan",
                               f"Tugas '{task['title']}' ditugaskan kepada Anda", "task", f"/tasks/{task['id']}")
     if pic.get("email"):
-        settings = await get_settings()
-        _send_email(settings.get("email", {}), f"Penugasan Tugas: {task['title']}", msg, to_override=pic["email"])
+        await dispatch_email(f"Penugasan Tugas: {task['title']}", msg, to_override=pic["email"])
     if pic.get("phone"):
         return whatsapp_url(pic["phone"], msg)
     return None
@@ -268,8 +267,7 @@ async def _notify_completion(task: dict):
         if person.get("user_id"):
             await create_notification(person["user_id"], "Tugas Selesai", msg, "task", f"/tasks/{task['id']}")
         if person.get("email"):
-            settings = await get_settings()
-            _send_email(settings.get("email", {}), f"Tugas Selesai: {task['title']}", msg, to_override=person["email"])
+            await dispatch_email(f"Tugas Selesai: {task['title']}", msg, to_override=person["email"])
 
 
 async def _notify_response(task: dict):
@@ -280,8 +278,7 @@ async def _notify_response(task: dict):
     if req.get("user_id"):
         await create_notification(req["user_id"], "Dokumen Balasan Baru", msg, "task", f"/tasks/{task['id']}")
     if req.get("email"):
-        settings = await get_settings()
-        _send_email(settings.get("email", {}), f"Dokumen Balasan: {task['title']}", msg, to_override=req["email"])
+        await dispatch_email(f"Dokumen Balasan: {task['title']}", msg, to_override=req["email"])
 
 
 @router.post("")
@@ -504,8 +501,7 @@ async def broadcast_task(task_id: str, body: BroadcastBody, user: dict = Depends
         result["wa_url"] = whatsapp_url(req["phone"], message)
 
     if "email" in body.channels and req.get("email"):
-        settings = await get_settings()
-        _send_email(settings.get("email", {}), f"Pemberitahuan Tugas: {task['title']}", message, to_override=req["email"])
+        await dispatch_email(f"Pemberitahuan Tugas: {task['title']}", message, to_override=req["email"])
         result["email_sent"] = True
 
     await create_notification(None, "Broadcast Tugas", f"Pemberitahuan tugas '{task['title']}' dikirim ke pemberi tugas", "task", f"/tasks/{task_id}")

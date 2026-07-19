@@ -134,7 +134,7 @@ async def scheduled_backup_loop():
 async def deadline_reminder_loop():
     import asyncio
     from datetime import datetime, timezone, timedelta
-    from notifications import create_notification, get_settings, _send_email, _send_telegram
+    from notifications import create_notification, get_settings, _send_email, _send_telegram, dispatch_email
     while True:
         try:
             now = datetime.now(timezone.utc)
@@ -151,8 +151,7 @@ async def deadline_reminder_loop():
                 uid = pic.get("user_id") if isinstance(pic, dict) else None
                 await create_notification(uid, "Pengingat Tenggat", msg, "task", f"/tasks/{t['id']}")
                 if isinstance(pic, dict) and pic.get("email"):
-                    settings = await get_settings()
-                    _send_email(settings.get("email", {}), f"Pengingat Tenggat: {t.get('title')}", msg, to_override=pic["email"])
+                    await dispatch_email(f"Pengingat Tenggat: {t.get('title')}", msg, to_override=pic["email"])
                 await db.tasks.update_one({"id": t["id"]}, {"$set": {"deadline_reminded": True}})
 
             # Dispatch user reminders that are due (broadcast via email/telegram)
@@ -164,7 +163,7 @@ async def deadline_reminder_loop():
 
 async def _dispatch_reminders(now):
     from datetime import datetime, timedelta
-    from notifications import create_notification, get_settings, _send_email, _send_telegram
+    from notifications import create_notification, dispatch_email, whatsapp_url
     now_local = now.isoformat()
 
     # 1) In-app notification to creator at remind_at
@@ -193,7 +192,8 @@ async def _dispatch_reminders(now):
         else:
             await db.reminders.update_one({"id": r["id"]}, {"$set": {"dispatched": True}})
 
-    # 2) Broadcast via email/telegram at broadcast_at
+    # 2) Broadcast pengingat pribadi KE PEMBUAT: Email (bila kanal aktif) / WhatsApp (link wa.me).
+    #    Chat/Group ID Telegram sistem TIDAK dipakai untuk pengingat pribadi.
     bcur = db.reminders.find({
         "done": {"$ne": True}, "is_deleted": {"$ne": True}, "broadcast": True,
         "broadcast_sent": {"$ne": True},
@@ -202,12 +202,18 @@ async def _dispatch_reminders(now):
     async for r in bcur:
         title = r.get("title", "Pengingat")
         body = r.get("description") or "Waktunya pengingat Anda."
-        settings = await get_settings()
         channels = r.get("channels", []) or []
-        if "email" in channels:
-            _send_email(settings.get("email", {}), f"Pengingat: {title}", body)
-        if "telegram" in channels:
-            _send_telegram(settings.get("telegram", {}), f"Pengingat: {title}", body)
+        creator = await db.users.find_one({"id": r.get("created_by")}, {"_id": 0, "email": 1, "phone": 1}) or {}
+        if "email" in channels and creator.get("email"):
+            await dispatch_email(f"Pengingat: {title}", body, to_override=creator["email"])
+        if "whatsapp" in channels and creator.get("phone"):
+            wa = whatsapp_url(creator["phone"], f"Pengingat: {title}\n{body}")
+            await create_notification(
+                r.get("created_by"),
+                f"Pengingat siap dikirim ke WhatsApp: {title}",
+                f"{body}\n\nBuka WhatsApp untuk mengirim: {wa}",
+                "reminder", "/reminders",
+            )
         await db.reminders.update_one({"id": r["id"]}, {"$set": {"broadcast_sent": True}})
 
 

@@ -17,7 +17,7 @@ DEFAULT_SETTINGS = {
         "meta_description": "Sistem Manajemen Kerja Internal", "app_url": "", "date_format": "DD/MM/YYYY",
     },
     "email": {"smtp_host": "", "smtp_port": 587, "smtp_user": "", "smtp_password": "",
-              "from_email": "", "notify_email": ""},
+              "from_name": "", "from_email": "", "notify_email": ""},
     "telegram": {"bot_token": "", "chat_id": "", "thread_id": ""},
     "notification": {"telegram_enabled": False, "email_enabled": False, "browser_enabled": True},
     "storage": {"max_file_mb": 50, "allowed_types": "image,pdf,office,zip,video,audio",

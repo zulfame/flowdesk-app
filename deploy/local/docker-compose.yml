@@ -59,9 +59,13 @@ services:
       JWT_SECRET: ${JWT_SECRET:-local-dev-secret}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@flowdesk.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      # Simpan lampiran ke filesystem lokal (Object Storage Emergent tidak tersedia di luar platform)
+      LOCAL_STORAGE_DIR: /data/uploads
     volumes:
       # Mount source code agar hot reload bekerja
       - ../../backend:/app/backend
+      # Volume terpisah untuk lampiran unggahan (persisten, tidak hilang saat rebuild)
+      - uploads_data:/data/uploads
     depends_on:
       mongodb:
         condition: service_healthy
@@ -95,6 +99,9 @@ volumes:
   mongo_data:
     # Nama volume di-namespace agar tiap project punya data terpisah
     name: ${COMPOSE_PROJECT_NAME:-flowdesk}_mongo_data
+  uploads_data:
+    # Lampiran unggahan (filesystem lokal) — namespaced per project
+    name: ${COMPOSE_PROJECT_NAME:-flowdesk}_uploads_data
 
 networks:
   flowdesk_net:

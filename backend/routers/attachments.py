@@ -23,7 +23,10 @@ async def upload_attachment(
         raise HTTPException(status_code=413, detail="Ukuran file melebihi 50MB")
     ext = file.filename.split(".")[-1].lower() if "." in file.filename else "bin"
     path = f"{APP_NAME}/uploads/{user['id']}/{new_id()}.{ext}"
-    result = put_object(path, data, file.content_type or "application/octet-stream")
+    try:
+        result = put_object(path, data, file.content_type or "application/octet-stream")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gagal menyimpan file ke penyimpanan: {e}")
     doc = {
         "id": new_id(),
         "module": module,
@@ -74,7 +77,12 @@ async def download_attachment(file_id: str, authorization: str = Header(None), a
     record = await db.files.find_one({"id": file_id, "is_deleted": False}, {"_id": 0})
     if not record:
         raise HTTPException(status_code=404, detail="File tidak ditemukan")
-    data, ctype = get_object(record["storage_path"])
+    try:
+        data, ctype = get_object(record["storage_path"])
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Berkas fisik tidak ditemukan di penyimpanan")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Gagal mengambil file: {e}")
     return Response(
         content=data,
         media_type=record.get("content_type", ctype),
