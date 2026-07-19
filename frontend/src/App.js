@@ -11,6 +11,7 @@ import Login from "@/pages/Login";
 import Dashboard from "@/pages/Dashboard";
 import Tasks from "@/pages/Tasks";
 import TaskDetail from "@/pages/TaskDetail";
+import TaskForm from "@/pages/TaskForm";
 import Meetings from "@/pages/Meetings";
 import MeetingDetail from "@/pages/MeetingDetail";
 import Calendar from "@/pages/Calendar";
@@ -24,7 +25,9 @@ import Settings from "@/pages/Settings";
 const PAGES = [
   { path: "/", element: <Dashboard /> },
   { path: "/tasks", element: <Tasks /> },
+  { path: "/tasks/new", element: <TaskForm /> },
   { path: "/tasks/:id", element: <TaskDetail /> },
+  { path: "/tasks/:id/edit", element: <TaskForm /> },
   { path: "/meetings", element: <Meetings /> },
   { path: "/meetings/:id", element: <MeetingDetail /> },
   { path: "/calendar", element: <Calendar /> },

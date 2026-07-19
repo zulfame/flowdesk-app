@@ -38,7 +38,7 @@ export default function Dashboard() {
   return (
     <div>
       <PageHeader title={`Halo, ${user?.name?.split(" ")[0] || ""} 👋`} subtitle="Berikut ringkasan pekerjaan Anda hari ini.">
-        <Button onClick={() => navigate("/tasks?new=1")} className="rounded-xl" data-testid="btn-dashboard-new-task">
+        <Button onClick={() => navigate("/tasks/new")} className="rounded-xl" data-testid="btn-dashboard-new-task">
           <Plus className="h-4 w-4 mr-1.5" /> Tugas Baru
         </Button>
       </PageHeader>

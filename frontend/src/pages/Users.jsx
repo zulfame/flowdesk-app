@@ -22,7 +22,7 @@ export default function Users() {
   const [roles, setRoles] = useState([]);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ name: "", email: "", password: "", role: "member", phone: "" });
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "member", phone: "", department: "" });
 
   const load = useCallback(async () => {
     try {
@@ -34,14 +34,14 @@ export default function Users() {
 
   const isAdmin = user?.role === "admin";
 
-  const openNew = () => { setEditing(null); setForm({ name: "", email: "", password: "", role: "member", phone: "" }); setOpen(true); };
-  const openEdit = (u) => { setEditing(u); setForm({ name: u.name, email: u.email, password: "", role: u.role, phone: u.phone || "" }); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ name: "", email: "", password: "", role: "member", phone: "", department: "" }); setOpen(true); };
+  const openEdit = (u) => { setEditing(u); setForm({ name: u.name, email: u.email, password: "", role: u.role, phone: u.phone || "", department: u.department || "" }); setOpen(true); };
 
   const save = async () => {
     if (!form.name.trim() || !form.email.trim()) { toast.error("Nama dan email wajib diisi"); return; }
     try {
       if (editing) {
-        const payload = { name: form.name, role: form.role, phone: form.phone };
+        const payload = { name: form.name, role: form.role, phone: form.phone, department: form.department };
         if (form.password) payload.password = form.password;
         await api.put(`/users/${editing.id}`, payload);
       } else {
@@ -128,6 +128,7 @@ export default function Users() {
               </div>
               <div className="space-y-1.5"><Label>Telepon</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} data-testid="user-phone-input" /></div>
             </div>
+            <div className="space-y-1.5"><Label>Departemen</Label><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="mis. Marketing" data-testid="user-department-input" /></div>
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Batal</Button><Button onClick={save} data-testid="btn-save-user">Simpan</Button></DialogFooter>
         </DialogContent>

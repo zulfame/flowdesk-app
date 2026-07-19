@@ -21,12 +21,14 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=6)
     role: str = "member"
     phone: Optional[str] = None
+    department: Optional[str] = None
 
 
 class UserUpdate(BaseModel):
     name: Optional[str] = None
     role: Optional[str] = None
     phone: Optional[str] = None
+    department: Optional[str] = None
     is_active: Optional[bool] = None
     password: Optional[str] = None
 
@@ -62,6 +64,7 @@ async def create_user(body: UserCreate, admin: dict = Depends(require_admin)):
         "role": body.role,
         "permissions": [],
         "phone": body.phone,
+        "department": body.department,
         "avatar": None,
         "is_active": True,
         "created_at": now_iso(),

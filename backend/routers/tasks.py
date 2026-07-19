@@ -14,11 +14,15 @@ router = APIRouter(prefix="/tasks", tags=["tasks"])
 MANUAL_STATUSES = {"Draft", "Cancelled", "Archived"}
 
 
-class Requester(BaseModel):
+class Person(BaseModel):
+    user_id: Optional[str] = None
     name: Optional[str] = ""
     department: Optional[str] = ""
     phone: Optional[str] = ""
     email: Optional[str] = ""
+
+
+EMPTY_PERSON = {"user_id": None, "name": "", "department": "", "phone": "", "email": ""}
 
 
 class DocResponse(BaseModel):
@@ -53,10 +57,11 @@ class TaskItem(BaseModel):
 
 
 class TaskCreate(BaseModel):
+    id: Optional[str] = None
     title: str
     description: Optional[str] = ""
-    requester: Optional[Requester] = None
-    pic: Optional[str] = ""
+    requester: Optional[Person] = None
+    pic: Optional[Person] = None
     priority: str = "Medium"
     deadline: Optional[str] = None
     items: List[TaskItem] = []
@@ -68,8 +73,8 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    requester: Optional[Requester] = None
-    pic: Optional[str] = None
+    requester: Optional[Person] = None
+    pic: Optional[Person] = None
     priority: Optional[str] = None
     deadline: Optional[str] = None
     items: Optional[List[TaskItem]] = None
@@ -188,12 +193,17 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
 
 @router.post("")
 async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
+    tid = body.id or new_id()
+    if await db.tasks.find_one({"id": tid}):
+        raise HTTPException(status_code=400, detail="Tugas dengan id ini sudah ada")
     doc = body.model_dump()
-    doc["requester"] = (body.requester.model_dump() if body.requester else {"name": "", "department": "", "phone": "", "email": ""})
+    doc.pop("id", None)
+    doc["requester"] = (body.requester.model_dump() if body.requester else dict(EMPTY_PERSON))
+    doc["pic"] = (body.pic.model_dump() if body.pic else dict(EMPTY_PERSON))
     doc["items"] = _norm_items(body.items)
     doc["documents"] = _norm_docs(body.documents)
     doc.update({
-        "id": new_id(),
+        "id": tid,
         "comments": [],
         "history": [{"action": "created", "by": user["name"], "at": now_iso()}],
         "created_by": user["id"],
@@ -205,8 +215,9 @@ async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
     await db.tasks.insert_one(dict(doc))
     doc.pop("_id", None)
     await log_activity(db, user, "create", "task", doc["id"], f"Membuat tugas '{doc['title']}'")
-    if doc.get("pic"):
-        await create_notification(None, "Tugas Baru", f"Tugas '{doc['title']}' ditugaskan ke {doc['pic']}", "task", f"/tasks/{doc['id']}")
+    pic_name = (doc.get("pic") or {}).get("name")
+    if pic_name:
+        await create_notification(None, "Tugas Baru", f"Tugas '{doc['title']}' ditugaskan ke {pic_name}", "task", f"/tasks/{doc['id']}")
     return doc
 
 
@@ -222,6 +233,8 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
         update["documents"] = _norm_docs(body.documents)
     if body.requester is not None:
         update["requester"] = body.requester.model_dump()
+    if body.pic is not None:
+        update["pic"] = body.pic.model_dump()
     update["updated_at"] = now_iso()
     merged = {**existing, **update}
     merged = compute(merged)

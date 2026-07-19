@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
 import { StatusBadge, PriorityBadge, ProgressBar } from "@/components/common";
-import { TaskDialog } from "./Tasks";
 import DocumentManager from "@/components/DocumentManager";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,6 @@ export default function TaskDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [task, setTask] = useState(null);
-  const [editOpen, setEditOpen] = useState(false);
   const [comment, setComment] = useState("");
   const [newItem, setNewItem] = useState("");
 
@@ -109,7 +107,7 @@ export default function TaskDetail() {
                 <h1 className="text-2xl font-bold tracking-tight">{task.title}</h1>
               </div>
               <div className="flex gap-2 shrink-0">
-                <Button variant="secondary" size="icon" onClick={() => setEditOpen(true)} data-testid="btn-edit-task"><Pencil className="h-4 w-4" /></Button>
+                <Button variant="secondary" size="icon" onClick={() => navigate(`/tasks/${id}/edit`)} data-testid="btn-edit-task"><Pencil className="h-4 w-4" /></Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild><Button variant="secondary" size="icon" className="text-destructive" data-testid="btn-delete-task"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
                   <AlertDialogContent>
@@ -196,7 +194,7 @@ export default function TaskDetail() {
           <Card className="p-6 rounded-2xl shadow-soft">
             <h3 className="text-sm font-semibold mb-4">Detail</h3>
             <dl className="space-y-3 text-sm">
-              <div className="flex justify-between"><dt className="text-muted-foreground">PIC</dt><dd className="font-medium">{task.pic || "-"}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted-foreground">PIC</dt><dd className="font-medium">{(typeof task.pic === "string" ? task.pic : task.pic?.name) || "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Prioritas</dt><dd><PriorityBadge priority={task.priority} /></dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Tenggat</dt><dd className="font-medium">{task.deadline ? new Date(task.deadline).toLocaleDateString("id-ID") : "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Dibuat oleh</dt><dd className="font-medium">{task.created_by_name}</dd></div>
@@ -219,8 +217,6 @@ export default function TaskDetail() {
           </Card>
         </div>
       </div>
-
-      <TaskDialog open={editOpen} onOpenChange={setEditOpen} task={task} onSaved={load} />
     </div>
   );
 }

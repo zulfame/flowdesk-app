@@ -332,15 +332,85 @@ class TestAttachments:
 
 # ---------- Users & Roles ----------
 class TestUsersRoles:
-    def test_create_update_delete_user(self, admin_client):
+    def test_create_update_delete_user_with_department(self, admin_client):
         email = f"test_user_{int(time.time())}@example.com"
         r = admin_client.post(f"{API}/users", json={
-            "name": "TEST_User", "email": email, "password": "secret123", "role": "member"
+            "name": "TEST_User", "email": email, "password": "secret123", "role": "member",
+            "phone": "628111222333", "department": "QA"
         })
-        assert r.status_code == 200
-        uid = r.json()["id"]
-        assert admin_client.put(f"{API}/users/{uid}", json={"name": "TEST_User_Updated"}).status_code == 200
+        assert r.status_code == 200, r.text
+        u = r.json()
+        assert u["department"] == "QA"
+        assert u["phone"] == "628111222333"
+        uid = u["id"]
+        # verify list returns dept/phone/email
+        lst = admin_client.get(f"{API}/users").json()
+        me = next(x for x in lst if x["id"] == uid)
+        assert me["department"] == "QA" and me["phone"] == "628111222333" and me["email"] == email
+        # update department
+        upd = admin_client.put(f"{API}/users/{uid}", json={"department": "Support"})
+        assert upd.status_code == 200 and upd.json()["department"] == "Support"
         assert admin_client.delete(f"{API}/users/{uid}").status_code == 200
+
+
+# ---------- Iteration 3: user-linked requester/pic + client-provided task id ----------
+class TestTasksIter3:
+    def test_client_provided_id_and_person_objects(self, admin_client):
+        # Get an existing registered user to use as requester/pic
+        users = admin_client.get(f"{API}/users").json()
+        u = next((x for x in users if x["email"] == "budi@flowdesk.com"), users[0])
+        client_id = f"e2e-{int(time.time()*1000)}"
+        payload = {
+            "id": client_id,
+            "title": "TEST_iter3_person_link",
+            "priority": "Medium",
+            "requester": {"user_id": u["id"], "name": u["name"],
+                          "department": u.get("department") or "",
+                          "phone": u.get("phone") or "", "email": u["email"]},
+            "pic": {"user_id": u["id"], "name": u["name"],
+                    "department": u.get("department") or "",
+                    "phone": u.get("phone") or "", "email": u["email"]},
+            "items": [{"title": "A", "done": False}],
+        }
+        r = admin_client.post(f"{API}/tasks", json=payload)
+        assert r.status_code == 200, r.text
+        t = r.json()
+        assert t["id"] == client_id, "client-provided id must be honored"
+        assert t["requester"]["user_id"] == u["id"]
+        assert t["pic"]["user_id"] == u["id"]
+        assert t["requester"]["email"] == u["email"]
+        # duplicate id -> 400
+        dup = admin_client.post(f"{API}/tasks", json=payload)
+        assert dup.status_code == 400
+        # cleanup
+        admin_client.delete(f"{API}/tasks/{client_id}")
+
+    def test_edit_preserves_item_done_state(self, admin_client):
+        r = admin_client.post(f"{API}/tasks", json={
+            "title": "TEST_iter3_preserve",
+            "items": [{"title": "one", "done": False}, {"title": "two", "done": False}],
+            "documents": [{"kind": "url", "url": "https://ex.com/x", "label": "L"}],
+        })
+        tid = r.json()["id"]
+        # check first item done
+        items = r.json()["items"]
+        items[0]["done"] = True
+        admin_client.put(f"{API}/tasks/{tid}", json={"items": items})
+        t2 = admin_client.get(f"{API}/tasks/{tid}").json()
+        done_at = next(i for i in t2["items"] if i["id"] == items[0]["id"])["done_at"]
+        # Now edit only title -> should preserve done + done_at + document ids
+        items2 = t2["items"]
+        for it in items2:
+            it["title"] = it["title"] + " (edit)"
+        docs2 = t2["documents"]
+        r3 = admin_client.put(f"{API}/tasks/{tid}", json={"items": items2, "documents": docs2})
+        assert r3.status_code == 200
+        merged = r3.json()
+        preserved = next(i for i in merged["items"] if i["id"] == items[0]["id"])
+        assert preserved["done"] is True
+        assert preserved["done_at"] == done_at, "done_at should be preserved on title-only edit"
+        assert merged["documents"][0]["id"] == t2["documents"][0]["id"]
+        admin_client.delete(f"{API}/tasks/{tid}")
 
     def test_roles_defaults(self, admin_client):
         r = admin_client.get(f"{API}/roles")
