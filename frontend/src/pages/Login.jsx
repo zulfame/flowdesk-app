@@ -96,12 +96,6 @@ export default function Login() {
               {mode === "login" ? "Daftar sekarang" : "Masuk di sini"}
             </button>
           </p>
-
-          {mode === "login" && (
-            <div className="mt-6 p-3 rounded-xl bg-secondary/60 text-xs text-muted-foreground text-center">
-              Demo admin: <span className="font-mono font-semibold">admin@flowdesk.com</span> / <span className="font-mono font-semibold">admin123</span>
-            </div>
-          )}
         </div>
       </div>
     </div>

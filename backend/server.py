@@ -61,17 +61,18 @@ async def seed_admin():
     if existing is None:
         await db.users.insert_one({
             "id": new_id(),
-            "name": "Administrator",
+            "name": "Super Administrator",
             "email": admin_email,
             "password_hash": hash_password(admin_password),
             "role": "admin",
             "permissions": ["*"],
             "phone": None,
+            "department": "Sistem",
             "avatar": None,
             "is_active": True,
             "created_at": now_iso(),
         })
-        logger.info("Admin user seeded")
+        logger.info("Superadmin user seeded")
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
         logger.info("Admin password updated")

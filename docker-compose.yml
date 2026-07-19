@@ -1,0 +1,44 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: flowdesk-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo_data:/data/db
+    ports:
+      - "27017:27017"
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: flowdesk-backend
+    restart: unless-stopped
+    environment:
+      MONGO_URL: "mongodb://mongo:27017"
+      DB_NAME: "flowdesk"
+      CORS_ORIGINS: "http://localhost:3000"
+      JWT_SECRET: "ubah-dengan-secret-acak-yang-kuat"
+      ADMIN_EMAIL: "admin@flowdesk.com"
+      ADMIN_PASSWORD: "admin123"
+      # EMERGENT_LLM_KEY: "opsional — hanya untuk fitur AI"
+    depends_on:
+      - mongo
+    ports:
+      - "8001:8001"
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        REACT_APP_BACKEND_URL: "http://localhost:8001"
+    container_name: flowdesk-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
+
+volumes:
+  mongo_data:
