@@ -3,7 +3,7 @@ from typing import Optional
 
 from db import db
 from helpers import new_id, now_iso, log_activity
-from security import get_current_user, get_current_user as _gcu
+from security import get_current_user
 from storage import put_object, get_object, APP_NAME
 
 router = APIRouter(tags=["attachments"])

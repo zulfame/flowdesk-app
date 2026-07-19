@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 const NAV = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, end: true },
@@ -200,6 +200,7 @@ export default function Layout({ children }) {
       {/* Search dialog */}
       <Dialog open={searchOpen} onOpenChange={setSearchOpen}>
         <DialogContent className="max-w-xl p-0 gap-0 top-[20%] translate-y-0">
+          <DialogTitle className="sr-only">Pencarian Global</DialogTitle>
           <div className="flex items-center gap-3 px-4 border-b border-border">
             <Search className="h-4 w-4 text-muted-foreground" />
             <Input

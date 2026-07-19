@@ -44,8 +44,10 @@ export default function MeetingDetail() {
 
   const updateActionItems = async (items) => {
     setMeeting((m) => ({ ...m, action_items: items }));
-    try { await api.put(`/meetings/${id}`, { action_items: items }); }
-    catch (e) { toast.error(apiError(e)); load(); }
+    try {
+      const { data } = await api.put(`/meetings/${id}`, { action_items: items });
+      setMeeting((m) => ({ ...m, action_items: data.action_items }));
+    } catch (e) { toast.error(apiError(e)); load(); }
   };
 
   const addAction = () => {
