@@ -112,8 +112,8 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
         <p className="text-xs text-muted-foreground py-3 text-center border border-dashed rounded-xl">Belum ada dokumen sumber</p>
       ) : (
         <div className="space-y-2">
-          {documents.map((doc) => (
-            <div key={doc.id} className="rounded-xl border border-border bg-card p-3" data-testid={`${idPrefix}-doc-${doc.id}`}>
+          {documents.map((doc, didx) => (
+            <div key={doc.id || `${idPrefix}-d-${didx}`} className="rounded-xl border border-border bg-card p-3" data-testid={`${idPrefix}-doc-${doc.id}`}>
               <div className="flex items-center gap-2">
                 <DocLink doc={doc} />
                 <div className="flex-1" />
@@ -126,8 +126,8 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
               {/* responses */}
               {(doc.responses || []).length > 0 && (
                 <div className="mt-2 pl-4 border-l-2 border-border space-y-1.5">
-                  {doc.responses.map((r) => (
-                    <div key={r.id} className="flex items-center gap-2 text-xs" data-testid={`${idPrefix}-resp-${r.id}`}>
+                  {doc.responses.map((r, ridx) => (
+                    <div key={r.id || `${doc.id}-r-${ridx}`} className="flex items-center gap-2 text-xs" data-testid={`${idPrefix}-resp-${r.id}`}>
                       <CornerDownRight className="h-3 w-3 text-muted-foreground shrink-0" />
                       <span className={`px-1.5 py-0.5 rounded-full font-medium ${STATUS_STYLE[r.status] || ""}`}>{r.status === "final" ? "Final" : "Revisi"}</span>
                       {r.kind === "url"
