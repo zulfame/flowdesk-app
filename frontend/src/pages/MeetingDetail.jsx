@@ -148,8 +148,8 @@ export default function MeetingDetail() {
           <Card className="p-6 rounded-2xl shadow-soft">
             <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> Action Items</h3>
             <div className="space-y-2 mb-4">
-              {(meeting.action_items || []).map((a) => (
-                <div key={a.id} className="p-3 rounded-xl border border-border" data-testid={`action-item-${a.id}`}>
+              {(meeting.action_items || []).map((a, idx) => (
+                <div key={a.id || `tmp-${idx}`} className="p-3 rounded-xl border border-border" data-testid={`action-item-${a.id}`}>
                   <div className="flex items-start gap-2">
                     <input type="checkbox" checked={a.done} onChange={() => toggleAction(a.id)} className="h-4 w-4 rounded accent-indigo-600 mt-0.5" data-testid={`action-check-${a.id}`} />
                     <div className="min-w-0 flex-1">

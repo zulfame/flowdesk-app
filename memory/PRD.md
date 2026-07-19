@@ -56,4 +56,14 @@ New/changed features:
 - ✅ Global UI: all `<Input>`/`<Textarea>` default `autoComplete="off"`.
 - ✅ Tested (iteration_5): backend 59/59 pytest; all frontend flows pass; 0 issues.
 
-Backlog (still open): recurring reminder edge cases across timezones; browser push (Notification API); restore/archive views for soft-deleted items; permission-level enforcement in the UI beyond admin gating.
+Backlog (still open): permission-level enforcement in the UI beyond admin gating; timezone-aware reminder scheduling refinements.
+
+## Update (2026-07-19b) — Rapat rework, Web Push, Arsip, scheduled backup
+- ✅ **Reminder broadcast timing**: broadcast_offset (10m default / 1h / 1d / custom date-time); backend computes `broadcast_at`; separate dispatch (in-app at remind_at, broadcast at broadcast_at). `routers/reminders.py`, `server.py:_dispatch_reminders`.
+- ✅ **Kelola Rapat**: redesigned list (colored type accent, action-item progress, search + type filter); dedicated 2-column **MeetingForm** (`/meetings/new`, `/meetings/:id/edit`) consistent with TaskForm; Edit button on detail.
+- ✅ **Meeting → Task**: enhanced convert dialog requiring PIC (UserSelect) + deadline + priority; backend validates (400 if missing); task linked to meeting. `routers/meetings.py:ConvertBody`.
+- ✅ **Web Push (real browser notifications)**: VAPID via py_vapid/pywebpush (`webpush.py`, `routers/push.py`, `public/sw.js`, `src/lib/push.js`); `create_notification` also sends push; enable/disable button in Kelola Notifikasi.
+- ✅ **Arsip / soft-delete**: all deletes now soft (`services.py` sets is_deleted + cascade files); `routers/archive.py` list/restore/purge; `/archive` admin page + sidebar item; all list/get/dashboard/calendar/search/nav-badges queries filter `is_deleted`.
+- ✅ **Backup upgrades**: scheduled auto-backup (settings.backup: auto_enabled/frequency/time/weekday/destination) via `scheduled_backup_loop`; restore-from-upload (`POST /api/database/restore-upload`); Database page cards for both.
+- ✅ Global: header now solid white (`bg-card`); all inputs/textarea `autoComplete="off"`.
+- ✅ Tested (iteration_6): backend 74/74; all frontend flows pass; fixed a minor React key warning.
