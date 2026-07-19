@@ -74,6 +74,10 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - ✅ **Warna kegiatan kustom**: field `color` per kegiatan (backend model + export xlsx pakai warna). UI: swatch preset + color picker + Reset di dialog kegiatan; bar Gantt & dot daftar memakai warna kustom (fallback ke warna kategori).
 - ✅ **Progres otomatis**: garis vertikal "Hari ini" di Gantt; bar terbagi (terlewati solid vs sisa transparan); persen progres per kegiatan (`autoProgress`) berdasarkan tanggal berjalan + bar progres di Daftar Kegiatan. Verified via UI (100%/60%/0%).
 
+## Update (2026-07) — Sinkronisasi dokumentasi & panduan deploy
+- ✅ README.md diperbarui menyeluruh: Fitur Utama (Time Schedule, broadcast WhatsApp), pemisahan penyimpanan lampiran (Emergent/filesystem `LOCAL_STORAGE_DIR`) vs backup database (S3 eksternal), struktur proyek (roles/time_schedule/deploy), tabel env (`LOCAL_STORAGE_DIR`), hak akses Time Schedule, konfigurasi deploy lokal via `.env`/wizard, catatan storage produksi, bagian Notifikasi ditulis ulang (kanal aktif, Nama Pengirim, Telegram=sistem, WhatsApp, wording nama).
+- ✅ root `docker-compose.yml`: tambah volume `uploads_data` + `LOCAL_STORAGE_DIR=/data/uploads` agar lampiran persisten pada quick-start. Kedua compose divalidasi YAML.
+
 ## Update (2026-06) — Perbaikan deploy lokal + skrip reset
 - ✅ Fix Docker build lokal gagal (`frontend/yarn.lock not found`): `deploy/local/flowdesk.frontend` kini `COPY frontend/package.json frontend/yarn.lock* ./` + `yarn install` (lockfile opsional; yarn.lock tak ter-track di git). README manual-build disamakan (`yarn install`).
 - ✅ Skrip reset data: `deploy/local/seed.sh` — jalankan `python seed.py --force` via `docker compose exec backend`; auto-start stack; konfirmasi 'YA' atau `-y`.

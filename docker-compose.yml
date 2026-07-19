@@ -21,11 +21,15 @@ services:
       JWT_SECRET: "ubah-dengan-secret-acak-yang-kuat"
       ADMIN_EMAIL: "admin@flowdesk.com"
       ADMIN_PASSWORD: "admin123"
-      # EMERGENT_LLM_KEY: "opsional — hanya untuk fitur AI"
+      # Lampiran disimpan ke filesystem lokal (tanpa Object Storage Emergent)
+      LOCAL_STORAGE_DIR: "/data/uploads"
+      # EMERGENT_LLM_KEY: "opsional — integrasi Emergent + Object Storage lampiran"
     depends_on:
       - mongo
     ports:
       - "8001:8001"
+    volumes:
+      - uploads_data:/data/uploads
 
   frontend:
     build:
@@ -42,3 +46,4 @@ services:
 
 volumes:
   mongo_data:
+  uploads_data:

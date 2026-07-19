@@ -26,7 +26,8 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 - **Kelola Tugas** — Kanban, checklist berdetail, dokumen bertingkat (Revisi/Final), progres & status otomatis, template, duplikasi, ekspor PDF, @mention.
 - **Kelola Rapat** — notulen kaya teks, agenda, keputusan, action item; action item dapat dikonversi menjadi Tugas (tertaut).
 - **Kelola Catatan** — catatan bersama dengan tag & warna.
-- **Ingatkan Saya** — pengingat pribadi + broadcast via Email/Telegram dengan pengaturan waktu.
+- **Time Schedule** — jadwal kegiatan berbasis linimasa (Gantt): kegiatan berwarna kustom, garis "hari ini" & progres otomatis, penanda hari libur/Event, ekspor Excel, dan aksi **Buat Tugas** dari kegiatan (tertaut).
+- **Ingatkan Saya** — pengingat pribadi + broadcast tepat waktu via **Email** atau **WhatsApp** (tautan wa.me ke nomor HP pembuat).
 - **Kalender** — tampilan gabungan tugas, rapat, pengingat, dan acara.
 - **Notifikasi** — pusat notifikasi + Web Push browser (real, muncul walau tab tertutup).
 - **Admin** — Kelola Aplikasi (branding), Kelola Peranan (RBAC), Kelola Pengguna (impor CSV/XLSX), Kelola Database (konfigurasi S3, backup & restore), Kelola Notifikasi, Kelola Arsip (pemulihan data terhapus), Log Aktivitas.
@@ -35,7 +36,8 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 - **Backend**: FastAPI (Python 3.11), Motor (MongoDB async), JWT (PyJWT) + bcrypt, background loop, pywebpush (VAPID), boto3 (S3 eksternal).
 - **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts, jsPDF, font Poppins.
 - **Basis Data**: MongoDB.
-- **Penyimpanan Berkas**: Object Storage (default platform Emergent) atau S3-compatible eksternal (dikonfigurasi lewat Kelola Database).
+- **Penyimpanan Lampiran**: Object Storage platform Emergent bila `EMERGENT_LLM_KEY` tersedia; jika tidak (self-host), otomatis memakai **filesystem lokal** (`LOCAL_STORAGE_DIR`). Deploy Docker sudah menyertakan volume khusus lampiran.
+- **Backup Database**: dapat disimpan ke **S3-compatible eksternal** (dikonfigurasi di menu Kelola Database).
 - **Routing**: seluruh endpoint backend diawali `/api`. Frontend memanggil `REACT_APP_BACKEND_URL`.
 
 ## Struktur Proyek
@@ -50,15 +52,17 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 │   ├── notifications.py, services.py
 │   ├── seed.py              # seeder / reset data awal
 │   ├── requirements.txt, .env
-│   └── routers/             # auth, users, tasks, meetings, reminders,
-│                            #   notes, attachments, feeds, aggregate,
-│                            #   settings, profile, database, push, archive
+│   └── routers/             # auth, users, roles, tasks, meetings, reminders,
+│                            #   notes, attachments, feeds, aggregate, settings,
+│                            #   profile, database, push, archive, time_schedule
 ├── frontend
 │   ├── src/                 # pages/, components/, context/, lib/
 │   ├── public/sw.js         # service worker Web Push
 │   ├── Dockerfile, nginx.conf, package.json, .env
+├── deploy/local/            # skrip deploy lokal: start.sh, stop.sh, seed.sh,
+│                            #   deploy.sh, docker-compose.yml, .env.example
 ├── Dockerfile.backend
-└── docker-compose.yml
+└── docker-compose.yml       # quick-start Docker (root)
 ```
 
 ## Variabel Lingkungan
@@ -71,7 +75,8 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 | `JWT_SECRET` | Secret acak untuk menandatangani token JWT (**wajib kuat di produksi**) |
 | `ADMIN_EMAIL` | Email superadmin yang di-seed saat startup |
 | `ADMIN_PASSWORD` | Kata sandi superadmin awal |
-| `EMERGENT_LLM_KEY` | (Opsional) kunci untuk fitur AI |
+| `EMERGENT_LLM_KEY` | (Opsional) kunci integrasi Emergent; bila ada, lampiran memakai Object Storage Emergent. Bila kosong, lampiran otomatis disimpan ke filesystem lokal. |
+| `LOCAL_STORAGE_DIR` | (Opsional, self-host) folder penyimpanan lampiran di server. Bila di-set, lampiran selalu disimpan ke filesystem ini (mis. `/opt/flowdesk/data/uploads`). |
 
 ### Frontend (`frontend/.env`)
 | Kunci | Deskripsi |
@@ -97,6 +102,7 @@ Role     : admin (akses penuh)
 - **Hapus & ubah info inti**: hanya oleh pembuat data atau Admin.
 - **PIC tugas** (bukan pembuat): hanya dapat memperbarui status/progres/checklist/dokumen.
 - **Catatan**: dapat dilihat semua (bersama), tetapi hanya pembuat/Admin yang boleh mengubah/menghapus.
+- **Time Schedule**: Admin/Manajer melihat semua; Anggota hanya jadwal yang dibuatnya atau di mana ia menjadi PIC kegiatan. Akses menu diatur lewat izin **Time Schedule** di **Kelola Peranan**.
 - **Pengingat**: privat, hanya milik pembuatnya.
 - Penghapusan bersifat **soft-delete** (dapat dipulihkan di **Kelola Arsip**); penghapusan permanen juga membersihkan berkas lampiran fisik.
 
@@ -167,9 +173,9 @@ docker compose down -v              # hentikan + hapus data MongoDB
 ./seed.sh -y                        # reset data awal
 ```
 
-Konfigurasi env diatur di `docker-compose.yml` (ganti `JWT_SECRET` & `ADMIN_PASSWORD`). Jika mengubah `REACT_APP_BACKEND_URL`, build ulang frontend: `docker compose up -d --build frontend`.
+Konfigurasi disimpan di `deploy/local/.env` (dibuat oleh wizard `start.sh`). Ganti `JWT_SECRET` & `ADMIN_PASSWORD` untuk penggunaan nyata. Bila mengubah `BACKEND_PORT`/`REACT_APP_BACKEND_URL`, build ulang frontend: `docker compose up -d --build frontend`.
 
-> Catatan: unggahan berkas menggunakan Object Storage platform Emergent secara default. Untuk self-host, konfigurasikan **S3 eksternal** di menu **Kelola Database** (endpoint, bucket, access key, secret, region, path).
+> Catatan penyimpanan lampiran: deploy Docker menyimpan lampiran ke **filesystem** (volume `<project>_uploads_data` via `LOCAL_STORAGE_DIR=/data/uploads`) sehingga **tidak memerlukan** Object Storage Emergent. Menu **Kelola Database** (S3 eksternal) khusus untuk **backup database**, bukan lampiran.
 
 ## Deploy di Server Produksi (Ubuntu 22.04 LTS)
 OS rekomendasi: **Ubuntu Server 22.04 LTS** (juga cocok untuk 24.04 LTS).
@@ -200,6 +206,8 @@ python3.11 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt --extra-index-url https://d33sy5i8bnduwe.cloudfront.net/simple/
 # buat backend/.env untuk produksi (MONGO_URL, DB_NAME, JWT_SECRET kuat, CORS_ORIGINS=https://domain-anda, ADMIN_*)
 ```
+
+> **Penyimpanan lampiran (self-host)**: karena `EMERGENT_LLM_KEY` tidak tersedia, tambahkan `LOCAL_STORAGE_DIR=/opt/flowdesk/data/uploads` pada `backend/.env` agar lampiran tersimpan permanen di server. Pastikan folder dapat ditulis oleh user service (`www-data`), mis. `sudo mkdir -p /opt/flowdesk/data/uploads && sudo chown www-data /opt/flowdesk/data/uploads`.
 
 Buat service systemd `/etc/systemd/system/flowdesk-backend.service`:
 ```ini
@@ -341,8 +349,11 @@ Melalui menu **Kelola Database**:
 - **Kelola Arsip** — memulihkan data yang terhapus (soft-delete).
 
 ## Notifikasi
-- **Email (SMTP)** & **Telegram** — dikonfigurasi di **Kelola Notifikasi** (host, port, kredensial, bot token, chat id).
-- **Web Push Browser** — aktifkan di **Kelola Notifikasi** → "Push Browser di Perangkat Ini". Notifikasi tetap muncul walau tab tertutup (memerlukan HTTPS di produksi).
+Dikonfigurasi di **Kelola Notifikasi**. Notifikasi hanya dikirim melalui kanal yang **diaktifkan** (toggle per kanal).
+- **Email (SMTP)** — host, port, kredensial, **Nama Pengirim** + email pengirim (tampil profesional sebagai `Nama <email>`).
+- **Telegram** — bot token + Chat/Group ID. Ditujukan untuk **notifikasi sistem/internal ke grup**, bukan ke pengguna tertentu. Pesan penugasan & sebutan menyebut **nama** penerima (mis. "ditugaskan kepada Budi"), bukan "Anda".
+- **WhatsApp (wa.me)** — broadcast pengingat pribadi dikirim ke **nomor HP pembuat** dalam format internasional (mis. `6281234567890`) sebagai tautan klik-untuk-chat.
+- **Web Push Browser** — aktifkan di **Kelola Notifikasi** → "Push Browser di Perangkat Ini". Tetap muncul walau tab tertutup (memerlukan HTTPS di produksi).
 
 ---
 © FlowDesk — Sistem Manajemen Kerja Internal.
