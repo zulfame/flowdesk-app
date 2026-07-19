@@ -32,6 +32,7 @@ class Activity(BaseModel):
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     category: str = "pelaksanaan"
+    color: Optional[str] = None
     status: str = "Rencana"
     note: Optional[str] = ""
     task_id: Optional[str] = None
@@ -272,7 +273,9 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
     for r, a in enumerate(activities, start=header_row + 1):
         ws.cell(row=r, column=1, value=a.get("section") or s.get("section", "")).border = border
         ws.cell(row=r, column=2, value=a.get("name", "")).border = border
-        fill = PatternFill("solid", fgColor=CAT_FILL.get(a.get("category", "pelaksanaan"), "FFF176"))
+        raw_color = (a.get("color") or "").lstrip("#")
+        hexc = raw_color.upper() if len(raw_color) == 6 else CAT_FILL.get(a.get("category", "pelaksanaan"), "FFF176")
+        fill = PatternFill("solid", fgColor=hexc)
         a_start = (a.get("start_date") or "")[:10]
         a_end = (a.get("end_date") or "")[:10]
         for i, dk in enumerate(day_keys):

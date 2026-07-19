@@ -23,7 +23,19 @@ const CAT = {
   event: { label: "Event", bar: "bg-emerald-500", chip: "bg-emerald-100 text-emerald-800" },
   libur: { label: "Hari Libur", bar: "bg-rose-400", chip: "bg-rose-100 text-rose-800" },
 };
-const emptyActivity = { name: "", section: "", pic: null, start_date: "", end_date: "", category: "pelaksanaan", status: "Rencana", note: "" };
+const emptyActivity = { name: "", section: "", pic: null, start_date: "", end_date: "", category: "pelaksanaan", color: "", status: "Rencana", note: "" };
+const SWATCHES = ["#f59e0b", "#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"];
+
+function autoProgress(a) {
+  if (a.status === "Selesai") return 100;
+  if (!a.start_date || !a.end_date) return 0;
+  const today = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00");
+  const s = new Date(a.start_date + "T00:00:00");
+  const e = new Date(a.end_date + "T00:00:00");
+  if (today < s) return 0;
+  if (today >= e) return 100;
+  return Math.round(((today - s) / ((e - s) || 1)) * 100);
+}
 
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 function daysBetween(start, end) {
@@ -69,7 +81,7 @@ export default function TimeScheduleDetail() {
   };
 
   const openAddAct = () => { setEditingAct(null); setActForm({ ...emptyActivity, section: s?.section || "" }); setActOpen(true); };
-  const openEditAct = (a) => { setEditingAct(a); setActForm({ name: a.name, section: a.section || "", pic: a.pic || null, start_date: a.start_date || "", end_date: a.end_date || "", category: a.category || "pelaksanaan", status: a.status || "Rencana", note: a.note || "" }); setActOpen(true); };
+  const openEditAct = (a) => { setEditingAct(a); setActForm({ name: a.name, section: a.section || "", pic: a.pic || null, start_date: a.start_date || "", end_date: a.end_date || "", category: a.category || "pelaksanaan", color: a.color || "", status: a.status || "Rencana", note: a.note || "" }); setActOpen(true); };
 
   const saveAct = async () => {
     if (!actForm.name.trim()) { toast.error("Nama kegiatan wajib diisi"); return; }
@@ -134,6 +146,7 @@ export default function TimeScheduleDetail() {
   const days = daysBetween(start, end);
   const holidays = new Set(s.holidays || []);
   const eventDates = new Set(s.event_dates || []);
+  const todayKey = ymd(new Date());
 
   // month header segments
   const months = [];
@@ -160,6 +173,7 @@ export default function TimeScheduleDetail() {
         {Object.entries(CAT).map(([k, v]) => (<span key={k} className="inline-flex items-center gap-1.5"><span className={cn("h-3 w-5 rounded", v.bar)} /> {v.label}</span>))}
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 rounded bg-rose-50 border border-rose-200" /> Kolom Hari Libur</span>
         <span className="inline-flex items-center gap-1.5"><span className="h-3 w-5 rounded ring-2 ring-primary/60" /> Hari Event</span>
+        <span className="inline-flex items-center gap-1.5"><span className="h-4 w-0.5 bg-primary" /> Hari ini</span>
       </div>
 
       {/* Gantt */}
@@ -179,7 +193,7 @@ export default function TimeScheduleDetail() {
                 <div className="sticky left-0 z-20 bg-secondary/40 border-r border-border px-3 py-2 text-xs font-bold shrink-0 flex items-center" style={{ width: 260 }}>Kegiatan</div>
                 {days.map((d, i) => {
                   const key = ymd(d); const wknd = d.getDay() === 0 || d.getDay() === 6;
-                  return (<div key={i} className={cn("text-[10px] text-center py-2 border-r border-border/60 shrink-0", (holidays.has(key) || wknd) && "bg-rose-50 text-rose-600", eventDates.has(key) && "ring-2 ring-inset ring-primary/50 font-bold")} style={{ width: DAY_W }} title={d.toLocaleDateString("id-ID")}>{d.getDate()}</div>);
+                  return (<div key={i} className={cn("text-[10px] text-center py-2 border-r border-border/60 shrink-0", (holidays.has(key) || wknd) && "bg-rose-50 text-rose-600", eventDates.has(key) && "ring-2 ring-inset ring-primary/50 font-bold", key === todayKey && "border-l-2 border-primary text-primary font-bold")} style={{ width: DAY_W }} title={d.toLocaleDateString("id-ID")}>{d.getDate()}</div>);
                 })}
               </div>
               {/* Activity rows */}
@@ -205,8 +219,8 @@ export default function TimeScheduleDetail() {
                     const on = a.start_date && a.end_date && key >= a.start_date && key <= a.end_date;
                     const isStart = key === a.start_date; const isEnd = key === a.end_date;
                     return (
-                      <div key={i} className={cn("shrink-0 border-r border-border/40 flex items-center px-0.5", (holidays.has(key) || wknd) && "bg-rose-50/60", eventDates.has(key) && "bg-primary/5")} style={{ width: DAY_W, height: 44 }}>
-                        {on && <div className={cn("h-5 w-full", CAT[a.category]?.bar || CAT.pelaksanaan.bar, isStart && "rounded-l-full ml-0.5", isEnd && "rounded-r-full mr-0.5")} />}
+                      <div key={i} className={cn("shrink-0 border-r border-border/40 flex items-center px-0.5", (holidays.has(key) || wknd) && "bg-rose-50/60", eventDates.has(key) && "bg-primary/5", key === todayKey && "border-l-2 border-primary")} style={{ width: DAY_W, height: 44 }}>
+                        {on && <div className={cn("h-5 w-full", !a.color && (CAT[a.category]?.bar || CAT.pelaksanaan.bar), isStart && "rounded-l-full ml-0.5", isEnd && "rounded-r-full mr-0.5", key > todayKey && "opacity-40")} style={a.color ? { backgroundColor: a.color } : undefined} />}
                       </div>
                     );
                   })}
@@ -221,13 +235,23 @@ export default function TimeScheduleDetail() {
       <Card className="rounded-2xl shadow-soft p-5">
         <h3 className="font-semibold flex items-center gap-2 mb-3"><ListChecks className="h-4 w-4 text-primary" /> Daftar Kegiatan ({acts.length})</h3>
         <div className="space-y-2">
-          {acts.map((a) => (
+          {acts.map((a) => { const prog = autoProgress(a); return (
             <div key={a.id} className="flex flex-wrap items-center gap-3 p-3 rounded-xl border border-border" data-testid={`activity-item-${a.id}`}>
+              <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: a.color || undefined }} data-testid={`activity-dot-${a.id}`}>{!a.color && <span className={cn("block h-3 w-3 rounded-full", CAT[a.category]?.bar)} />}</span>
               <span className={cn("text-[11px] px-2 py-0.5 rounded-full font-medium", CAT[a.category]?.chip)}>{CAT[a.category]?.label}</span>
-              <div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{a.name}</p><p className="text-xs text-muted-foreground">{a.start_date || "?"} – {a.end_date || "?"} · {a.pic?.name || "Tanpa PIC"} · {a.status}</p></div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">{a.name}</p>
+                <p className="text-xs text-muted-foreground">{a.start_date || "?"} – {a.end_date || "?"} · {a.pic?.name || "Tanpa PIC"} · {a.status}</p>
+                <div className="flex items-center gap-2 mt-1.5">
+                  <div className="h-1.5 flex-1 max-w-[180px] rounded-full bg-secondary overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${prog}%` }} />
+                  </div>
+                  <span className="text-[11px] font-semibold text-muted-foreground tabular-nums" data-testid={`activity-progress-${a.id}`}>{prog}%</span>
+                </div>
+              </div>
               {a.task_id && <Button variant="ghost" size="sm" className="h-8" onClick={() => navigate(`/tasks/${a.task_id}`)} data-testid={`link-activity-task-${a.id}`}><ExternalLink className="h-3.5 w-3.5 mr-1" /> Tugas</Button>}
             </div>
-          ))}
+          ); })}
           {acts.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Belum ada kegiatan.</p>}
         </div>
       </Card>
@@ -257,6 +281,17 @@ export default function TimeScheduleDetail() {
                   <SelectContent>{["Rencana", "Proses", "Selesai"].map((k) => <SelectItem key={k} value={k}>{k}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Warna Bar (opsional)</Label>
+              <div className="flex items-center gap-2 flex-wrap">
+                {SWATCHES.map((c) => (
+                  <button key={c} type="button" onClick={() => setActForm({ ...actForm, color: c })} className={cn("h-7 w-7 rounded-full border-2 transition-transform hover:scale-110", actForm.color === c ? "border-foreground" : "border-transparent")} style={{ backgroundColor: c }} data-testid={`activity-color-${c}`} />
+                ))}
+                <input type="color" value={actForm.color || "#f59e0b"} onChange={(e) => setActForm({ ...actForm, color: e.target.value })} className="h-7 w-10 rounded cursor-pointer bg-transparent" data-testid="activity-color-input" />
+                {actForm.color && <Button type="button" variant="ghost" size="sm" className="h-7" onClick={() => setActForm({ ...actForm, color: "" })} data-testid="activity-color-reset">Reset</Button>}
+              </div>
+              <p className="text-[11px] text-muted-foreground">Kosongkan untuk memakai warna kategori.</p>
             </div>
             <div className="space-y-1.5"><Label>Catatan</Label><Textarea rows={2} value={actForm.note} onChange={(e) => setActForm({ ...actForm, note: e.target.value })} data-testid="activity-note-input" /></div>
           </div>

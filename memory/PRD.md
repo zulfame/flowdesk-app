@@ -69,6 +69,11 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - ✅ **Role seeding idempoten**: `server.py` startup meng-`$addToSet` izin peran bawaan (fix peran lama tak dapat izin baru).
 - ✅ Tested: iteration_8 (notif/upload) 100%, iteration_9 (Time Schedule admin) + iteration_10 (member + wording) 19/19 backend + UI pass.
 
+## Update (2026-06/07) — Enhancement Time Schedule + migrasi notifikasi
+- ✅ **Migrasi teks lama (sekali jalan)**: `server.py` `_migrate_notif_wording()` mengubah notifikasi in-app lama "Anda" → nama penerima (57 record diperbarui; flag `migrations.notif_wording_v1` mencegah re-run). Catatan: pesan Telegram yang sudah terkirim ke grup tidak bisa diedit dari sistem.
+- ✅ **Warna kegiatan kustom**: field `color` per kegiatan (backend model + export xlsx pakai warna). UI: swatch preset + color picker + Reset di dialog kegiatan; bar Gantt & dot daftar memakai warna kustom (fallback ke warna kategori).
+- ✅ **Progres otomatis**: garis vertikal "Hari ini" di Gantt; bar terbagi (terlewati solid vs sisa transparan); persen progres per kegiatan (`autoProgress`) berdasarkan tanggal berjalan + bar progres di Daftar Kegiatan. Verified via UI (100%/60%/0%).
+
 ## Update (2026-06) — Perbaikan deploy lokal + skrip reset
 - ✅ Fix Docker build lokal gagal (`frontend/yarn.lock not found`): `deploy/local/flowdesk.frontend` kini `COPY frontend/package.json frontend/yarn.lock* ./` + `yarn install` (lockfile opsional; yarn.lock tak ter-track di git). README manual-build disamakan (`yarn install`).
 - ✅ Skrip reset data: `deploy/local/seed.sh` — jalankan `python seed.py --force` via `docker compose exec backend`; auto-start stack; konfirmasi 'YA' atau `-y`.

@@ -79,6 +79,36 @@ async def seed_admin():
         logger.info("Admin password updated")
 
 
+async def _migrate_notif_wording():
+    """Sekali jalan: ubah notifikasi in-app lama yang berbunyi 'Anda' menjadi nama penerima,
+    agar riwayat konsisten. (Pesan Telegram yang sudah terkirim tidak dapat diubah dari sini.)"""
+    done = await db.migrations.find_one({"key": "notif_wording_v1"})
+    if done:
+        return
+    cursor = db.notifications.find({"$or": [
+        {"message": {"$regex": "Anda"}}, {"title": "Anda disebut"},
+    ]})
+    n_updated = 0
+    async for n in cursor:
+        uid = n.get("user_id")
+        name = None
+        if uid:
+            u = await db.users.find_one({"id": uid}, {"_id": 0, "name": 1})
+            name = (u or {}).get("name")
+        if not name:
+            continue
+        msg = n.get("message", "") or ""
+        title = n.get("title", "") or ""
+        new_msg = (msg.replace("ditugaskan kepada Anda", f"ditugaskan kepada {name}")
+                      .replace("menyebut Anda", f"menyebut {name}"))
+        new_title = title.replace("Anda disebut", f"{name} disebut")
+        if new_msg != msg or new_title != title:
+            await db.notifications.update_one({"id": n["id"]}, {"$set": {"message": new_msg, "title": new_title}})
+            n_updated += 1
+    await db.migrations.insert_one({"key": "notif_wording_v1", "at": now_iso(), "updated": n_updated})
+    logger.info(f"Notif wording migration done: {n_updated} updated")
+
+
 @app.on_event("startup")
 async def startup():
     await db.users.create_index("email", unique=True)
@@ -98,6 +128,7 @@ async def startup():
              "$addToSet": {"permissions": {"$each": r["permissions"]}}},
             upsert=True,
         )
+    await _migrate_notif_wording()
     try:
         init_storage()
         logger.info("Object storage initialized")
