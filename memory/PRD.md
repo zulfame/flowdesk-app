@@ -36,3 +36,24 @@ FlowDesk: a lightweight Internal Work Management System (NOT project management 
 
 ## Notes
 - Telegram/Email dispatch is best-effort and inactive until credentials are set in Settings (expected).
+
+## Update (2026-07-19) — Menu restructure + admin modules
+Grouped sidebar into 3 sections; consistent titles/routes; standardized confirmation dialogs (`components/ConfirmDialog.jsx`); server-side pagination for data-heavy lists.
+- **Selamat Datang**: Dashboard (`/`), Profil Pengguna (`/profile`).
+- **Menu Utama**: Kalender (`/calendar`, sidebar badge = tasks with deadline this month), Kelola Tugas (`/tasks`), Kelola Rapat (`/meetings`), Kelola Catatan (`/notes`), Ingatkan Saya (`/reminders`).
+- **Menu Admin**: Kelola Aplikasi (`/app-settings`), Kelola Peranan (`/roles`), Kelola Pengguna (`/users`), Kelola Database (`/database`), Kelola Notifikasi (`/notification-settings`), Log Aktivitas (`/activity`).
+- Notification center stays at `/notifications` via topbar bell (not in sidebar).
+
+New/changed features:
+- ✅ **Profil Pengguna**: self-service edit (name/email/phone/department/avatar) + password change; email/phone/name changes PROPAGATE to denormalized copies (task requester/pic, meeting/note/reminder created_by_name). Backend `routers/profile.py`.
+- ✅ **Kelola Pengguna**: server pagination + search + role filter; CSV/XLSX import with upsert-by-email (`POST /api/users/import`, openpyxl). Default import password `flowdesk123`.
+- ✅ **Kelola Peranan**: dedicated RBAC page with permission matrix; `GET /api/permissions` (12 perms); core roles (admin/manager/member) protected.
+- ✅ **Ingatkan Saya**: redesigned card grid + tabs (Aktif/Selesai/Semua); own-only listing; broadcast option via email/telegram + time-of-day; background dispatch loop (every 5 min) in `server.py`.
+- ✅ **Kelola Aplikasi**: branding — app name, company, timezone, language, date format, app URL, meta description, primary color, logo/favicon/thumbnail (base64 data URLs). Live branding via `BrandingContext` + `GET /api/settings/public`.
+- ✅ **Kelola Notifikasi**: split-out email SMTP + telegram + channel toggles + test buttons.
+- ✅ **Kelola Database**: external S3 config (endpoint/bucket/access_key/secret_key/region/path) + Uji Koneksi (boto3, `s3_storage.py`); full backup & restore (`routers/database.py`) — "Backup & Unduh" (local, downloadable) and "Backup ke Object Storage" (S3); history with Periksa/Unduh/Restore/Hapus. Backups gzipped JSON of all collections.
+- ✅ **Log Aktivitas**: redesigned + server pagination + search + entity/action filters.
+- ✅ Global UI: all `<Input>`/`<Textarea>` default `autoComplete="off"`.
+- ✅ Tested (iteration_5): backend 59/59 pytest; all frontend flows pass; 0 issues.
+
+Backlog (still open): recurring reminder edge cases across timezones; browser push (Notification API); restore/archive views for soft-deleted items; permission-level enforcement in the UI beyond admin gating.
