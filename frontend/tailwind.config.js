@@ -52,8 +52,9 @@ module.exports = {
         ring: 'hsl(var(--ring))'
       },
       boxShadow: {
-        soft: '0 8px 30px rgb(0,0,0,0.04)',
-        'soft-lg': '0 12px 40px rgb(0,0,0,0.08)',
+        soft: '0 4px 16px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.05)',
+        'soft-lg': '0 12px 32px -6px rgb(15 23 42 / 0.14), 0 4px 8px -4px rgb(15 23 42 / 0.08)',
+        'bar-top': '0 -8px 30px -6px rgb(15 23 42 / 0.12)',
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },

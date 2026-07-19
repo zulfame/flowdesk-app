@@ -115,9 +115,9 @@ export default function TaskForm() {
 
       <PageHeader title={editing ? "Ubah Tugas" : "Tugas Baru"} subtitle="Paparkan tugas selengkap mungkin sejak awal." />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="space-y-6">
           <Card className="p-6 rounded-2xl shadow-soft">
             <SectionTitle icon={ClipboardList}>Informasi Tugas</SectionTitle>
             <div className="space-y-4">
@@ -185,7 +185,7 @@ export default function TaskForm() {
       </div>
 
       {/* Sticky action bar */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-[260px] z-30 border-t border-border backdrop-blur-xl bg-background/85">
+      <div className="fixed bottom-0 left-0 right-0 lg:left-[260px] z-40 border-t border-border bg-card shadow-bar-top">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">Batal</Button>
           <Button onClick={save} disabled={saving} className="rounded-xl px-8" data-testid="btn-save-task">
