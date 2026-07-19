@@ -58,6 +58,11 @@ New/changed features:
 
 Backlog (still open): AI meeting summary; encrypted backups; timezone-aware scheduling refinements.
 
+## Update (2026-06) — Perbaikan deploy lokal + skrip reset
+- ✅ Fix Docker build lokal gagal (`frontend/yarn.lock not found`): `deploy/local/flowdesk.frontend` kini `COPY frontend/package.json frontend/yarn.lock* ./` + `yarn install` (lockfile opsional; yarn.lock tak ter-track di git). README manual-build disamakan (`yarn install`).
+- ✅ Skrip reset data: `deploy/local/seed.sh` — jalankan `python seed.py --force` via `docker compose exec backend`; auto-start stack; konfirmasi 'YA' atau `-y`.
+- Catatan: build Docker & skrip tak bisa dijalankan di pod preview (docker tak tersedia); verifikasi build/seed nyata di mesin lokal user. User konfirmasi deploy lokal sudah berjalan.
+
 ## Update (2026-07-19c) — Akses berbasis peran/kepemilikan + pembersihan lampiran
 - ✅ **Visibilitas data (Menu Utama)**: Admin & Manajer melihat semua; Anggota hanya melihat data terkait dirinya (pembuat / PIC / pemberi tugas / peserta rapat). Diterapkan di list, detail, dashboard, kalender, dan pencarian global. `helpers.py:task_visibility_query/meeting_visibility_query`.
 - ✅ **Hak ubah/hapus**: hapus & ubah info inti hanya oleh pembuat atau Admin (403 selain itu); **PIC** hanya boleh memperbarui status/progres/checklist/dokumen tugas (field inti di-strip). Catatan: dilihat semua (bersama), diubah/dihapus hanya pembuat/Admin. Pengingat tetap privat.
