@@ -58,6 +58,17 @@ New/changed features:
 
 Backlog (still open): AI meeting summary; encrypted backups; timezone-aware scheduling refinements.
 
+## Update (2026-06) — Notifikasi, storage lokal, deploy multi-project, modul Time Schedule
+- ✅ **Kanal notifikasi dihormati**: `dispatch_email`/`dispatch_telegram` (notifications.py) hanya kirim bila kanal aktif; semua pemanggilan `_send_email` langsung di tasks.py/server.py diganti (fix: email terkirim padahal kanal OFF).
+- ✅ **Nama Pengirim email (from_name)**: field baru di Kelola Notifikasi; header `From: Nama <email>` via `formataddr`.
+- ✅ **Broadcast pengingat**: kanal Telegram (ke Chat/Group ID sistem) diganti **WhatsApp (wa.me)** ke nomor HP pembuat; email broadcast kini ke email pembuat. Chat/Group ID hanya untuk info sistem.
+- ✅ **Wording notifikasi ke grup**: pesan penugasan & @mention memakai NAMA (mis. "ditugaskan kepada Zulfadli Rizal") bukan "Anda".
+- ✅ **Storage fallback lokal**: `storage.py` menyimpan lampiran ke filesystem bila `EMERGENT_LLM_KEY` tidak ada / `LOCAL_STORAGE_DIR` di-set (fix "Network Error" upload di deploy lokal). Preview tetap pakai Emergent Object Storage.
+- ✅ **Deploy lokal**: fix `yarn.lock` opsional; port & nama container/volume/network dapat dikonfigurasi (`COMPOSE_PROJECT_NAME`, wizard `start.sh`) untuk multi-project; `seed.sh` reset data; volume `uploads_data`.
+- ✅ **Modul Time Schedule (Gantt)** [P2 baru]: menu "Time Schedule" di Menu Utama (atas "Ingatkan Saya"). CRUD jadwal + kegiatan (nama, PIC, tanggal mulai–selesai, kategori Pelaksanaan/Event/Libur, status, catatan). Tampilan Gantt (header bulan/tanggal, highlight akhir pekan/hari libur/hari Event, legenda). Aksi **Buat Tugas** dari kegiatan (tertaut ke jadwal). **Ekspor Excel** (openpyxl). RBAC: Admin/Manajer semua, Anggota hanya miliknya/PIC. Permission `time_schedule` di Kelola Peranan; login/me kini kirim `permissions` efektif; menu digerbangi via `hasPerm`. Backend: `routers/time_schedule.py`. Frontend: `pages/TimeSchedule.jsx`, `pages/TimeScheduleDetail.jsx`.
+- ✅ **Role seeding idempoten**: `server.py` startup meng-`$addToSet` izin peran bawaan (fix peran lama tak dapat izin baru).
+- ✅ Tested: iteration_8 (notif/upload) 100%, iteration_9 (Time Schedule admin) + iteration_10 (member + wording) 19/19 backend + UI pass.
+
 ## Update (2026-06) — Perbaikan deploy lokal + skrip reset
 - ✅ Fix Docker build lokal gagal (`frontend/yarn.lock not found`): `deploy/local/flowdesk.frontend` kini `COPY frontend/package.json frontend/yarn.lock* ./` + `yarn install` (lockfile opsional; yarn.lock tak ter-track di git). README manual-build disamakan (`yarn install`).
 - ✅ Skrip reset data: `deploy/local/seed.sh` — jalankan `python seed.py --force` via `docker compose exec backend`; auto-start stack; konfirmasi 'YA' atau `-y`.
