@@ -1,55 +1,64 @@
-import { useEffect } from "react";
-import "@/App.css";
+import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import axios from "axios";
-import { HOME } from "@/constants/testIds";
+import { Toaster } from "sonner";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-const API = `${BACKEND_URL}/api`;
+import { AuthProvider } from "@/context/AuthContext";
+import { ThemeProvider } from "@/context/ThemeContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
+import Layout from "@/components/Layout";
 
-const Home = () => {
-  const helloWorldApi = async () => {
-    try {
-      const response = await axios.get(`${API}/`);
-      console.log(response.data.message);
-    } catch (e) {
-      console.error(e, `errored out requesting / api`);
-    }
-  };
+import Login from "@/pages/Login";
+import Dashboard from "@/pages/Dashboard";
+import Tasks from "@/pages/Tasks";
+import TaskDetail from "@/pages/TaskDetail";
+import Meetings from "@/pages/Meetings";
+import MeetingDetail from "@/pages/MeetingDetail";
+import Calendar from "@/pages/Calendar";
+import Reminders from "@/pages/Reminders";
+import Notes from "@/pages/Notes";
+import Notifications from "@/pages/Notifications";
+import ActivityLog from "@/pages/ActivityLog";
+import Users from "@/pages/Users";
+import Settings from "@/pages/Settings";
 
-  useEffect(() => {
-    helloWorldApi();
-  }, []);
-
-  return (
-    <div>
-      <header className="App-header">
-        <a
-          data-testid={HOME.emergentLink}
-          className="App-link"
-          href="https://emergent.sh"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <img src="https://avatars.githubusercontent.com/in/1201222?s=120&u=2686cf91179bbafbc7a71bfbc43004cf9ae1acea&v=4" />
-        </a>
-        <p className="mt-5">Building something incredible ~!</p>
-      </header>
-    </div>
-  );
-};
+const PAGES = [
+  { path: "/", element: <Dashboard /> },
+  { path: "/tasks", element: <Tasks /> },
+  { path: "/tasks/:id", element: <TaskDetail /> },
+  { path: "/meetings", element: <Meetings /> },
+  { path: "/meetings/:id", element: <MeetingDetail /> },
+  { path: "/calendar", element: <Calendar /> },
+  { path: "/reminders", element: <Reminders /> },
+  { path: "/notes", element: <Notes /> },
+  { path: "/notifications", element: <Notifications /> },
+  { path: "/activity", element: <ActivityLog /> },
+  { path: "/users", element: <Users /> },
+  { path: "/settings", element: <Settings /> },
+];
 
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Home />}>
-            <Route index element={<Home />} />
-          </Route>
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            {PAGES.map((p) => (
+              <Route
+                key={p.path}
+                path={p.path}
+                element={
+                  <ProtectedRoute>
+                    <Layout>{p.element}</Layout>
+                  </ProtectedRoute>
+                }
+              />
+            ))}
+          </Routes>
+        </BrowserRouter>
+        <Toaster position="top-right" richColors closeButton />
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 
