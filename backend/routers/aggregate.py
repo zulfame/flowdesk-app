@@ -43,6 +43,28 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
 
     activity = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(8).to_list(8)
 
+    # PIC workload (active tasks per PIC)
+    ACTIVE = {"Pending", "On Progress", "Overdue"}
+    workload = {}
+    for t in tasks:
+        if t["status"] in ACTIVE:
+            pic = t.get("pic")
+            name = pic.get("name") if isinstance(pic, dict) else pic
+            if name:
+                workload[name] = workload.get(name, 0) + 1
+    workload_list = sorted([{"name": k, "count": v} for k, v in workload.items()], key=lambda x: -x["count"])[:6]
+
+    # Weekly trend: last 6 weeks (created vs completed)
+    from datetime import timedelta
+    now = datetime.now(timezone.utc)
+    trend = []
+    for w in range(5, -1, -1):
+        start = (now - timedelta(days=now.weekday() + w * 7)).replace(hour=0, minute=0, second=0, microsecond=0)
+        end = start + timedelta(days=7)
+        created = sum(1 for t in tasks if t.get("created_at") and start.isoformat() <= t["created_at"] < end.isoformat())
+        completed = sum(1 for t in tasks if t.get("status") == "Completed" and t.get("updated_at") and start.isoformat() <= t["updated_at"] < end.isoformat())
+        trend.append({"label": start.strftime("%d/%m"), "created": created, "completed": completed})
+
     return {
         "total_tasks": len(tasks),
         "tasks_by_status": by_status,
@@ -55,6 +77,8 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "upcoming_meetings": upcoming_meetings,
         "recent_tasks": recent_tasks,
         "recent_activity": activity,
+        "workload": workload_list,
+        "trend": trend,
     }
 
 

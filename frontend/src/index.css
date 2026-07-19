@@ -1,13 +1,12 @@
-@import url('https://api.fontshare.com/v2/css?f[]=cabinet-grotesk@500,700,800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
-    --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
-    --font-heading: 'Cabinet Grotesk', 'Plus Jakarta Sans', sans-serif;
+    --font-body: 'Poppins', system-ui, sans-serif;
+    --font-heading: 'Poppins', system-ui, sans-serif;
 }
 
 body {
@@ -96,6 +95,12 @@ body {
 
 .fade-in { animation: fadeIn 0.4s ease-out both; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@media print {
+  aside, header, .no-print { display: none !important; }
+  main { padding: 0 !important; }
+  .shadow-soft, .shadow-soft-lg { box-shadow: none !important; }
+}
 
 :root { --content-left: 0px; --sidebar-w-lg: 260px; }
 @media (min-width: 1024px) { :root { --content-left: var(--sidebar-w-lg, 260px); } }

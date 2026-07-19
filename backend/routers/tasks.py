@@ -212,6 +212,69 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
     return task
 
 
+PRIORITY_LABEL = {"Low": "Rendah", "Medium": "Sedang", "High": "Tinggi", "Urgent": "Mendesak"}
+
+
+def _total_responses(task: dict) -> int:
+    total = 0
+    for d in task.get("documents", []) or []:
+        total += len(d.get("responses", []) or [])
+    for it in task.get("items", []) or []:
+        for d in it.get("documents", []) or []:
+            total += len(d.get("responses", []) or [])
+    return total
+
+
+def _build_history(existing: dict, update: dict, user: str) -> list:
+    entries = []
+    at = now_iso()
+    if "title" in update and update["title"] != existing.get("title"):
+        entries.append(f"Judul diubah menjadi '{update['title']}'")
+    if "priority" in update and update["priority"] != existing.get("priority"):
+        old = PRIORITY_LABEL.get(existing.get("priority"), existing.get("priority"))
+        new = PRIORITY_LABEL.get(update["priority"], update["priority"])
+        entries.append(f"Prioritas: {old} → {new}")
+    if "deadline" in update and update["deadline"] != existing.get("deadline"):
+        entries.append("Tenggat diperbarui")
+    if "pic" in update:
+        old = (existing.get("pic") or {})
+        old = old.get("name") if isinstance(old, dict) else old
+        new = (update.get("pic") or {}).get("name")
+        if new != old:
+            entries.append(f"PIC: {old or '-'} → {new or '-'}")
+    hist = existing.get("history", [])
+    if entries:
+        for e in entries:
+            hist.append({"action": "updated", "by": user, "at": at, "detail": e})
+    else:
+        hist.append({"action": "updated", "by": user, "at": at})
+    return hist
+
+
+async def _notify_completion(task: dict):
+    msg = f"Tugas '{task['title']}' telah SELESAI (100%)."
+    for person in [task.get("requester"), task.get("pic")]:
+        if not isinstance(person, dict):
+            continue
+        if person.get("user_id"):
+            await create_notification(person["user_id"], "Tugas Selesai", msg, "task", f"/tasks/{task['id']}")
+        if person.get("email"):
+            settings = await get_settings()
+            _send_email(settings.get("email", {}), f"Tugas Selesai: {task['title']}", msg, to_override=person["email"])
+
+
+async def _notify_response(task: dict):
+    req = task.get("requester") or {}
+    if not isinstance(req, dict) or not req.get("name"):
+        return
+    msg = f"Ada dokumen balasan baru pada tugas '{task['title']}'."
+    if req.get("user_id"):
+        await create_notification(req["user_id"], "Dokumen Balasan Baru", msg, "task", f"/tasks/{task['id']}")
+    if req.get("email"):
+        settings = await get_settings()
+        _send_email(settings.get("email", {}), f"Dokumen Balasan: {task['title']}", msg, to_override=req["email"])
+
+
 @router.post("")
 async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
     tid = body.id or new_id()
@@ -254,18 +317,26 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
         update["requester"] = body.requester.model_dump()
     if body.pic is not None:
         update["pic"] = body.pic.model_dump()
+    if "deadline" in update:
+        update["deadline_reminded"] = False
     update["updated_at"] = now_iso()
     merged = {**existing, **update}
     merged = compute(merged)
     update["progress"] = merged["progress"]
     update["status"] = merged["status"]
-    history = existing.get("history", [])
-    history.append({"action": "updated", "by": user["name"], "at": now_iso()})
-    update["history"] = history
+    update["history"] = _build_history(existing, update, user["name"])
     await db.tasks.update_one({"id": task_id}, {"$set": update})
     await log_activity(db, user, "update", "task", task_id, f"Memperbarui tugas '{existing['title']}'")
     result = await db.tasks.find_one({"id": task_id}, {"_id": 0})
     result = compute(result)
+
+    # Auto-broadcast when task becomes Completed
+    if result["status"] == "Completed" and existing.get("status") != "Completed":
+        await _notify_completion(result)
+
+    # Notify requester when a document response was added
+    if _total_responses(result) > _total_responses(existing):
+        await _notify_response(result)
 
     # Notify PIC if assignment changed
     pic_wa_url = None
@@ -287,7 +358,108 @@ async def add_comment(task_id: str, body: CommentBody, user: dict = Depends(get_
     comment = {"id": new_id(), "text": body.text, "by": user["name"], "user_id": user["id"], "at": now_iso()}
     await db.tasks.update_one({"id": task_id}, {"$push": {"comments": comment}})
     await log_activity(db, user, "comment", "task", task_id, f"Berkomentar pada '{task['title']}'")
+
+    # @mention notifications
+    import re
+    mentions = re.findall(r"@([\w.\-]+)", body.text or "")
+    if mentions:
+        all_users = await db.users.find({}, {"_id": 0, "id": 1, "name": 1, "email": 1}).to_list(1000)
+        for m in mentions:
+            token = m.lower()
+            for u in all_users:
+                uname = (u.get("name") or "").lower().replace(" ", "")
+                if token and (token in uname or token == (u.get("email") or "").split("@")[0].lower()):
+                    await create_notification(u["id"], "Anda disebut", f"{user['name']} menyebut Anda di '{task['title']}'", "task", f"/tasks/{task_id}")
+                    break
     return comment
+
+
+@router.post("/{task_id}/duplicate")
+async def duplicate_task(task_id: str, user: dict = Depends(get_current_user)):
+    src = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not src:
+        raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
+    new = dict(src)
+    new["id"] = new_id()
+    new["title"] = f"{src.get('title', '')} (Salinan)"
+    new["status"] = "Pending"
+    new["comments"] = []
+    new["documents"] = []
+    new["items"] = [{"id": new_id(), "title": it.get("title", ""), "done": False, "done_at": None,
+                     "due_date": it.get("due_date"), "documents": []} for it in src.get("items", [])]
+    new["history"] = [{"action": "created", "by": user["name"], "at": now_iso(), "detail": f"Diduplikasi dari '{src.get('title')}'"}]
+    new["created_by"] = user["id"]
+    new["created_by_name"] = user["name"]
+    new["created_at"] = now_iso()
+    new["updated_at"] = now_iso()
+    new = compute(new)
+    await db.tasks.insert_one(dict(new))
+    new.pop("_id", None)
+    await log_activity(db, user, "create", "task", new["id"], f"Menduplikasi tugas menjadi '{new['title']}'")
+    return new
+
+
+class TemplateBody(BaseModel):
+    name: str
+    task_id: Optional[str] = None
+    title: Optional[str] = ""
+    description: Optional[str] = ""
+    priority: str = "Medium"
+    items: List[str] = []
+
+
+@router.get("/templates/list")
+async def list_templates(user: dict = Depends(get_current_user)):
+    return await db.task_templates.find({}, {"_id": 0}).sort("created_at", -1).to_list(200)
+
+
+@router.post("/templates")
+async def create_template(body: TemplateBody, user: dict = Depends(get_current_user)):
+    if body.task_id:
+        src = await db.tasks.find_one({"id": body.task_id}, {"_id": 0})
+        if not src:
+            raise HTTPException(status_code=404, detail="Tugas sumber tidak ditemukan")
+        doc = {
+            "id": new_id(), "name": body.name, "title": src.get("title", ""),
+            "description": src.get("description", ""), "priority": src.get("priority", "Medium"),
+            "items": [it.get("title", "") for it in src.get("items", [])],
+            "created_by_name": user["name"], "created_at": now_iso(),
+        }
+    else:
+        doc = {"id": new_id(), "name": body.name, "title": body.title or body.name,
+               "description": body.description, "priority": body.priority, "items": body.items,
+               "created_by_name": user["name"], "created_at": now_iso()}
+    await db.task_templates.insert_one(dict(doc))
+    doc.pop("_id", None)
+    await log_activity(db, user, "create", "template", doc["id"], f"Membuat template '{doc['name']}'")
+    return doc
+
+
+@router.post("/templates/{template_id}/instantiate")
+async def instantiate_template(template_id: str, user: dict = Depends(get_current_user)):
+    tpl = await db.task_templates.find_one({"id": template_id}, {"_id": 0})
+    if not tpl:
+        raise HTTPException(status_code=404, detail="Template tidak ditemukan")
+    task = {
+        "id": new_id(), "title": tpl.get("title", tpl.get("name")), "description": tpl.get("description", ""),
+        "requester": dict(EMPTY_PERSON), "pic": dict(EMPTY_PERSON), "priority": tpl.get("priority", "Medium"),
+        "deadline": None, "documents": [],
+        "items": [{"id": new_id(), "title": t, "done": False, "done_at": None, "due_date": None, "documents": []} for t in tpl.get("items", [])],
+        "comments": [], "status": "Pending",
+        "history": [{"action": "created", "by": user["name"], "at": now_iso(), "detail": f"Dari template '{tpl['name']}'"}],
+        "created_by": user["id"], "created_by_name": user["name"], "created_at": now_iso(), "updated_at": now_iso(),
+    }
+    task = compute(task)
+    await db.tasks.insert_one(dict(task))
+    task.pop("_id", None)
+    await log_activity(db, user, "create", "task", task["id"], f"Membuat tugas dari template '{tpl['name']}'")
+    return task
+
+
+@router.delete("/templates/{template_id}")
+async def delete_template(template_id: str, user: dict = Depends(get_current_user)):
+    await db.task_templates.delete_one({"id": template_id})
+    return {"message": "Template dihapus"}
 
 
 @router.post("/{task_id}/broadcast")

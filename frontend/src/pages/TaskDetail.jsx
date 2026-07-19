@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History, Copy, LayoutTemplate, Printer } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -101,6 +101,18 @@ export default function TaskDetail() {
     catch (e) { toast.error(apiError(e)); }
   };
 
+  const duplicate = async () => {
+    try { const { data } = await api.post(`/tasks/${id}/duplicate`); toast.success("Tugas diduplikasi"); navigate(`/tasks/${data.id}`); }
+    catch (e) { toast.error(apiError(e)); }
+  };
+  const saveTemplate = async () => {
+    const name = window.prompt("Nama template:", task?.title || "");
+    if (!name) return;
+    try { await api.post("/tasks/templates", { name, task_id: id }); toast.success("Disimpan sebagai template"); }
+    catch (e) { toast.error(apiError(e)); }
+  };
+  const printTask = () => window.print();
+
   if (!task) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   const req = typeof task.requester === "string" ? { name: task.requester } : (task.requester || {});
@@ -118,7 +130,10 @@ export default function TaskDetail() {
                 <div className="flex items-center gap-2 mb-2 flex-wrap"><StatusBadge status={task.status} /><PriorityBadge priority={task.priority} /></div>
                 <h1 className="text-2xl font-bold tracking-tight">{task.title}</h1>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex gap-2 shrink-0 no-print">
+                <Button variant="secondary" size="icon" onClick={duplicate} title="Duplikat" data-testid="btn-duplicate-task"><Copy className="h-4 w-4" /></Button>
+                <Button variant="secondary" size="icon" onClick={saveTemplate} title="Simpan sebagai template" data-testid="btn-save-template"><LayoutTemplate className="h-4 w-4" /></Button>
+                <Button variant="secondary" size="icon" onClick={printTask} title="Cetak / PDF" data-testid="btn-print-task"><Printer className="h-4 w-4" /></Button>
                 <Button variant="secondary" size="icon" onClick={() => navigate(`/tasks/${id}/edit`)} data-testid="btn-edit-task"><Pencil className="h-4 w-4" /></Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild><Button variant="secondary" size="icon" className="text-destructive" data-testid="btn-delete-task"><Trash2 className="h-4 w-4" /></Button></AlertDialogTrigger>
@@ -194,7 +209,7 @@ export default function TaskDetail() {
               ))}
               {(task.comments || []).length === 0 && <p className="text-sm text-muted-foreground">Belum ada komentar.</p>}
             </div>
-            <div className="flex gap-2"><Input value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()} placeholder="Tulis komentar..." data-testid="comment-input" /><Button onClick={addComment} data-testid="btn-add-comment"><Send className="h-4 w-4" /></Button></div>
+            <div className="flex gap-2"><Input value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()} placeholder="Tulis komentar... gunakan @nama untuk menyebut" data-testid="comment-input" /><Button onClick={addComment} data-testid="btn-add-comment"><Send className="h-4 w-4" /></Button></div>
           </Card>
         </div>
 
@@ -233,7 +248,7 @@ export default function TaskDetail() {
             <SectionTitle icon={History} right={<span className="text-xs text-muted-foreground">{(task.history || []).length}</span>}>Riwayat</SectionTitle>
             <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
               {(task.history || []).slice().reverse().map((h, i) => (
-                <div key={i} className="flex items-start gap-2.5 text-sm"><div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" /><div><p className="capitalize">{h.action.replace(/_/g, " ")}</p><p className="text-xs text-muted-foreground">{h.by} · {timeAgo(h.at)}</p></div></div>
+                <div key={i} className="flex items-start gap-2.5 text-sm"><div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" /><div><p className={h.detail ? "" : "capitalize"}>{h.detail || h.action.replace(/_/g, " ")}</p><p className="text-xs text-muted-foreground">{h.by} · {timeAgo(h.at)}</p></div></div>
               ))}
               {(task.history || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Belum ada riwayat.</p>}
             </div>

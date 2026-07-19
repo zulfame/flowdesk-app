@@ -44,6 +44,7 @@ export default function Layout({ children }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [unread, setUnread] = useState(0);
+  const [myTasks, setMyTasks] = useState(0);
 
   useEffect(() => {
     localStorage.setItem("flowdesk_sidebar_collapsed", collapsed ? "1" : "0");
@@ -106,6 +107,9 @@ export default function Layout({ children }) {
           >
             <item.icon className="h-[18px] w-[18px] shrink-0" />
             {!collapsed && <span>{item.label}</span>}
+            {!collapsed && item.to === "/tasks" && myTasks > 0 && (
+              <span className="ml-auto text-[10px] font-bold bg-primary text-primary-foreground rounded-full px-1.5 py-0.5 min-w-[18px] text-center" data-testid="sidebar-mytasks-badge">{myTasks}</span>
+            )}
           </NavLink>
         ))}
       </nav>

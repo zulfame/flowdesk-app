@@ -102,4 +102,19 @@ export function SectionTitle({ icon: Icon, children, className, right }) {
   );
 }
 
+export function DeadlineBadge({ deadline, done, className }) {
+  if (!deadline) return null;
+  const d = new Date(deadline);
+  const now = new Date();
+  const diffDays = Math.ceil((d.setHours(0,0,0,0) - now.setHours(0,0,0,0)) / 86400000);
+  let label = new Date(deadline).toLocaleDateString("id-ID");
+  let cls = "bg-secondary text-muted-foreground";
+  if (!done) {
+    if (diffDays < 0) { label = "Terlambat"; cls = "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300"; }
+    else if (diffDays === 0) { label = "Hari ini"; cls = "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300"; }
+    else if (diffDays <= 3) { label = `H-${diffDays}`; cls = "bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300"; }
+  }
+  return <span className={cn("inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap", cls, className)}>{label}</span>;
+}
+
 export { STATUS_LABELS, PRIORITY_LABELS };

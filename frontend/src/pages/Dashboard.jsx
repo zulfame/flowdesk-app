@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import {
   CheckSquare, Video, Bell, FileText, TrendingUp, AlertTriangle, Clock, Plus, ArrowRight
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
 
 const STAT_CARDS = [
   { key: "total_tasks", label: "Total Tugas", icon: CheckSquare, color: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30" },
@@ -117,6 +118,41 @@ export default function Dashboard() {
             </div>
           </Card>
         </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <Card className="p-6 rounded-2xl shadow-soft">
+          <h2 className="text-lg font-semibold mb-4">Beban Kerja PIC</h2>
+          {(s.workload || []).length === 0 ? (
+            <p className="text-sm text-muted-foreground py-6 text-center">Belum ada tugas aktif.</p>
+          ) : (
+            <div className="space-y-3">
+              {s.workload.map((w) => {
+                const max = Math.max(...s.workload.map((x) => x.count), 1);
+                return (
+                  <div key={w.name} data-testid={`workload-${w.name}`}>
+                    <div className="flex justify-between text-sm mb-1"><span className="truncate">{w.name}</span><span className="font-semibold">{w.count}</span></div>
+                    <div className="bg-secondary rounded-full h-2.5 overflow-hidden"><div className="bg-primary h-full rounded-full transition-all" style={{ width: `${(w.count / max) * 100}%` }} /></div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+
+        <Card className="p-6 rounded-2xl shadow-soft">
+          <h2 className="text-lg font-semibold mb-4">Tren Mingguan</h2>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={s.trend || []} barGap={4}>
+              <XAxis dataKey="label" tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis allowDecimals={false} tick={{ fontSize: 12 }} stroke="hsl(var(--muted-foreground))" width={24} />
+              <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid hsl(var(--border))", background: "hsl(var(--card))" }} />
+              <Legend wrapperStyle={{ fontSize: 12 }} />
+              <Bar dataKey="created" name="Dibuat" fill="hsl(var(--muted-foreground))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="completed" name="Selesai" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
       </div>
     </div>
   );

@@ -86,6 +86,36 @@ async def startup():
         logger.info("Object storage initialized")
     except Exception as e:
         logger.error(f"Storage init failed: {e}")
+    import asyncio
+    asyncio.create_task(deadline_reminder_loop())
+
+
+async def deadline_reminder_loop():
+    import asyncio
+    from datetime import datetime, timezone, timedelta
+    from notifications import create_notification, get_settings, _send_email
+    while True:
+        try:
+            now = datetime.now(timezone.utc)
+            soon = (now + timedelta(hours=24)).isoformat()
+            cursor = db.tasks.find({
+                "deadline": {"$ne": None, "$lte": soon, "$gte": now.isoformat()},
+                "deadline_reminded": {"$ne": True},
+            })
+            async for t in cursor:
+                if t.get("status") in ("Completed", "Cancelled", "Archived"):
+                    continue
+                pic = t.get("pic") or {}
+                msg = f"Tenggat tugas '{t.get('title')}' kurang dari 24 jam lagi."
+                uid = pic.get("user_id") if isinstance(pic, dict) else None
+                await create_notification(uid, "Pengingat Tenggat", msg, "task", f"/tasks/{t['id']}")
+                if isinstance(pic, dict) and pic.get("email"):
+                    settings = await get_settings()
+                    _send_email(settings.get("email", {}), f"Pengingat Tenggat: {t.get('title')}", msg, to_override=pic["email"])
+                await db.tasks.update_one({"id": t["id"]}, {"$set": {"deadline_reminded": True}})
+        except Exception as e:
+            logger.error(f"deadline_reminder_loop: {e}")
+        await asyncio.sleep(1800)
 
 
 @app.on_event("shutdown")
