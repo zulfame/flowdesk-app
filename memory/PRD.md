@@ -56,7 +56,16 @@ New/changed features:
 - ✅ Global UI: all `<Input>`/`<Textarea>` default `autoComplete="off"`.
 - ✅ Tested (iteration_5): backend 59/59 pytest; all frontend flows pass; 0 issues.
 
-Backlog (still open): permission-level enforcement in the UI beyond admin gating; timezone-aware reminder scheduling refinements.
+Backlog (still open): AI meeting summary; encrypted backups; timezone-aware scheduling refinements.
+
+## Update (2026-07-19c) — Akses berbasis peran/kepemilikan + pembersihan lampiran
+- ✅ **Visibilitas data (Menu Utama)**: Admin & Manajer melihat semua; Anggota hanya melihat data terkait dirinya (pembuat / PIC / pemberi tugas / peserta rapat). Diterapkan di list, detail, dashboard, kalender, dan pencarian global. `helpers.py:task_visibility_query/meeting_visibility_query`.
+- ✅ **Hak ubah/hapus**: hapus & ubah info inti hanya oleh pembuat atau Admin (403 selain itu); **PIC** hanya boleh memperbarui status/progres/checklist/dokumen tugas (field inti di-strip). Catatan: dilihat semua (bersama), diubah/dihapus hanya pembuat/Admin. Pengingat tetap privat.
+- ✅ **Frontend guard**: tombol Edit/Hapus disembunyikan bila tak berhak (`lib/perms.js`); catatan milik orang lain dibuka mode baca-saja; grup "Menu Admin" hanya untuk admin.
+- ✅ **Pembersihan lampiran**: hapus lampiran individual kini HARD delete (berkas fisik dihapus via `storage.delete_object`); purge item dari Kelola Arsip juga menghapus berkas fisik lampirannya — mencegah penumpukan di object storage.
+- ✅ Menu "Arsip" → **"Kelola Arsip"**.
+- ✅ Tested (iteration_7): backend 21/21 (+95/95 regresi penuh); semua alur frontend member vs admin pass; 0 isu.
+- Member test account: member@flowdesk.com / member123 (lihat test_credentials.md).
 
 ## Update (2026-07-19b) — Rapat rework, Web Push, Arsip, scheduled backup
 - ✅ **Reminder broadcast timing**: broadcast_offset (10m default / 1h / 1d / custom date-time); backend computes `broadcast_at`; separate dispatch (in-app at remind_at, broadcast at broadcast_at). `routers/reminders.py`, `server.py:_dispatch_reminders`.

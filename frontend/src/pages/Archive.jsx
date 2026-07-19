@@ -55,7 +55,7 @@ export default function ArchivePage() {
 
   return (
     <div>
-      <PageHeader title="Arsip" subtitle="Data yang dihapus disimpan di sini dan dapat dipulihkan." />
+      <PageHeader title="Kelola Arsip" subtitle="Data yang dihapus disimpan di sini dan dapat dipulihkan." />
 
       <div className="flex flex-col sm:flex-row gap-3 mb-6">
         <div className="relative flex-1">

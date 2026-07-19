@@ -44,7 +44,7 @@ const NAV_GROUPS = [
       { to: "/users", label: "Kelola Pengguna", icon: Users2 },
       { to: "/database", label: "Kelola Database", icon: Database },
       { to: "/notification-settings", label: "Kelola Notifikasi", icon: BellRing },
-      { to: "/archive", label: "Arsip", icon: Archive },
+      { to: "/archive", label: "Kelola Arsip", icon: Archive },
       { to: "/activity", label: "Log Aktivitas", icon: ScrollText },
     ],
   },
