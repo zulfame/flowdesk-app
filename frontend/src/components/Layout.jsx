@@ -38,12 +38,17 @@ export default function Layout({ children }) {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem("flowdesk_sidebar_collapsed") === "1");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState(null);
   const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    localStorage.setItem("flowdesk_sidebar_collapsed", collapsed ? "1" : "0");
+    document.documentElement.style.setProperty("--sidebar-w-lg", collapsed ? "76px" : "260px");
+  }, [collapsed]);
 
   const loadUnread = useCallback(async () => {
     try {

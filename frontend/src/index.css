@@ -96,3 +96,6 @@ body {
 
 .fade-in { animation: fadeIn 0.4s ease-out both; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+:root { --content-left: 0px; --sidebar-w-lg: 260px; }
+@media (min-width: 1024px) { :root { --content-left: var(--sidebar-w-lg, 260px); } }

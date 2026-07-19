@@ -10,8 +10,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, X, User, UserCog, Phone, Mail, Building2, Loader2, Save, ClipboardList, ListChecks } from "lucide-react";
+import { ArrowLeft, Plus, X, User, UserCog, Phone, Mail, Building2, Loader2, Save, ClipboardList, ListChecks, CalendarClock } from "lucide-react";
 import { toast } from "sonner";
+
+function itemOverdue(item) {
+  return item.due_date && !item.done && new Date(item.due_date) < new Date();
+}
 
 function genId() {
   if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
@@ -49,6 +53,7 @@ export default function TaskForm() {
   const [items, setItems] = useState([]);
   const [documents, setDocuments] = useState([]);
   const [newItem, setNewItem] = useState("");
+  const [newItemDue, setNewItemDue] = useState("");
 
   const loadTask = useCallback(async () => {
     if (!editing) return;
@@ -70,8 +75,9 @@ export default function TaskForm() {
 
   const addItem = () => {
     if (!newItem.trim()) return;
-    setItems([...items, { title: newItem.trim(), done: false }]);
+    setItems([...items, { title: newItem.trim(), done: false, due_date: newItemDue ? new Date(newItemDue).toISOString() : null }]);
     setNewItem("");
+    setNewItemDue("");
   };
 
   const save = async () => {
@@ -90,13 +96,15 @@ export default function TaskForm() {
     try {
       if (editing) {
         payload.status = form.status;
-        await api.put(`/tasks/${id}`, payload);
+        const { data } = await api.put(`/tasks/${id}`, payload);
         toast.success("Tugas diperbarui");
+        if (data.pic_wa_url) window.open(data.pic_wa_url, "_blank");
         navigate(`/tasks/${id}`);
       } else {
         payload.id = draftId;
         const { data } = await api.post("/tasks", payload);
         toast.success("Tugas berhasil dibuat");
+        if (data.pic_wa_url) window.open(data.pic_wa_url, "_blank");
         navigate(`/tasks/${data.id}`);
       }
     } catch (e) { toast.error(apiError(e)); }
@@ -115,9 +123,9 @@ export default function TaskForm() {
 
       <PageHeader title={editing ? "Ubah Tugas" : "Tugas Baru"} subtitle="Paparkan tugas selengkap mungkin sejak awal." />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
-        <div className="space-y-6">
+        <div className="lg:col-span-2 space-y-6">
           <Card className="p-6 rounded-2xl shadow-soft">
             <SectionTitle icon={ClipboardList}>Informasi Tugas</SectionTitle>
             <div className="space-y-4">
@@ -152,13 +160,19 @@ export default function TaskForm() {
                 <div key={item.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-border">
                   <span className={`h-4 w-4 rounded border shrink-0 ${item.done ? "bg-primary border-primary" : "border-border"}`} />
                   <span className={`flex-1 text-sm ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.title}</span>
+                  {item.due_date && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full whitespace-nowrap ${itemOverdue(item) ? "bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300" : "bg-secondary text-muted-foreground"}`}>
+                      {new Date(item.due_date).toLocaleDateString("id-ID")}
+                    </span>
+                  )}
                   <button onClick={() => setItems(items.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive" data-testid={`remove-item-${idx}`}><X className="h-4 w-4" /></button>
                 </div>
               ))}
               {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Belum ada item tugas.</p>}
             </div>
-            <div className="flex gap-2 mt-3">
-              <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addItem())} placeholder="Tambah item tugas..." className="h-11" data-testid="item-input" />
+            <div className="flex flex-col sm:flex-row gap-2 mt-3">
+              <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addItem())} placeholder="Tambah item tugas..." className="h-11 flex-1" data-testid="item-input" />
+              <Input type="date" value={newItemDue} onChange={(e) => setNewItemDue(e.target.value)} className="h-11 sm:w-44" title="Tenggat item (opsional)" data-testid="item-due-input" />
               <Button type="button" variant="secondary" onClick={addItem} className="h-11" data-testid="btn-add-item"><Plus className="h-4 w-4" /></Button>
             </div>
           </Card>
@@ -185,7 +199,7 @@ export default function TaskForm() {
       </div>
 
       {/* Sticky action bar */}
-      <div className="fixed bottom-0 left-0 right-0 lg:left-[260px] z-40 border-t border-border bg-card shadow-bar-top">
+      <div className="fixed bottom-0 right-0 z-40 border-t border-border bg-card shadow-bar-top transition-all duration-300" style={{ left: "var(--content-left, 0px)" }}>
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-end gap-3">
           <Button variant="ghost" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">Batal</Button>
           <Button onClick={save} disabled={saving} className="rounded-xl px-8" data-testid="btn-save-task">

@@ -9,7 +9,12 @@ import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+
+function itemOverdue(item) {
+  return item.due_date && !item.done && new Date(item.due_date) < new Date();
+}
 
 function timeAgo(iso) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -25,6 +30,7 @@ export default function TaskDetail() {
   const [task, setTask] = useState(null);
   const [comment, setComment] = useState("");
   const [newItem, setNewItem] = useState("");
+  const [newItemDue, setNewItemDue] = useState("");
 
   const load = useCallback(async () => {
     try { const { data } = await api.get(`/tasks/${id}`); setTask(data); }
@@ -52,10 +58,16 @@ export default function TaskDetail() {
     const next = items.map((it) => it.id === itemId ? { ...it, done_at: iso } : it);
     patch({ items: next }, { items: next });
   };
+  const setItemDue = (itemId, dateStr) => {
+    const iso = dateStr ? new Date(dateStr).toISOString() : null;
+    const next = items.map((it) => it.id === itemId ? { ...it, due_date: iso } : it);
+    patch({ items: next }, { items: next });
+  };
   const addItem = () => {
     if (!newItem.trim()) return;
-    const next = [...items, { title: newItem.trim(), done: false }];
+    const next = [...items, { title: newItem.trim(), done: false, due_date: newItemDue ? new Date(newItemDue).toISOString() : null }];
     setNewItem("");
+    setNewItemDue("");
     patch({ items: next });
   };
   const removeItem = (itemId) => {
@@ -130,17 +142,26 @@ export default function TaskDetail() {
             <SectionTitle icon={ListChecks}>Item Tugas ({doneCount}/{items.length})</SectionTitle>
             <div className="space-y-3">
               {items.map((item) => (
-                <Collapsible key={item.id} className="rounded-xl border border-border" data-testid={`item-${item.id}`}>
+                <Collapsible key={item.id} className={cn("rounded-xl border", itemOverdue(item) ? "border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-900/10" : "border-border")} data-testid={`item-${item.id}`}>
                   <div className="flex items-center gap-3 p-3">
                     <input type="checkbox" checked={!!item.done} onChange={() => toggleItem(item.id)} className="h-4 w-4 rounded accent-indigo-600 shrink-0" data-testid={`item-check-${item.id}`} />
                     <div className="min-w-0 flex-1">
-                      <p className={`text-sm ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.title}</p>
-                      {item.done && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground">Selesai:</span>
-                          <Input type="date" value={item.done_at ? item.done_at.slice(0, 10) : ""} onChange={(e) => setItemDate(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-date-${item.id}`} />
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className={`text-sm ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.title}</p>
+                        {itemOverdue(item) && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">TERLAMBAT</span>}
+                      </div>
+                      <div className="flex items-center gap-4 mt-1.5 flex-wrap">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs text-muted-foreground">Tenggat:</span>
+                          <Input type="date" value={item.due_date ? item.due_date.slice(0, 10) : ""} onChange={(e) => setItemDue(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-due-${item.id}`} />
                         </div>
-                      )}
+                        {item.done && (
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs text-muted-foreground">Selesai:</span>
+                            <Input type="date" value={item.done_at ? item.done_at.slice(0, 10) : ""} onChange={(e) => setItemDate(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-date-${item.id}`} />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`item-docs-toggle-${item.id}`}><FileText className="h-3.5 w-3.5 mr-1" /> {(item.documents || []).length} <ChevronDown className="h-3.5 w-3.5 ml-1" /></Button></CollapsibleTrigger>
                     <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-4 w-4" /></button>
@@ -153,8 +174,9 @@ export default function TaskDetail() {
                 </Collapsible>
               ))}
               {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Belum ada item tugas.</p>}
-              <div className="flex gap-2 pt-1">
-                <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="Tambah item tugas..." data-testid="detail-item-input" />
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="Tambah item tugas..." className="flex-1" data-testid="detail-item-input" />
+                <Input type="date" value={newItemDue} onChange={(e) => setNewItemDue(e.target.value)} className="sm:w-40" title="Tenggat item (opsional)" data-testid="detail-item-due-input" />
                 <Button variant="secondary" onClick={addItem} data-testid="btn-detail-add-item"><Plus className="h-4 w-4" /></Button>
               </div>
             </div>
@@ -162,7 +184,7 @@ export default function TaskDetail() {
 
           {/* Komentar */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h3 className="text-sm font-semibold mb-4">Komentar ({(task.comments || []).length})</h3>
+            <SectionTitle icon={MessageSquare}>Komentar ({(task.comments || []).length})</SectionTitle>
             <div className="space-y-4 mb-4">
               {(task.comments || []).map((c) => (
                 <div key={c.id} className="flex gap-3">

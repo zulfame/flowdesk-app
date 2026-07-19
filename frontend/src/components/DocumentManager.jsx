@@ -6,8 +6,24 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Link2, Upload, Trash2, Download, CornerDownRight, Plus, Loader2, ExternalLink } from "lucide-react";
+import { FileText, Link2, Upload, Trash2, Download, CornerDownRight, Plus, Loader2, ExternalLink, Eye } from "lucide-react";
 import { toast } from "sonner";
+
+const EXT_IMG = ["png", "jpg", "jpeg", "gif", "webp", "bmp", "svg"];
+function previewType(name) {
+  if (!name) return null;
+  const ext = name.split("?")[0].split(".").pop().toLowerCase();
+  if (EXT_IMG.includes(ext)) return "image";
+  if (ext === "pdf") return "pdf";
+  return null;
+}
+function docPreview(doc) {
+  const name = doc.kind === "url" ? doc.url : doc.filename;
+  const type = previewType(name);
+  if (!type) return null;
+  const src = doc.kind === "url" ? doc.url : fileDownloadUrl(doc.file_id);
+  return { type, src, title: doc.kind === "url" ? (doc.label || doc.url) : doc.filename };
+}
 
 const STATUS_STYLE = {
   revisi: "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300",
@@ -35,6 +51,7 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
   const [urlOpen, setUrlOpen] = useState(false);
   const [urlForm, setUrlForm] = useState({ url: "", label: "" });
   const [respOpen, setRespOpen] = useState(false);
+  const [preview, setPreview] = useState(null);
   const [respForm, setRespForm] = useState({ docId: null, kind: "url", status: "revisi", url: "", label: "", note: "" });
   const respFileRef = useRef(null);
   const [respUploading, setRespUploading] = useState(false);
@@ -117,6 +134,9 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
               <div className="flex items-center gap-2">
                 <DocLink doc={doc} />
                 <div className="flex-1" />
+                {docPreview(doc) && (
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setPreview(docPreview(doc))} data-testid={`${idPrefix}-doc-preview-${doc.id}`}><Eye className="h-3.5 w-3.5" /></Button>
+                )}
                 {doc.kind === "url"
                   ? <a href={doc.url} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7"><ExternalLink className="h-3.5 w-3.5" /></Button></a>
                   : <a href={fileDownloadUrl(doc.file_id)} target="_blank" rel="noreferrer" download><Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button></a>}
@@ -193,6 +213,18 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
             <div className="space-y-1.5"><Label>Catatan (opsional)</Label><Textarea value={respForm.note} onChange={(e) => setRespForm({ ...respForm, note: e.target.value })} rows={2} data-testid={`${idPrefix}-resp-note`} /></div>
           </div>
           <DialogFooter><Button variant="ghost" onClick={() => setRespOpen(false)}>Batal</Button><Button onClick={saveResp} disabled={respUploading} data-testid={`${idPrefix}-resp-save`}>{respUploading ? "Mengunggah..." : "Simpan"}</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Preview dialog */}
+      <Dialog open={!!preview} onOpenChange={(o) => !o && setPreview(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader><DialogTitle className="truncate pr-6">{preview?.title}</DialogTitle></DialogHeader>
+          {preview?.type === "image" ? (
+            <img src={preview.src} alt={preview.title} className="max-h-[72vh] w-auto mx-auto rounded-lg" data-testid={`${idPrefix}-preview-image`} />
+          ) : (
+            <iframe src={preview?.src} title="pratinjau" className="w-full h-[72vh] rounded-lg border border-border" data-testid={`${idPrefix}-preview-pdf`} />
+          )}
         </DialogContent>
       </Dialog>
     </div>

@@ -53,6 +53,7 @@ class TaskItem(BaseModel):
     title: str
     done: bool = False
     done_at: Optional[str] = None
+    due_date: Optional[str] = None
     documents: List[SourceDoc] = []
 
 
@@ -161,6 +162,26 @@ def _norm_items(items) -> list:
     return out
 
 
+async def _notify_pic(task: dict):
+    """Notify the assigned PIC: in-app notification + best-effort email; returns wa.me URL if phone set."""
+    pic = task.get("pic") or {}
+    if isinstance(pic, str):
+        pic = {"name": pic}
+    name = pic.get("name")
+    if not name:
+        return None
+    msg = (f"Halo {name}, Anda ditugaskan sebagai PIC pada tugas '{task['title']}' "
+           f"(prioritas {task.get('priority', '-')}). Mohon ditindaklanjuti.")
+    await create_notification(pic.get("user_id"), "Tugas Ditugaskan",
+                              f"Tugas '{task['title']}' ditugaskan kepada Anda", "task", f"/tasks/{task['id']}")
+    if pic.get("email"):
+        settings = await get_settings()
+        _send_email(settings.get("email", {}), f"Penugasan Tugas: {task['title']}", msg, to_override=pic["email"])
+    if pic.get("phone"):
+        return whatsapp_url(pic["phone"], msg)
+    return None
+
+
 @router.get("")
 async def list_tasks(status: Optional[str] = None, pic: Optional[str] = None,
                      priority: Optional[str] = None, meeting_id: Optional[str] = None,
@@ -215,9 +236,7 @@ async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
     await db.tasks.insert_one(dict(doc))
     doc.pop("_id", None)
     await log_activity(db, user, "create", "task", doc["id"], f"Membuat tugas '{doc['title']}'")
-    pic_name = (doc.get("pic") or {}).get("name")
-    if pic_name:
-        await create_notification(None, "Tugas Baru", f"Tugas '{doc['title']}' ditugaskan ke {pic_name}", "task", f"/tasks/{doc['id']}")
+    doc["pic_wa_url"] = await _notify_pic(doc)
     return doc
 
 
@@ -246,7 +265,18 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     await db.tasks.update_one({"id": task_id}, {"$set": update})
     await log_activity(db, user, "update", "task", task_id, f"Memperbarui tugas '{existing['title']}'")
     result = await db.tasks.find_one({"id": task_id}, {"_id": 0})
-    return compute(result)
+    result = compute(result)
+
+    # Notify PIC if assignment changed
+    pic_wa_url = None
+    if body.pic is not None:
+        new_pic = update.get("pic") or {}
+        old_pic = existing.get("pic") or {}
+        old_pic = old_pic if isinstance(old_pic, dict) else {"name": old_pic}
+        if new_pic.get("name") and (new_pic.get("user_id") != old_pic.get("user_id") or new_pic.get("name") != old_pic.get("name")):
+            pic_wa_url = await _notify_pic(result)
+    result["pic_wa_url"] = pic_wa_url
+    return result
 
 
 @router.post("/{task_id}/comments")
