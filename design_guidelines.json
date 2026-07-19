@@ -1,0 +1,112 @@
+{
+  "project_name": "FlowDesk",
+  "app_type": "Internal Work Management System (SaaS Dashboard)",
+  "core_philosophy": "Simple for users, powerful behind the scenes. 5-minute learning curve. Max 3-click rule.",
+  "ui_language": "Indonesian",
+  "theme_strategy": {
+    "supported_modes": ["light", "dark"],
+    "archetype": "Soft Utility & Old Money Tech (Elegant, Professional, High Clarity)",
+    "aesthetic": "Rounded components, elegant soft shadows, high-density grids for data, clean uncluttered surfaces."
+  },
+  "typography": {
+    "fonts": {
+      "headings": "Cabinet Grotesk, sans-serif (Elegant, distinctive, slightly wide)",
+      "body": "Plus Jakarta Sans, sans-serif (Highly legible, modern, professional)"
+    },
+    "hierarchy": {
+      "h1_page_title": "text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50",
+      "h2_section_title": "text-xl sm:text-2xl font-semibold tracking-tight text-zinc-800 dark:text-zinc-100",
+      "h3_card_title": "text-lg font-medium text-zinc-900 dark:text-zinc-50",
+      "body_base": "text-sm sm:text-base leading-relaxed text-zinc-600 dark:text-zinc-400",
+      "overline_label": "text-xs font-bold uppercase tracking-[0.15em] text-zinc-500 dark:text-zinc-400"
+    },
+    "rules": [
+      "NEVER use generic fonts like Inter, Roboto, or Open Sans for headings.",
+      "Always use tight letter spacing (tracking-tight) for headings 24px and larger.",
+      "Use 'Plus Jakarta Sans' for all tabular data and dashboard metrics for crisp number alignment."
+    ]
+  },
+  "color_palette": {
+    "primary": {
+      "DEFAULT": "#4F46E5",
+      "hover": "#4338CA",
+      "light_bg": "#EEF2FF",
+      "dark_bg": "#3730A3"
+    },
+    "neutral_light": {
+      "background": "#FAFAFA",
+      "surface": "#FFFFFF",
+      "border": "#E4E4E7",
+      "text_main": "#18181B",
+      "text_muted": "#71717A"
+    },
+    "neutral_dark": {
+      "background": "#09090B",
+      "surface": "#18181B",
+      "border": "#27272A",
+      "text_main": "#FAFAFA",
+      "text_muted": "#A1A1AA"
+    },
+    "status_colors": {
+      "Draft": { "bg": "bg-slate-100 dark:bg-slate-900/50", "text": "text-slate-600 dark:text-slate-400", "border": "border-slate-200 dark:border-slate-800" },
+      "Pending": { "bg": "bg-amber-50 dark:bg-amber-900/30", "text": "text-amber-700 dark:text-amber-400", "border": "border-amber-200 dark:border-amber-800" },
+      "On Progress": { "bg": "bg-blue-50 dark:bg-blue-900/30", "text": "text-blue-700 dark:text-blue-400", "border": "border-blue-200 dark:border-blue-800" },
+      "Completed": { "bg": "bg-emerald-50 dark:bg-emerald-900/30", "text": "text-emerald-700 dark:text-emerald-400", "border": "border-emerald-200 dark:border-emerald-800" },
+      "Overdue": { "bg": "bg-rose-50 dark:bg-rose-900/30", "text": "text-rose-700 dark:text-rose-400", "border": "border-rose-200 dark:border-rose-800" },
+      "Cancelled": { "bg": "bg-red-50 dark:bg-red-900/30", "text": "text-red-700 dark:text-red-400", "border": "border-red-200 dark:border-red-800" },
+      "Archived": { "bg": "bg-zinc-100 dark:bg-zinc-900", "text": "text-zinc-600 dark:text-zinc-400", "border": "border-zinc-200 dark:border-zinc-800" }
+    }
+  },
+  "spacing_and_layout": {
+    "philosophy": "Desktop-first responsive. High density for dashboard data, generous breathing room for reading views (Notes, Meetings).",
+    "sidebar": "Fixed width 260px (desktop), highly collapsible. Unified navigation. Uses subtle background contrast from main content.",
+    "header": "Sticky top bar. MUST USE backdrop-blur-xl bg-white/80 (light) or bg-zinc-950/80 (dark). NEVER use fully transparent background.",
+    "content_area": "Padding p-6 to p-10 depending on screen size. Uses 'High Density Grid' (Bento grid logic: grid-cols-1 md:grid-cols-3 lg:grid-cols-4) for dashboard widgets.",
+    "container_radii": "Rounded components required. Cards: rounded-2xl. Buttons/Inputs: rounded-xl. Badges: rounded-full."
+  },
+  "component_styling": {
+    "cards": {
+      "light": "bg-white rounded-2xl border border-zinc-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)]",
+      "dark": "bg-zinc-900/50 rounded-2xl border border-zinc-800/50 shadow-[0_8px_30px_rgb(0,0,0,0.2)]",
+      "hover_effect": "transition-all duration-300 hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] hover:-translate-y-0.5"
+    },
+    "buttons": {
+      "primary": "bg-indigo-600 text-white rounded-xl font-medium shadow-sm hover:bg-indigo-700 hover:shadow active:scale-[0.98] transition-all",
+      "secondary": "bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-all",
+      "ghost": "bg-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-600 dark:text-zinc-300 rounded-xl transition-all"
+    },
+    "status_badges": {
+      "base": "inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border"
+    },
+    "progress_bars": {
+      "track": "bg-zinc-100 dark:bg-zinc-800 rounded-full h-2 overflow-hidden",
+      "fill": "bg-indigo-600 rounded-full h-full transition-all duration-500 ease-out"
+    }
+  },
+  "micro_interactions": {
+    "hover": "All interactive elements MUST have visible hover states. Lighter hue for backgrounds, explicit text color definitions.",
+    "focus": "Use focus:ring-2 focus:ring-indigo-500/50 focus:outline-none. High accessibility.",
+    "transitions": "Use specific transition properties (e.g., transition-colors, transition-transform) NEVER 'transition: all' to prevent breaking layout transforms.",
+    "active": "Buttons should have active:scale-[0.98] to feel tactile."
+  },
+  "iconography": "lucide-react (Standard, lightweight, matches the 'Soft Utility' aesthetic perfectly)",
+  "general_ui_ux_guidelines": [
+    "MAX 3-CLICK RULE: Every core action (Add Task, Log Meeting, Change Status) must be reachable within 3 clicks from anywhere.",
+    "ONE-CLICK CONVERSION: Action Items in Meetings must have a prominent, single-click 'Jadikan Tugas' (Convert to Task) button.",
+    "AUTOMATION VISIBILITY: Auto-calculated progress bars (from checklists) should have subtle animation when updating to show system intelligence.",
+    "UNIFIED CALENDAR: Use explicit color-coding dot indicators for Meetings vs Task Deadlines vs Reminders.",
+    "OPTICAL ALIGNMENT: Pad icons in buttons slightly off-center geometrically to achieve optical centering.",
+    "DATA ATTRIBUTES: All interactive elements MUST include `data-testid` (e.g., `data-testid=\"btn-tambah-tugas\"`).",
+    "EMPTY STATES: Never leave a data table or list blank. Provide beautiful, soft-illustrated empty states with clear 'Create New' CTAs."
+  ],
+  "instructions_to_main_agent": [
+    "You are building a React application using .js files (NOT .tsx). Adjust all Shadcn component integrations to plain JavaScript.",
+    "Implement Dual Theme (Dark/Light mode) strictly using Tailwind 'dark:' utility classes.",
+    "Follow the defined Status Colors meticulously. Badges must use the explicit bg/text/border combinations.",
+    "Translate all UI text to professional Indonesian (e.g., Dashboard, Manajemen Tugas, Rapat, Kalender, Pengaturan).",
+    "Ensure the Sidebar is collapsible but maintains icon visibility to maximize screen real estate for the 'High Density Grid' content.",
+    "For rich-text notes in Meeting Management, implement a clean toolbar (TipTap or standard Shadcn formatting buttons) without heavy borders.",
+    "Use 'sonner' for all toast notifications (e.g., 'Tugas berhasil disimpan').",
+    "DO NOT output standard centered generic templates. Ensure deep z-index layers with shadows, crisp borders, and refined padding (e.g., p-6 or p-8 inside cards)."
+  ]
+}
