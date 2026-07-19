@@ -209,7 +209,7 @@ sudo systemctl enable --now flowdesk-backend
 ```bash
 cd /opt/flowdesk/frontend
 # frontend/.env: REACT_APP_BACKEND_URL=https://domain-anda
-yarn install --frozen-lockfile
+yarn install
 yarn build      # hasil ada di frontend/build
 ```
 

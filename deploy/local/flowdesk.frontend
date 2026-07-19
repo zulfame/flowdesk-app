@@ -4,9 +4,11 @@ FROM node:20
 
 WORKDIR /app/frontend
 
-# Install dependency dulu (layer cache) — hanya rebuild bila lockfile berubah
-COPY frontend/package.json frontend/yarn.lock ./
-RUN yarn install --frozen-lockfile
+# Install dependency dulu (layer cache) — hanya rebuild bila lockfile berubah.
+# yarn.lock* = wildcard opsional: ikut ter-COPY bila ada; bila tidak ada
+# (mis. tak ter-commit ke git) build tetap jalan & lockfile dibuat otomatis.
+COPY frontend/package.json frontend/yarn.lock* ./
+RUN yarn install
 
 EXPOSE 3000
 CMD ["yarn", "start"]
