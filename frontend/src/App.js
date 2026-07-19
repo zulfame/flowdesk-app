@@ -19,6 +19,8 @@ import MeetingDetail from "@/pages/MeetingDetail";
 import MeetingForm from "@/pages/MeetingForm";
 import Calendar from "@/pages/Calendar";
 import Reminders from "@/pages/Reminders";
+import TimeSchedule from "@/pages/TimeSchedule";
+import TimeScheduleDetail from "@/pages/TimeScheduleDetail";
 import Notes from "@/pages/Notes";
 import Notifications from "@/pages/Notifications";
 import ActivityLog from "@/pages/ActivityLog";
@@ -42,6 +44,8 @@ const PAGES = [
   { path: "/meetings/:id/edit", element: <MeetingForm /> },
   { path: "/calendar", element: <Calendar /> },
   { path: "/reminders", element: <Reminders /> },
+  { path: "/time-schedule", element: <TimeSchedule /> },
+  { path: "/time-schedule/:id", element: <TimeScheduleDetail /> },
   { path: "/notes", element: <Notes /> },
   { path: "/notifications", element: <Notifications /> },
   { path: "/activity", element: <ActivityLog /> },

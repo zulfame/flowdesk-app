@@ -14,7 +14,7 @@ from helpers import new_id, now_iso
 from security import hash_password, verify_password
 from storage import init_storage
 
-from routers import auth, users, tasks, meetings, reminders, notes, attachments, feeds, aggregate, settings, profile, database, push, archive
+from routers import auth, users, tasks, meetings, reminders, notes, attachments, feeds, aggregate, settings, profile, database, push, archive, time_schedule
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("flowdesk")
@@ -42,6 +42,7 @@ api_router.include_router(profile.router)
 api_router.include_router(database.router)
 api_router.include_router(push.router)
 api_router.include_router(archive.router)
+api_router.include_router(time_schedule.router)
 
 app.include_router(api_router)
 

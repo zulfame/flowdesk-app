@@ -10,3 +10,9 @@ export function canManage(user, doc) {
 export function isTaskPic(user, task) {
   return user && task && (task.pic || {}).user_id === user.id;
 }
+
+export function hasPerm(user, key) {
+  if (!user) return false;
+  const perms = user.permissions || [];
+  return user.role === "admin" || perms.includes("*") || perms.includes(key);
+}

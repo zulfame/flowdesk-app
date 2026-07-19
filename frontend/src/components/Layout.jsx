@@ -7,11 +7,12 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, CheckSquare, CalendarDays, Bell, FileText, Video, ScrollText,
   Search, Sun, Moon, LogOut, Menu, X, Waves, ChevronDown, PanelLeftClose, PanelLeft,
-  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive,
+  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive, CalendarRange,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { hasPerm } from "@/lib/perms";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
@@ -31,6 +32,7 @@ const NAV_GROUPS = [
       { to: "/calendar", label: "Kalender", icon: CalendarDays, badge: "calendar_month_tasks" },
       { to: "/tasks", label: "Kelola Tugas", icon: CheckSquare, badge: "my_tasks" },
       { to: "/meetings", label: "Kelola Rapat", icon: Video },
+      { to: "/time-schedule", label: "Time Schedule", icon: CalendarRange, perm: "time_schedule" },
       { to: "/notes", label: "Kelola Catatan", icon: FileText },
       { to: "/reminders", label: "Ingatkan Saya", icon: Bell },
     ],
@@ -107,8 +109,8 @@ export default function Layout({ children }) {
   const goto = (path) => { setSearchOpen(false); setQuery(""); navigate(path); };
 
   const visibleGroups = NAV_GROUPS
-    .map((g) => ({ ...g }))
-    .filter((g) => !g.adminOnly || user?.role === "admin");
+    .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || hasPerm(user, it.perm)) }))
+    .filter((g) => (!g.adminOnly || user?.role === "admin") && g.items.length > 0);
 
   const SidebarContent = (
     <>

@@ -1,0 +1,35 @@
+{
+  "summary": "Tested new Time Schedule (Gantt) module end-to-end. Backend: 15/17 pytest passed. UI: all admin flows (create schedule, gantt render, add activity with PIC, set holidays tint, export xlsx download, convert-to-task with navigation to /tasks/:id and disabled convert button + link chip on return, delete schedule) work. Backend RBAC (member cannot GET/PUT/DELETE admin schedule, list filtered, member can view when set as PIC, member can create their own) all pass. HOWEVER 2 backend tests failed and reveal a real issue: existing seeded 'member' role in DB does NOT include 'time_schedule' permission — only DEFAULT_ROLES in code was updated but list_roles seeds only when collection is empty, so live member perms are ['reminder','calendar','task','meeting','note']. As a result member@flowdesk.com CANNOT see the Time Schedule menu in the sidebar (perm-gated), violating the requirement.",
+  "backend_issues": {
+    "critical": [
+      {"endpoint": "GET /api/roles + POST /api/auth/login (member)", "issue": "Existing 'member' (and likely 'manager') role in DB was seeded before time_schedule was added to DEFAULT_ROLES. Because list_roles only seeds when the collection is empty, the DB still returns permissions=['task','meeting','reminder','note','calendar'] for member. Consequently /api/auth/login and /api/auth/me return user.permissions without 'time_schedule' and the frontend menu is hidden. Confirmed via curl: member perms = ['reminder','calendar','task','meeting','note'].", "priority": "HIGH"}
+    ],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Sidebar menu (member)", "issue": "'Time Schedule' nav item hidden for member because backend does not return time_schedule perm (root cause: stale roles collection). Menu appears correctly for admin.", "affected_selectors": ["nav-time-schedule"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": ["/app/backend/tests/test_time_schedule.py", "/app/test_reports/pytest/time_schedule.xml"],
+  "action_items": [
+    "In backend startup (or list_roles): upsert DEFAULT_ROLES by name so permissions are merged/updated on every startup, or add a one-time migration that ensures 'time_schedule' is added to existing 'member' and 'manager' role documents. Example: for r in DEFAULT_ROLES: db.roles.update_one({'name': r['name']}, {'$setOnInsert': {'id': new_id()}, '$addToSet': {'permissions': {'$each': r['permissions']}}, '$set': {'label': r['label']}}, upsert=True).",
+    "After the fix, verify member login returns 'time_schedule' in permissions and can create own schedules from UI, and only sees their own in the list."
+  ],
+  "critical_code_review_comments": [
+    "routers/users.py list_roles(): DEFAULT_ROLES only seeds when db.roles is empty. Any change to DEFAULT_ROLES.permissions is invisible in existing environments — bug-prone. Should upsert/merge on startup.",
+    "routers/time_schedule.py: activities are fully replaced by _norm_activities on every PUT; that is fine but the PUT endpoint requires can_manage (creator-or-admin), so a member who is only a PIC cannot edit an activity they own. This matches the spec (RBAC by creator) but worth calling out — spec says 'Member sees only schedules they created or where they are PIC', view-only for PIC is enforced.",
+    "TimeScheduleDetail.jsx: schedule detail is fetched via api.get on mount; on convert we navigate away before setting the linked task_id in state, but come back via go_back(). Acceptable.",
+    "Export endpoint uses openpyxl and returns 200; content-type verified as spreadsheetml.sheet."
+  ],
+  "updated_files": ["/app/backend/tests/test_time_schedule.py (new)"],
+  "success_rate": {"backend": "88% (15/17)", "frontend": "100% (admin flows)"},
+  "test_credentials": "admin@flowdesk.com/admin123 (admin), member@flowdesk.com/member123 (member)",
+  "seed_data_creation": "Backend tests create TEST_* schedules and clean up. UI test created and deleted TEST_UI_TS. One transient task created via convert flow was NOT deleted (it stays linked); main agent can decide to clean up /api/tasks/<id> if needed. All my other test data is cleaned.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "After main agent fixes the roles-seeding upsert, re-run /app/backend/tests/test_time_schedule.py — the two failing tests (test_login_permissions_member, test_default_role_member_includes_time_schedule) should then pass. Also do a UI smoke as member@flowdesk.com to confirm nav-time-schedule is visible and member-scoped list works.",
+  "rca of the issue": "list_roles in /app/backend/routers/users.py only inserts DEFAULT_ROLES if the db.roles collection is EMPTY (line 203: 'if not roles'). The 'member' and 'manager' roles were seeded in an earlier iteration before 'time_schedule' was added to DEFAULT_ROLES.permissions. Because the seed is not idempotent/merging, the DB documents were never updated. Fix: change list_roles (or add a startup hook) to upsert each default role and $addToSet permissions."
+}

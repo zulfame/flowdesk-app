@@ -29,6 +29,20 @@ def _public_user(u: dict) -> dict:
     return u
 
 
+async def _with_perms(u: dict) -> dict:
+    """Kembalikan user + daftar izin efektif (gabungan izin peran) untuk gating menu di frontend."""
+    u = _public_user(u)
+    own = set(u.get("permissions") or [])
+    if u.get("role") == "admin" or "*" in own:
+        u["permissions"] = ["*"]
+        return u
+    role = await db.roles.find_one({"name": u.get("role")}, {"_id": 0, "permissions": 1})
+    if role:
+        own |= set(role.get("permissions") or [])
+    u["permissions"] = list(own)
+    return u
+
+
 @router.post("/register")
 async def register(body: RegisterBody):
     email = body.email.lower()
@@ -50,7 +64,7 @@ async def register(body: RegisterBody):
     await db.users.insert_one(user)
     await log_activity(db, user, "create", "user", user["id"], f"Registrasi pengguna {email}")
     token = create_token(user["id"], email)
-    return {"token": token, "user": _public_user(user)}
+    return {"token": token, "user": await _with_perms(user)}
 
 
 @router.post("/login")
@@ -79,12 +93,12 @@ async def login(body: LoginBody, request: Request):
     await db.login_attempts.delete_one({"identifier": identifier})
     await log_activity(db, user, "login", "auth", user["id"], f"{email} masuk")
     token = create_token(user["id"], email)
-    return {"token": token, "user": _public_user(user)}
+    return {"token": token, "user": await _with_perms(user)}
 
 
 @router.get("/me")
 async def me(user: dict = Depends(get_current_user)):
-    return user
+    return await _with_perms(user)
 
 
 @router.post("/logout")

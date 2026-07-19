@@ -15,6 +15,7 @@ DEFAULT_IMPORT_PASSWORD = "flowdesk123"
 PERMISSION_CATALOG = [
     {"key": "task", "label": "Kelola Tugas"},
     {"key": "meeting", "label": "Kelola Rapat"},
+    {"key": "time_schedule", "label": "Time Schedule"},
     {"key": "note", "label": "Kelola Catatan"},
     {"key": "reminder", "label": "Ingatkan Saya"},
     {"key": "calendar", "label": "Kalender"},
@@ -29,8 +30,8 @@ PERMISSION_CATALOG = [
 
 DEFAULT_ROLES = [
     {"name": "admin", "label": "Administrator", "permissions": ["*"]},
-    {"name": "manager", "label": "Manajer", "permissions": ["task", "meeting", "reminder", "note", "calendar", "report"]},
-    {"name": "member", "label": "Anggota", "permissions": ["task", "meeting", "reminder", "note", "calendar"]},
+    {"name": "manager", "label": "Manajer", "permissions": ["task", "meeting", "time_schedule", "reminder", "note", "calendar", "report"]},
+    {"name": "member", "label": "Anggota", "permissions": ["task", "meeting", "time_schedule", "reminder", "note", "calendar"]},
 ]
 
 
