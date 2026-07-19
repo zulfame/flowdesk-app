@@ -7,27 +7,60 @@ from db import db
 from helpers import new_id, now_iso, log_activity
 from security import get_current_user
 from services import delete_task
-from notifications import create_notification
+from notifications import create_notification, get_settings, _send_email, whatsapp_url
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
 
 MANUAL_STATUSES = {"Draft", "Cancelled", "Archived"}
 
 
-class ChecklistItem(BaseModel):
+class Requester(BaseModel):
+    name: Optional[str] = ""
+    department: Optional[str] = ""
+    phone: Optional[str] = ""
+    email: Optional[str] = ""
+
+
+class DocResponse(BaseModel):
     id: Optional[str] = None
-    text: str
+    kind: str = "file"           # file | url
+    file_id: Optional[str] = None
+    filename: Optional[str] = None
+    url: Optional[str] = None
+    label: Optional[str] = None
+    status: str = "revisi"       # revisi | final
+    note: Optional[str] = ""
+    created_at: Optional[str] = None
+
+
+class SourceDoc(BaseModel):
+    id: Optional[str] = None
+    kind: str = "file"           # file | url
+    file_id: Optional[str] = None
+    filename: Optional[str] = None
+    url: Optional[str] = None
+    label: Optional[str] = None
+    responses: List[DocResponse] = []
+    created_at: Optional[str] = None
+
+
+class TaskItem(BaseModel):
+    id: Optional[str] = None
+    title: str
     done: bool = False
+    done_at: Optional[str] = None
+    documents: List[SourceDoc] = []
 
 
 class TaskCreate(BaseModel):
     title: str
     description: Optional[str] = ""
-    requester: Optional[str] = ""
+    requester: Optional[Requester] = None
     pic: Optional[str] = ""
     priority: str = "Medium"
     deadline: Optional[str] = None
-    checklist: List[ChecklistItem] = []
+    items: List[TaskItem] = []
+    documents: List[SourceDoc] = []
     status: str = "Pending"
     meeting_id: Optional[str] = None
 
@@ -35,11 +68,12 @@ class TaskCreate(BaseModel):
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
     description: Optional[str] = None
-    requester: Optional[str] = None
+    requester: Optional[Requester] = None
     pic: Optional[str] = None
     priority: Optional[str] = None
     deadline: Optional[str] = None
-    checklist: Optional[List[ChecklistItem]] = None
+    items: Optional[List[TaskItem]] = None
+    documents: Optional[List[SourceDoc]] = None
     status: Optional[str] = None
 
 
@@ -47,10 +81,18 @@ class CommentBody(BaseModel):
     text: str
 
 
+class BroadcastBody(BaseModel):
+    message: Optional[str] = None
+    channels: List[str] = ["email", "whatsapp"]
+
+
 def compute(task: dict) -> dict:
-    checklist = task.get("checklist", [])
-    total = len(checklist)
-    done = sum(1 for c in checklist if c.get("done"))
+    items = task.get("items")
+    if items is None:
+        # backward compat with old 'checklist'
+        items = task.get("checklist", [])
+    total = len(items)
+    done = sum(1 for c in items if c.get("done"))
     progress = round(done / total * 100) if total else (100 if task.get("status") == "Completed" else 0)
     task["progress"] = progress
 
@@ -77,12 +119,39 @@ def compute(task: dict) -> dict:
     return task
 
 
-def _norm_checklist(items) -> list:
+def _norm_docs(docs) -> list:
     out = []
-    for c in items:
-        d = c.model_dump() if hasattr(c, "model_dump") else dict(c)
+    for doc in docs or []:
+        d = doc.model_dump() if hasattr(doc, "model_dump") else dict(doc)
         if not d.get("id"):
             d["id"] = new_id()
+        if not d.get("created_at"):
+            d["created_at"] = now_iso()
+        responses = []
+        for r in d.get("responses", []) or []:
+            rd = r.model_dump() if hasattr(r, "model_dump") else dict(r)
+            if not rd.get("id"):
+                rd["id"] = new_id()
+            if not rd.get("created_at"):
+                rd["created_at"] = now_iso()
+            responses.append(rd)
+        d["responses"] = responses
+        out.append(d)
+    return out
+
+
+def _norm_items(items) -> list:
+    out = []
+    for it in items or []:
+        d = it.model_dump() if hasattr(it, "model_dump") else dict(it)
+        if not d.get("id"):
+            d["id"] = new_id()
+        d["documents"] = _norm_docs(d.get("documents", []))
+        if d.get("done"):
+            if not d.get("done_at"):
+                d["done_at"] = now_iso()
+        else:
+            d["done_at"] = None
         out.append(d)
     return out
 
@@ -120,7 +189,9 @@ async def get_task(task_id: str, user: dict = Depends(get_current_user)):
 @router.post("")
 async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
     doc = body.model_dump()
-    doc["checklist"] = _norm_checklist(body.checklist)
+    doc["requester"] = (body.requester.model_dump() if body.requester else {"name": "", "department": "", "phone": "", "email": ""})
+    doc["items"] = _norm_items(body.items)
+    doc["documents"] = _norm_docs(body.documents)
     doc.update({
         "id": new_id(),
         "comments": [],
@@ -145,8 +216,12 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     if not existing:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
     update = {k: v for k, v in body.model_dump().items() if v is not None}
-    if "checklist" in update:
-        update["checklist"] = _norm_checklist(body.checklist)
+    if "items" in update:
+        update["items"] = _norm_items(body.items)
+    if "documents" in update:
+        update["documents"] = _norm_docs(body.documents)
+    if body.requester is not None:
+        update["requester"] = body.requester.model_dump()
     update["updated_at"] = now_iso()
     merged = {**existing, **update}
     merged = compute(merged)
@@ -170,6 +245,34 @@ async def add_comment(task_id: str, body: CommentBody, user: dict = Depends(get_
     await db.tasks.update_one({"id": task_id}, {"$push": {"comments": comment}})
     await log_activity(db, user, "comment", "task", task_id, f"Berkomentar pada '{task['title']}'")
     return comment
+
+
+@router.post("/{task_id}/broadcast")
+async def broadcast_task(task_id: str, body: BroadcastBody, user: dict = Depends(get_current_user)):
+    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    if not task:
+        raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
+    task = compute(task)
+    req = task.get("requester") or {}
+    if isinstance(req, str):
+        req = {"name": req}
+    message = body.message or (
+        f"Halo {req.get('name', '')}, update tugas '{task['title']}': "
+        f"status {task['status']}, progres {task['progress']}%."
+    )
+    result = {"wa_url": None, "email_sent": False}
+
+    if "whatsapp" in body.channels and req.get("phone"):
+        result["wa_url"] = whatsapp_url(req["phone"], message)
+
+    if "email" in body.channels and req.get("email"):
+        settings = await get_settings()
+        _send_email(settings.get("email", {}), f"Pemberitahuan Tugas: {task['title']}", message, to_override=req["email"])
+        result["email_sent"] = True
+
+    await create_notification(None, "Broadcast Tugas", f"Pemberitahuan tugas '{task['title']}' dikirim ke pemberi tugas", "task", f"/tasks/{task_id}")
+    await log_activity(db, user, "update", "task", task_id, f"Mengirim broadcast pemberitahuan untuk '{task['title']}'")
+    return result
 
 
 @router.delete("/{task_id}")

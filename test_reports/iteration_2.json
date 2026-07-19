@@ -1,0 +1,31 @@
+{
+  "summary": "Iteration 2 (Task rework: items+per-item docs+auto done_at+progress, structured requester, task/item source-docs with revisi/final response documents, broadcast wa_url+email). Backend: 27/27 pytest passed. Frontend E2E: full flow passed (create task with requester, PIC, 2 items; open detail; verify Pemberi Tugas card shows all 4 fields; broadcast button enabled; check item -> 50% progress + date input appears + editable; task-level URL doc + Final response add/delete/doc delete; item-level URL doc via item-<id>-doc-add-url; click Kirim Pemberitahuan opens wa.me tab and success toast shows).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "DocumentManager responses", "issues": ["React 'unique key' warning while rendering doc.responses right after add — new response lacks id until the PUT response is merged back into state. Not blocking. Fix: use a fallback key like r.id || `${doc.id}-${idx}` in DocumentManager response .map, OR ensure onChange consumers use the PUT response's normalized responses immediately (TaskDetail already does this via patch() -> setTask(data), so warning only flashes for one render)."]}
+    ]
+  },
+  "test_report_links": ["/app/backend/tests/backend_test.py", "/app/test_reports/pytest/pytest_results.xml"],
+  "action_items": [
+    "(Optional cosmetic) DocumentManager.jsx line 129: change key={r.id} to key={r.id || `${doc.id}-r-${idx}`} to silence React key warning on the transient optimistic render."
+  ],
+  "critical_code_review_comments": [
+    "routers/tasks.py compute() correctly falls back to legacy 'checklist' key for migrated tasks — good.",
+    "_norm_items always clears done_at when done=false — matches spec.",
+    "broadcast endpoint returns email_sent=True whenever requester.email exists regardless of SMTP send success — acceptable per spec ('best-effort'), but consider returning the actual send-attempt outcome so UI can display a warning when SMTP is unconfigured.",
+    "whatsapp_url uses wa.me (correct); browser opens api.whatsapp.com only because wa.me itself redirects — not a bug.",
+    "DocumentManager: label on Add-URL Dialog and Add-Response Dialog use idPrefix-scoped test ids which allow both task-level and item-level managers to coexist without selector collisions — good design.",
+    "TaskDetail patch(): reads full server response and merges attachments — avoids the stale-id class of bugs that affected MeetingDetail in iteration 1. Meetings should apply the same pattern (still open from previous iteration action item)."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py (rewritten for new Task model + broadcast + cascade)"],
+  "success_rate": {"backend": "100% (27/27)", "frontend": "100% (all requested E2E flows OK)"},
+  "test_credentials": "admin@flowdesk.com / admin123 (works)",
+  "seed_data_creation": "All test data is TEST_/E2E_ prefixed and cleaned up post-run.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "backend_test.py now covers new items model, per-item docs & item.done_at auto/manual, task-doc responses (revisi/final), broadcast wa_url+email_sent + no-contact case, delete cascades attachments. Meeting-convert 'fresh action item lacks id' bug from iteration 1 remains OPEN unless main agent fixed MeetingDetail.updateActionItems to consume PUT response.",
+  "rca of the issue": "N/A - all iteration 2 acceptance criteria met."
+}

@@ -7,21 +7,21 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, CheckSquare, Trash2, X, Video } from "lucide-react";
+import { Plus, CheckSquare, X, Video, User } from "lucide-react";
 import { toast } from "sonner";
 
 const STATUS_FILTERS = ["Semua", "Pending", "On Progress", "Completed", "Overdue"];
 const STATUS_LABEL = { Semua: "Semua", Pending: "Menunggu", "On Progress": "Berjalan", Completed: "Selesai", Overdue: "Terlambat" };
+const EMPTY_REQ = { name: "", department: "", phone: "", email: "" };
 
 export function TaskDialog({ open, onOpenChange, task, onSaved }) {
   const editing = !!task;
-  const [form, setForm] = useState({ title: "", description: "", requester: "", pic: "", priority: "Medium", deadline: "", status: "Pending" });
-  const [checklist, setChecklist] = useState([]);
+  const [form, setForm] = useState({ title: "", description: "", pic: "", priority: "Medium", deadline: "", status: "Pending" });
+  const [requester, setRequester] = useState(EMPTY_REQ);
+  const [items, setItems] = useState([]);
   const [newItem, setNewItem] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -29,14 +29,16 @@ export function TaskDialog({ open, onOpenChange, task, onSaved }) {
     if (open) {
       if (task) {
         setForm({
-          title: task.title || "", description: task.description || "", requester: task.requester || "",
-          pic: task.pic || "", priority: task.priority || "Medium",
-          deadline: task.deadline ? task.deadline.slice(0, 10) : "", status: task.status,
+          title: task.title || "", description: task.description || "", pic: task.pic || "",
+          priority: task.priority || "Medium", deadline: task.deadline ? task.deadline.slice(0, 10) : "", status: task.status,
         });
-        setChecklist(task.checklist || []);
+        const req = task.requester;
+        setRequester(typeof req === "string" ? { ...EMPTY_REQ, name: req } : { ...EMPTY_REQ, ...(req || {}) });
+        setItems(task.items || []);
       } else {
-        setForm({ title: "", description: "", requester: "", pic: "", priority: "Medium", deadline: "", status: "Pending" });
-        setChecklist([]);
+        setForm({ title: "", description: "", pic: "", priority: "Medium", deadline: "", status: "Pending" });
+        setRequester(EMPTY_REQ);
+        setItems([]);
       }
       setNewItem("");
     }
@@ -44,29 +46,22 @@ export function TaskDialog({ open, onOpenChange, task, onSaved }) {
 
   const addItem = () => {
     if (!newItem.trim()) return;
-    setChecklist([...checklist, { text: newItem.trim(), done: false }]);
+    setItems([...items, { title: newItem.trim(), done: false }]);
     setNewItem("");
   };
 
   const save = async () => {
     if (!form.title.trim()) { toast.error("Judul wajib diisi"); return; }
     setSaving(true);
-    const payload = {
-      ...form,
-      deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
-      checklist,
-    };
+    const payload = { ...form, requester, items, deadline: form.deadline ? new Date(form.deadline).toISOString() : null };
     try {
       if (editing) await api.put(`/tasks/${task.id}`, payload);
       else await api.post("/tasks", payload);
       toast.success(editing ? "Tugas diperbarui" : "Tugas berhasil dibuat");
       onOpenChange(false);
       onSaved && onSaved();
-    } catch (e) {
-      toast.error(apiError(e));
-    } finally {
-      setSaving(false);
-    }
+    } catch (e) { toast.error(apiError(e)); }
+    finally { setSaving(false); }
   };
 
   return (
@@ -74,60 +69,58 @@ export function TaskDialog({ open, onOpenChange, task, onSaved }) {
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{editing ? "Ubah Tugas" : "Tugas Baru"}</DialogTitle></DialogHeader>
         <div className="space-y-4 py-2">
-          <div className="space-y-1.5">
-            <Label>Judul *</Label>
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Siapkan laporan bulanan" data-testid="task-title-input" />
+          <div className="space-y-1.5"><Label>Judul *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Siapkan laporan bulanan" data-testid="task-title-input" /></div>
+          <div className="space-y-1.5"><Label>Deskripsi</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Detail pekerjaan..." rows={2} data-testid="task-desc-input" /></div>
+
+          <div className="rounded-xl border border-border p-3 space-y-3">
+            <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5"><User className="h-3.5 w-3.5" /> Pemberi Tugas</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Nama</Label><Input value={requester.name} onChange={(e) => setRequester({ ...requester, name: e.target.value })} data-testid="req-name-input" /></div>
+              <div className="space-y-1.5"><Label>Departemen</Label><Input value={requester.department} onChange={(e) => setRequester({ ...requester, department: e.target.value })} data-testid="req-dept-input" /></div>
+              <div className="space-y-1.5"><Label>No. HP</Label><Input value={requester.phone} onChange={(e) => setRequester({ ...requester, phone: e.target.value })} placeholder="628123..." data-testid="req-phone-input" /></div>
+              <div className="space-y-1.5"><Label>Email</Label><Input value={requester.email} onChange={(e) => setRequester({ ...requester, email: e.target.value })} data-testid="req-email-input" /></div>
+            </div>
           </div>
-          <div className="space-y-1.5">
-            <Label>Deskripsi</Label>
-            <Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Detail pekerjaan..." rows={3} data-testid="task-desc-input" />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Pemohon</Label><Input value={form.requester} onChange={(e) => setForm({ ...form, requester: e.target.value })} placeholder="Nama" data-testid="task-requester-input" /></div>
-            <div className="space-y-1.5"><Label>PIC</Label><Input value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} placeholder="Penanggung jawab" data-testid="task-pic-input" /></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5"><Label>PIC</Label><Input value={form.pic} onChange={(e) => setForm({ ...form, pic: e.target.value })} placeholder="Pelaksana" data-testid="task-pic-input" /></div>
             <div className="space-y-1.5">
               <Label>Prioritas</Label>
               <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
                 <SelectTrigger data-testid="task-priority-select"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Low">Rendah</SelectItem>
-                  <SelectItem value="Medium">Sedang</SelectItem>
-                  <SelectItem value="High">Tinggi</SelectItem>
-                  <SelectItem value="Urgent">Mendesak</SelectItem>
-                </SelectContent>
+                <SelectContent><SelectItem value="Low">Rendah</SelectItem><SelectItem value="Medium">Sedang</SelectItem><SelectItem value="High">Tinggi</SelectItem><SelectItem value="Urgent">Mendesak</SelectItem></SelectContent>
               </Select>
             </div>
             <div className="space-y-1.5"><Label>Tenggat</Label><Input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} data-testid="task-deadline-input" /></div>
           </div>
+
           {editing && (
             <div className="space-y-1.5">
               <Label>Status</Label>
               <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
                 <SelectTrigger data-testid="task-status-select"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {["Draft", "Pending", "On Progress", "Completed", "Overdue", "Cancelled", "Archived"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                </SelectContent>
+                <SelectContent>{["Draft", "Pending", "On Progress", "Completed", "Overdue", "Cancelled", "Archived"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">Status & progres dihitung otomatis dari checklist. Ubah manual hanya untuk Draf/Batal/Arsip.</p>
+              <p className="text-xs text-muted-foreground">Progres & status dihitung otomatis dari item tugas.</p>
             </div>
           )}
+
           <div className="space-y-2">
-            <Label>Checklist ({checklist.filter((c) => c.done).length}/{checklist.length})</Label>
+            <Label>Item Tugas ({items.filter((c) => c.done).length}/{items.length})</Label>
             <div className="space-y-2">
-              {checklist.map((item, idx) => (
+              {items.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <input type="checkbox" checked={item.done} onChange={() => setChecklist(checklist.map((c, i) => i === idx ? { ...c, done: !c.done } : c))} className="h-4 w-4 rounded accent-indigo-600" data-testid={`checklist-toggle-${idx}`} />
-                  <span className={`flex-1 text-sm ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.text}</span>
-                  <button onClick={() => setChecklist(checklist.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
+                  <span className="h-4 w-4 rounded border border-border shrink-0" />
+                  <span className="flex-1 text-sm">{item.title}</span>
+                  <button onClick={() => setItems(items.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-destructive"><X className="h-4 w-4" /></button>
                 </div>
               ))}
             </div>
             <div className="flex gap-2">
-              <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addItem())} placeholder="Tambah item checklist..." data-testid="checklist-input" />
-              <Button type="button" variant="secondary" onClick={addItem} data-testid="btn-add-checklist"><Plus className="h-4 w-4" /></Button>
+              <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addItem())} placeholder="Tambah item tugas..." data-testid="item-input" />
+              <Button type="button" variant="secondary" onClick={addItem} data-testid="btn-add-item"><Plus className="h-4 w-4" /></Button>
             </div>
+            <p className="text-xs text-muted-foreground">Dokumen sumber & tanggal ceklis dapat dikelola di halaman detail tugas.</p>
           </div>
         </div>
         <DialogFooter>
@@ -149,10 +142,8 @@ export default function Tasks() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const { data } = await api.get("/tasks");
-      setTasks(data);
-    } catch (e) { toast.error(apiError(e)); }
+    try { const { data } = await api.get("/tasks"); setTasks(data); }
+    catch (e) { toast.error(apiError(e)); }
     finally { setLoading(false); }
   }, []);
 
@@ -160,29 +151,24 @@ export default function Tasks() {
   useEffect(() => { if (params.get("new")) { setDialogOpen(true); params.delete("new"); setParams(params, { replace: true }); } }, [params, setParams]);
 
   const filtered = filter === "Semua" ? tasks : tasks.filter((t) => t.status === filter);
+  const reqName = (t) => (typeof t.requester === "string" ? t.requester : t.requester?.name);
 
   return (
     <div>
       <PageHeader title="Manajemen Tugas" subtitle="Setiap tugas mewakili satu permintaan pekerjaan.">
-        <Button onClick={() => setDialogOpen(true)} className="rounded-xl" data-testid="btn-tambah-tugas">
-          <Plus className="h-4 w-4 mr-1.5" /> Tugas Baru
-        </Button>
+        <Button onClick={() => setDialogOpen(true)} className="rounded-xl" data-testid="btn-tambah-tugas"><Plus className="h-4 w-4 mr-1.5" /> Tugas Baru</Button>
       </PageHeader>
 
       <Tabs value={filter} onValueChange={setFilter} className="mb-6">
         <TabsList className="rounded-xl">
-          {STATUS_FILTERS.map((f) => (
-            <TabsTrigger key={f} value={f} className="rounded-lg" data-testid={`filter-${f.toLowerCase().replace(/\s/g, "-")}`}>{STATUS_LABEL[f]}</TabsTrigger>
-          ))}
+          {STATUS_FILTERS.map((f) => <TabsTrigger key={f} value={f} className="rounded-lg" data-testid={`filter-${f.toLowerCase().replace(/\s/g, "-")}`}>{STATUS_LABEL[f]}</TabsTrigger>)}
         </TabsList>
       </Tabs>
 
       {loading ? (
         <div className="grid gap-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 rounded-2xl bg-secondary/50 animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft">
-          <EmptyState icon={CheckSquare} title="Belum ada tugas" description="Buat tugas pertama untuk mulai mengatur pekerjaan Anda." action={<Button onClick={() => setDialogOpen(true)} data-testid="btn-empty-new-task"><Plus className="h-4 w-4 mr-1.5" /> Tugas Baru</Button>} />
-        </Card>
+        <Card className="rounded-2xl shadow-soft"><EmptyState icon={CheckSquare} title="Belum ada tugas" description="Buat tugas pertama untuk mulai mengatur pekerjaan Anda." action={<Button onClick={() => setDialogOpen(true)} data-testid="btn-empty-new-task"><Plus className="h-4 w-4 mr-1.5" /> Tugas Baru</Button>} /></Card>
       ) : (
         <div className="grid gap-3">
           {filtered.map((t) => (
@@ -194,7 +180,7 @@ export default function Tasks() {
                     <PriorityBadge priority={t.priority} />
                     {t.meeting_id && <span className="inline-flex items-center gap-1 text-xs text-primary"><Video className="h-3 w-3" /> Rapat</span>}
                   </div>
-                  {t.description && <p className="text-sm text-muted-foreground line-clamp-1 mb-3">{t.description}</p>}
+                  {reqName(t) && <p className="text-xs text-muted-foreground mb-2">Pemberi: {reqName(t)}</p>}
                   <div className="flex items-center gap-3 max-w-md">
                     <ProgressBar value={t.progress} className="flex-1" />
                     <span className="text-xs text-muted-foreground font-medium w-9 text-right">{t.progress}%</span>

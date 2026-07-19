@@ -29,12 +29,12 @@ def _send_telegram(cfg: dict, title: str, message: str):
         pass
 
 
-def _send_email(cfg: dict, title: str, message: str):
+def _send_email(cfg: dict, title: str, message: str, to_override: str = None):
     host = cfg.get("smtp_host")
     port = cfg.get("smtp_port")
     user = cfg.get("smtp_user")
     password = cfg.get("smtp_password")
-    to_addr = cfg.get("notify_email") or user
+    to_addr = to_override or cfg.get("notify_email") or user
     if not (host and port and user and password and to_addr):
         return
     try:
