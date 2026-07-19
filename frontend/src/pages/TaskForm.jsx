@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
-import { PageHeader } from "@/components/common";
+import { PageHeader, SectionTitle } from "@/components/common";
 import UserSelect from "@/components/UserSelect";
 import DocumentManager from "@/components/DocumentManager";
 import { Card } from "@/components/ui/card";
@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Plus, X, User, UserCog, Phone, Mail, Building2, Loader2, Save } from "lucide-react";
+import { ArrowLeft, Plus, X, User, UserCog, Phone, Mail, Building2, Loader2, Save, ClipboardList, ListChecks } from "lucide-react";
 import { toast } from "sonner";
 
 function genId() {
@@ -108,48 +108,45 @@ export default function TaskForm() {
   const cancelTo = editing ? `/tasks/${id}` : "/tasks";
 
   return (
-    <div>
+    <div className="pb-24">
       <button onClick={() => navigate(cancelTo)} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition-colors" data-testid="btn-back">
         <ArrowLeft className="h-4 w-4" /> Kembali
       </button>
 
-      <PageHeader title={editing ? "Ubah Tugas" : "Tugas Baru"} subtitle="Paparkan tugas selengkap mungkin sejak awal.">
-        <Button variant="ghost" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">Batal</Button>
-        <Button onClick={save} disabled={saving} className="rounded-xl px-6" data-testid="btn-save-task">
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan
-        </Button>
-      </PageHeader>
+      <PageHeader title={editing ? "Ubah Tugas" : "Tugas Baru"} subtitle="Paparkan tugas selengkap mungkin sejak awal." />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft space-y-4">
-            <h2 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Informasi Tugas</h2>
-            <div className="space-y-1.5"><Label>Judul *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Siapkan laporan bulanan" className="h-11" data-testid="task-title-input" /></div>
-            <div className="space-y-1.5"><Label>Deskripsi</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={5} placeholder="Detail pekerjaan, konteks, dan ekspektasi..." data-testid="task-desc-input" /></div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="space-y-1.5">
-                <Label>Prioritas</Label>
-                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                  <SelectTrigger className="h-11" data-testid="task-priority-select"><SelectValue /></SelectTrigger>
-                  <SelectContent><SelectItem value="Low">Rendah</SelectItem><SelectItem value="Medium">Sedang</SelectItem><SelectItem value="High">Tinggi</SelectItem><SelectItem value="Urgent">Mendesak</SelectItem></SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5"><Label>Tenggat</Label><Input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} className="h-11" data-testid="task-deadline-input" /></div>
-              {editing && (
+          <Card className="p-6 rounded-2xl shadow-soft">
+            <SectionTitle icon={ClipboardList}>Informasi Tugas</SectionTitle>
+            <div className="space-y-4">
+              <div className="space-y-1.5"><Label>Judul *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Siapkan laporan bulanan" className="h-11" data-testid="task-title-input" /></div>
+              <div className="space-y-1.5"><Label>Deskripsi</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={5} placeholder="Detail pekerjaan, konteks, dan ekspektasi..." data-testid="task-desc-input" /></div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div className="space-y-1.5">
-                  <Label>Status</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                    <SelectTrigger className="h-11" data-testid="task-status-select"><SelectValue /></SelectTrigger>
-                    <SelectContent>{["Draft", "Pending", "On Progress", "Completed", "Overdue", "Cancelled", "Archived"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                  <Label>Prioritas</Label>
+                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                    <SelectTrigger className="h-11" data-testid="task-priority-select"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="Low">Rendah</SelectItem><SelectItem value="Medium">Sedang</SelectItem><SelectItem value="High">Tinggi</SelectItem><SelectItem value="Urgent">Mendesak</SelectItem></SelectContent>
                   </Select>
                 </div>
-              )}
+                <div className="space-y-1.5"><Label>Tenggat</Label><Input type="date" value={form.deadline} onChange={(e) => setForm({ ...form, deadline: e.target.value })} className="h-11" data-testid="task-deadline-input" /></div>
+                {editing && (
+                  <div className="space-y-1.5">
+                    <Label>Status</Label>
+                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                      <SelectTrigger className="h-11" data-testid="task-status-select"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Draft", "Pending", "On Progress", "Completed", "Overdue", "Cancelled", "Archived"].map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
             </div>
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft space-y-3">
-            <h2 className="text-sm font-semibold">Item Tugas ({items.filter((i) => i.done).length}/{items.length})</h2>
+          <Card className="p-6 rounded-2xl shadow-soft">
+            <SectionTitle icon={ListChecks}>Item Tugas ({items.filter((i) => i.done).length}/{items.length})</SectionTitle>
             <div className="space-y-2">
               {items.map((item, idx) => (
                 <div key={item.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-border">
@@ -160,38 +157,40 @@ export default function TaskForm() {
               ))}
               {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Belum ada item tugas.</p>}
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mt-3">
               <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addItem())} placeholder="Tambah item tugas..." className="h-11" data-testid="item-input" />
               <Button type="button" variant="secondary" onClick={addItem} className="h-11" data-testid="btn-add-item"><Plus className="h-4 w-4" /></Button>
             </div>
-          </Card>
-
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <DocumentManager taskId={taskId} documents={documents} onChange={setDocuments} label="Dokumen Sumber" idPrefix="task" />
           </Card>
         </div>
 
         {/* Right column */}
         <div className="space-y-6">
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Pemberi Tugas</h2>
+            <SectionTitle icon={User}>Pemberi Tugas</SectionTitle>
             <UserSelect users={users} value={requester} onChange={setRequester} placeholder="Pilih pemberi tugas..." testid="requester-select" />
             <PersonPreview person={requester} />
           </Card>
 
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><UserCog className="h-4 w-4 text-primary" /> PIC Pelaksana</h2>
+            <SectionTitle icon={UserCog}>PIC Pelaksana</SectionTitle>
             <UserSelect users={users} value={pic} onChange={setPic} placeholder="Pilih pelaksana..." testid="pic-select" />
             <PersonPreview person={pic} />
           </Card>
 
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h2 className="text-sm font-semibold mb-3">Aksi</h2>
-            <Button onClick={save} disabled={saving} className="w-full rounded-xl mb-2" data-testid="btn-save-task-side">
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan Tugas
-            </Button>
-            <Button variant="secondary" onClick={() => navigate(cancelTo)} className="w-full rounded-xl">Batal</Button>
+            <DocumentManager taskId={taskId} documents={documents} onChange={setDocuments} label="Dokumen Sumber" idPrefix="task" />
           </Card>
+        </div>
+      </div>
+
+      {/* Sticky action bar */}
+      <div className="fixed bottom-0 left-0 right-0 lg:left-[260px] z-30 border-t border-border backdrop-blur-xl bg-background/85">
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-end gap-3">
+          <Button variant="ghost" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">Batal</Button>
+          <Button onClick={save} disabled={saving} className="rounded-xl px-8" data-testid="btn-save-task">
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan Tugas
+          </Button>
         </div>
       </div>
     </div>

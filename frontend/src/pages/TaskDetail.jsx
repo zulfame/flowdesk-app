@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
-import { StatusBadge, PriorityBadge, ProgressBar } from "@/components/common";
+import { StatusBadge, PriorityBadge, ProgressBar, SectionTitle } from "@/components/common";
 import DocumentManager from "@/components/DocumentManager";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History } from "lucide-react";
 import { toast } from "sonner";
 
 function timeAgo(iso) {
@@ -127,7 +127,7 @@ export default function TaskDetail() {
 
           {/* Item Tugas */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h3 className="text-sm font-semibold mb-4">Item Tugas ({doneCount}/{items.length})</h3>
+            <SectionTitle icon={ListChecks}>Item Tugas ({doneCount}/{items.length})</SectionTitle>
             <div className="space-y-3">
               {items.map((item) => (
                 <Collapsible key={item.id} className="rounded-xl border border-border" data-testid={`item-${item.id}`}>
@@ -179,7 +179,7 @@ export default function TaskDetail() {
         <div className="space-y-6">
           {/* Pemberi Tugas */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><User className="h-4 w-4 text-primary" /> Pemberi Tugas</h3>
+            <SectionTitle icon={User}>Pemberi Tugas</SectionTitle>
             <dl className="space-y-2.5 text-sm">
               <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground shrink-0" /><span className="font-medium">{req.name || "-"}</span></div>
               <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground shrink-0" /><span>{req.department || "-"}</span></div>
@@ -192,7 +192,7 @@ export default function TaskDetail() {
 
           {/* Detail */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h3 className="text-sm font-semibold mb-4">Detail</h3>
+            <SectionTitle icon={Info}>Detail</SectionTitle>
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted-foreground">PIC</dt><dd className="font-medium">{(typeof task.pic === "string" ? task.pic : task.pic?.name) || "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Prioritas</dt><dd><PriorityBadge priority={task.priority} /></dd></div>
@@ -208,7 +208,7 @@ export default function TaskDetail() {
 
           {/* Riwayat */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <h3 className="text-sm font-semibold mb-4">Riwayat</h3>
+            <SectionTitle icon={History}>Riwayat</SectionTitle>
             <div className="space-y-3">
               {(task.history || []).slice().reverse().slice(0, 12).map((h, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm"><div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" /><div><p className="capitalize">{h.action.replace(/_/g, " ")}</p><p className="text-xs text-muted-foreground">{h.by} · {timeAgo(h.at)}</p></div></div>

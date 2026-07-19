@@ -90,4 +90,16 @@ export function EmptyState({ icon: Icon, title, description, action }) {
   );
 }
 
+export function SectionTitle({ icon: Icon, children, className, right }) {
+  return (
+    <div className={cn("flex items-center justify-between mb-4", className)}>
+      <h3 className="text-sm font-semibold flex items-center gap-2">
+        {Icon && <Icon className="h-4 w-4 text-primary" />}
+        {children}
+      </h3>
+      {right}
+    </div>
+  );
+}
+
 export { STATUS_LABELS, PRIORITY_LABELS };
