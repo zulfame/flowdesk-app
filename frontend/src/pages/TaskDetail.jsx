@@ -230,11 +230,12 @@ export default function TaskDetail() {
 
           {/* Riwayat */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={History}>Riwayat</SectionTitle>
-            <div className="space-y-3">
-              {(task.history || []).slice().reverse().slice(0, 12).map((h, i) => (
+            <SectionTitle icon={History} right={<span className="text-xs text-muted-foreground">{(task.history || []).length}</span>}>Riwayat</SectionTitle>
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {(task.history || []).slice().reverse().map((h, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm"><div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" /><div><p className="capitalize">{h.action.replace(/_/g, " ")}</p><p className="text-xs text-muted-foreground">{h.by} · {timeAgo(h.at)}</p></div></div>
               ))}
+              {(task.history || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Belum ada riwayat.</p>}
             </div>
           </Card>
         </div>
