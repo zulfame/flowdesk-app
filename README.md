@@ -15,8 +15,9 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 8. [Seeder / Reset Data Awal](#seeder--reset-data-awal)
 9. [Deploy Lokal dengan Docker](#deploy-lokal-dengan-docker)
 10. [Deploy di Server Produksi (Ubuntu 22.04 LTS)](#deploy-di-server-produksi-ubuntu-2204-lts)
-11. [Backup & Restore](#backup--restore)
-12. [Notifikasi](#notifikasi)
+11. [Deploy dengan Cloudflare Tunnel (Zero Trust)](#deploy-dengan-cloudflare-tunnel-zero-trust)
+12. [Backup & Restore](#backup--restore)
+13. [Notifikasi](#notifikasi)
 
 ---
 
@@ -256,6 +257,63 @@ sudo ufw allow OpenSSH && sudo ufw allow 'Nginx Full' && sudo ufw enable
 ```bash
 cd /opt/flowdesk/backend && source venv/bin/activate && python seed.py
 ```
+
+## Deploy dengan Cloudflare Tunnel (Zero Trust)
+Cocok untuk server ber-**IP lokal** (tanpa IP publik) yang ingin diakses dari luar lewat domain. Cloudflare menangani **SSL/HTTPS otomatis** dan akses publik melalui koneksi keluar (outbound) — **tidak perlu membuka port masuk** di router/firewall.
+
+**Ikuti Langkah 1–5** pada panduan produksi di atas (paket dasar, MongoDB, backend + systemd, build frontend, Nginx), dengan penyesuaian berikut, lalu **LEWATI Langkah 6 (certbot) & 7 (buka port publik)**.
+
+### Penyesuaian env & build (gunakan domain publik Anda)
+- `backend/.env` → `CORS_ORIGINS=https://app.domain-anda.com`
+- `frontend/.env` → `REACT_APP_BACKEND_URL=https://app.domain-anda.com` (lalu `yarn build` ulang)
+- Nginx tetap `listen 80;` (cukup diakses secara lokal oleh tunnel). Boleh set `server_name app.domain-anda.com;`. Karena Nginx memproksi `/api` ke backend di domain yang sama, konfigurasi tidak berubah.
+
+### Pasang cloudflared
+```bash
+curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64.deb -o cloudflared.deb
+sudo dpkg -i cloudflared.deb
+cloudflared tunnel login        # otorisasi lewat browser, pilih domain di akun Cloudflare
+```
+
+### Buat tunnel & routing
+```bash
+cloudflared tunnel create flowdesk          # menghasilkan <TUNNEL_ID> + file kredensial di ~/.cloudflared/
+cloudflared tunnel route dns flowdesk app.domain-anda.com
+```
+
+Buat `/etc/cloudflared/config.yml`:
+```yaml
+tunnel: <TUNNEL_ID>
+credentials-file: /root/.cloudflared/<TUNNEL_ID>.json
+
+ingress:
+  - hostname: app.domain-anda.com
+    service: http://localhost:80
+  - service: http_status:404
+```
+
+### Jalankan sebagai service
+```bash
+sudo cloudflared service install
+sudo systemctl enable --now cloudflared
+sudo systemctl status cloudflared
+```
+
+### Pengaturan di dashboard Cloudflare
+- **SSL/TLS mode**: `Full` (Cloudflare → origin lewat tunnel sudah aman; jangan `Flexible`).
+- **Always Use HTTPS**: aktifkan.
+- (Opsional) **Zero Trust → Access**: tambahkan Application/Policy bila ingin membatasi siapa yang boleh membuka domain (mis. email tertentu / SSO) sebelum mencapai halaman login FlowDesk.
+
+### Firewall server (hanya SSH lokal)
+```bash
+sudo ufw allow OpenSSH && sudo ufw enable   # TIDAK perlu allow 80/443 dari internet
+```
+
+> Catatan penting:
+> - Karena SSL ditangani Cloudflare, **abaikan certbot/Let's Encrypt**.
+> - **Web Push** & clipboard butuh HTTPS — otomatis terpenuhi via domain Cloudflare.
+> - Batas ukuran unggah plan Cloudflare Free = 100MB (sesuaikan `client_max_body_size` Nginx & `max_file_mb` di Kelola Database bila perlu).
+> - Pastikan MongoDB tetap hanya mendengarkan `127.0.0.1` (default) — jangan diekspos ke jaringan.
 
 ## Backup & Restore
 Melalui menu **Kelola Database**:
