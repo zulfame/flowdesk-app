@@ -1,23 +1,23 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
 import { PageHeader, EmptyState } from "@/components/common";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Video, MapPin, Clock, Users2, CalendarDays } from "lucide-react";
+import { Plus, Video, MapPin, Clock, Users2, CalendarDays, Search, Zap, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
+
+const TYPE_STYLES = {
+  Internal: "bg-indigo-500", Eksternal: "bg-amber-500", Online: "bg-emerald-500", Klien: "bg-rose-500", Review: "bg-violet-500",
+};
 
 export default function Meetings() {
   const [meetings, setMeetings] = useState([]);
-  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [form, setForm] = useState({ title: "", date: "", start_time: "", end_time: "", location: "", meeting_type: "Internal", participants: "", agenda: "" });
-  const [saving, setSaving] = useState(false);
+  const [q, setQ] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
   const navigate = useNavigate();
 
   const load = useCallback(async () => {
@@ -26,82 +26,63 @@ export default function Meetings() {
     catch (e) { toast.error(apiError(e)); }
     finally { setLoading(false); }
   }, []);
-
   useEffect(() => { load(); }, [load]);
 
-  const save = async () => {
-    if (!form.title.trim()) { toast.error("Judul rapat wajib diisi"); return; }
-    setSaving(true);
-    try {
-      const payload = { ...form, participants: form.participants.split(",").map((p) => p.trim()).filter(Boolean) };
-      const { data } = await api.post("/meetings", payload);
-      toast.success("Rapat berhasil dibuat");
-      setOpen(false);
-      setForm({ title: "", date: "", start_time: "", end_time: "", location: "", meeting_type: "Internal", participants: "", agenda: "" });
-      navigate(`/meetings/${data.id}`);
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSaving(false); }
-  };
+  const filtered = useMemo(() => meetings.filter((m) =>
+    (typeFilter === "all" || m.meeting_type === typeFilter) &&
+    (!q || m.title?.toLowerCase().includes(q.toLowerCase()) || (m.location || "").toLowerCase().includes(q.toLowerCase()))
+  ), [meetings, q, typeFilter]);
 
   return (
     <div>
       <PageHeader title="Kelola Rapat" subtitle="Rapat adalah buku catatan digital, bukan sekadar jadwal.">
-        <Button onClick={() => setOpen(true)} className="rounded-xl" data-testid="btn-tambah-rapat"><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>
+        <Button onClick={() => navigate("/meetings/new")} className="rounded-xl" data-testid="btn-tambah-rapat"><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>
       </PageHeader>
 
+      <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="relative flex-1">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari judul atau lokasi rapat..." className="pl-9 rounded-xl" data-testid="meeting-search" />
+        </div>
+        <Select value={typeFilter} onValueChange={setTypeFilter}>
+          <SelectTrigger className="w-full sm:w-44 rounded-xl" data-testid="meeting-type-filter"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Semua Jenis</SelectItem>
+            {Object.keys(TYPE_STYLES).map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
       {loading ? (
-        <div className="grid md:grid-cols-2 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="h-40 rounded-2xl bg-secondary/50 animate-pulse" />)}</div>
-      ) : meetings.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={Video} title="Belum ada rapat" description="Buat rapat untuk mencatat agenda, keputusan, dan action item." action={<Button onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>} /></Card>
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{[...Array(6)].map((_, i) => <div key={i} className="h-44 rounded-2xl bg-secondary/50 animate-pulse" />)}</div>
+      ) : filtered.length === 0 ? (
+        <Card className="rounded-2xl shadow-soft"><EmptyState icon={Video} title="Belum ada rapat" description="Buat rapat untuk mencatat agenda, keputusan, dan action item." action={<Button onClick={() => navigate("/meetings/new")}><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>} /></Card>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {meetings.map((m) => (
-            <Card key={m.id} onClick={() => navigate(`/meetings/${m.id}`)} className="p-5 rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all" data-testid={`meeting-card-${m.id}`}>
-              <div className="flex items-center gap-2 mb-3">
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground">{m.meeting_type}</span>
-                {(m.action_items || []).length > 0 && <span className="text-xs text-muted-foreground">{m.action_items.length} action item</span>}
-              </div>
-              <h3 className="font-semibold text-lg mb-3 truncate">{m.title}</h3>
-              <div className="space-y-1.5 text-sm text-muted-foreground">
-                {m.date && <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4" /> {new Date(m.date).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}</div>}
-                {(m.start_time || m.end_time) && <div className="flex items-center gap-2"><Clock className="h-4 w-4" /> {m.start_time} {m.end_time && `– ${m.end_time}`}</div>}
-                {m.location && <div className="flex items-center gap-2"><MapPin className="h-4 w-4" /> {m.location}</div>}
-                {(m.participants || []).length > 0 && <div className="flex items-center gap-2"><Users2 className="h-4 w-4" /> {m.participants.length} peserta</div>}
-              </div>
-            </Card>
-          ))}
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+          {filtered.map((m) => {
+            const total = (m.action_items || []).length;
+            const done = (m.action_items || []).filter((a) => a.done).length;
+            return (
+              <Card key={m.id} onClick={() => navigate(`/meetings/${m.id}`)} className="relative rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all overflow-hidden group" data-testid={`meeting-card-${m.id}`}>
+                <div className={`absolute top-0 left-0 h-full w-1.5 ${TYPE_STYLES[m.meeting_type] || "bg-slate-400"}`} />
+                <div className="p-5 pl-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent text-accent-foreground">{m.meeting_type}</span>
+                    {total > 0 && <span className="inline-flex items-center gap-1 text-xs text-muted-foreground"><Zap className="h-3 w-3" /> {done}/{total}</span>}
+                  </div>
+                  <h3 className="font-semibold text-lg mb-3 line-clamp-2 group-hover:text-primary transition-colors">{m.title}</h3>
+                  <div className="space-y-1.5 text-sm text-muted-foreground">
+                    {m.date && <div className="flex items-center gap-2"><CalendarDays className="h-4 w-4 shrink-0" /> {new Date(m.date).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "long", year: "numeric" })}</div>}
+                    {(m.start_time || m.end_time) && <div className="flex items-center gap-2"><Clock className="h-4 w-4 shrink-0" /> {m.start_time} {m.end_time && `– ${m.end_time}`}</div>}
+                    {m.location && <div className="flex items-center gap-2"><MapPin className="h-4 w-4 shrink-0" /> <span className="truncate">{m.location}</span></div>}
+                    {(m.participants || []).length > 0 && <div className="flex items-center gap-2"><Users2 className="h-4 w-4 shrink-0" /> {m.participants.length} peserta</div>}
+                  </div>
+                </div>
+              </Card>
+            );
+          })}
         </div>
       )}
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Rapat Baru</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5"><Label>Judul *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Rapat Mingguan Tim" data-testid="meeting-title-input" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="meeting-date-input" /></div>
-              <div className="space-y-1.5">
-                <Label>Jenis</Label>
-                <Select value={form.meeting_type} onValueChange={(v) => setForm({ ...form, meeting_type: v })}>
-                  <SelectTrigger data-testid="meeting-type-select"><SelectValue /></SelectTrigger>
-                  <SelectContent>{["Internal", "Eksternal", "Online", "Klien", "Review"].map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Mulai</Label><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} data-testid="meeting-start-input" /></div>
-              <div className="space-y-1.5"><Label>Selesai</Label><Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} data-testid="meeting-end-input" /></div>
-            </div>
-            <div className="space-y-1.5"><Label>Lokasi</Label><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Ruang rapat / link" data-testid="meeting-location-input" /></div>
-            <div className="space-y-1.5"><Label>Peserta (pisahkan dengan koma)</Label><Input value={form.participants} onChange={(e) => setForm({ ...form, participants: e.target.value })} placeholder="Budi, Siti, Andi" data-testid="meeting-participants-input" /></div>
-            <div className="space-y-1.5"><Label>Agenda</Label><Textarea value={form.agenda} onChange={(e) => setForm({ ...form, agenda: e.target.value })} rows={3} placeholder="Poin-poin agenda..." data-testid="meeting-agenda-input" /></div>
-          </div>
-          <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Batal</Button>
-            <Button onClick={save} disabled={saving} data-testid="btn-save-meeting">{saving ? "Menyimpan..." : "Simpan"}</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

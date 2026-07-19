@@ -16,6 +16,7 @@ import TaskDetail from "@/pages/TaskDetail";
 import TaskForm from "@/pages/TaskForm";
 import Meetings from "@/pages/Meetings";
 import MeetingDetail from "@/pages/MeetingDetail";
+import MeetingForm from "@/pages/MeetingForm";
 import Calendar from "@/pages/Calendar";
 import Reminders from "@/pages/Reminders";
 import Notes from "@/pages/Notes";
@@ -24,6 +25,7 @@ import ActivityLog from "@/pages/ActivityLog";
 import Users from "@/pages/Users";
 import Roles from "@/pages/Roles";
 import Database from "@/pages/Database";
+import ArchivePage from "@/pages/Archive";
 import AppSettings from "@/pages/AppSettings";
 import NotificationSettings from "@/pages/NotificationSettings";
 
@@ -35,7 +37,9 @@ const PAGES = [
   { path: "/tasks/:id", element: <TaskDetail /> },
   { path: "/tasks/:id/edit", element: <TaskForm /> },
   { path: "/meetings", element: <Meetings /> },
+  { path: "/meetings/new", element: <MeetingForm /> },
   { path: "/meetings/:id", element: <MeetingDetail /> },
+  { path: "/meetings/:id/edit", element: <MeetingForm /> },
   { path: "/calendar", element: <Calendar /> },
   { path: "/reminders", element: <Reminders /> },
   { path: "/notes", element: <Notes /> },
@@ -44,6 +48,7 @@ const PAGES = [
   { path: "/users", element: <Users /> },
   { path: "/roles", element: <Roles /> },
   { path: "/database", element: <Database /> },
+  { path: "/archive", element: <ArchivePage /> },
   { path: "/app-settings", element: <AppSettings /> },
   { path: "/notification-settings", element: <NotificationSettings /> },
 ];

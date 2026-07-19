@@ -193,7 +193,7 @@ async def list_tasks(status: Optional[str] = None, pic: Optional[str] = None,
         q["priority"] = priority
     if meeting_id:
         q["meeting_id"] = meeting_id
-    tasks = await db.tasks.find(q, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    tasks = await db.tasks.find({**q, "is_deleted": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     tasks = [compute(t) for t in tasks]
     if status:
         tasks = [t for t in tasks if t["status"] == status]
@@ -202,7 +202,7 @@ async def list_tasks(status: Optional[str] = None, pic: Optional[str] = None,
 
 @router.get("/{task_id}")
 async def get_task(task_id: str, user: dict = Depends(get_current_user)):
-    task = await db.tasks.find_one({"id": task_id}, {"_id": 0})
+    task = await db.tasks.find_one({"id": task_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
     task = compute(task)

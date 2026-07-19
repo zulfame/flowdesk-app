@@ -59,20 +59,20 @@ def _norm_items(items) -> list:
 
 @router.get("")
 async def list_meetings(user: dict = Depends(get_current_user)):
-    meetings = await db.meetings.find({}, {"_id": 0}).sort("date", -1).to_list(1000)
+    meetings = await db.meetings.find({"is_deleted": {"$ne": True}}, {"_id": 0}).sort("date", -1).to_list(1000)
     return meetings
 
 
 @router.get("/{meeting_id}")
 async def get_meeting(meeting_id: str, user: dict = Depends(get_current_user)):
-    m = await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
+    m = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not m:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
     m["attachments"] = await db.files.find(
         {"parent_id": meeting_id, "is_deleted": False}, {"_id": 0}
     ).to_list(200)
     m["generated_tasks"] = await db.tasks.find(
-        {"meeting_id": meeting_id}, {"_id": 0, "id": 1, "title": 1, "status": 1, "progress": 1}
+        {"meeting_id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1, "title": 1, "status": 1, "progress": 1}
     ).to_list(200)
     return m
 
@@ -112,9 +112,20 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate, user: dict = Depe
     return await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
 
 
+class ConvertBody(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = ""
+    requester: Optional[dict] = None
+    pic: Optional[dict] = None
+    priority: str = "Medium"
+    deadline: Optional[str] = None
+    items: List[str] = []
+
+
 @router.post("/{meeting_id}/action-items/{item_id}/convert")
-async def convert_action_item(meeting_id: str, item_id: str, user: dict = Depends(get_current_user)):
-    meeting = await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
+async def convert_action_item(meeting_id: str, item_id: str, body: ConvertBody = None, user: dict = Depends(get_current_user)):
+    from routers.tasks import compute, EMPTY_PERSON
+    meeting = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not meeting:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
     item = next((i for i in meeting.get("action_items", []) if i.get("id") == item_id), None)
@@ -123,27 +134,32 @@ async def convert_action_item(meeting_id: str, item_id: str, user: dict = Depend
     if item.get("converted_task_id"):
         raise HTTPException(status_code=400, detail="Sudah dikonversi menjadi tugas")
 
+    body = body or ConvertBody()
+    pic = body.pic
+    # If conversion form is used, PIC and deadline are required (data harus sesuai)
+    if not pic or not pic.get("name"):
+        raise HTTPException(status_code=400, detail="PIC pelaksana wajib dipilih untuk membuat tugas")
+    if not body.deadline:
+        raise HTTPException(status_code=400, detail="Tenggat tugas wajib diisi")
+
+    requester = body.requester or {"user_id": None, "name": meeting.get("created_by_name", ""), "department": "", "phone": "", "email": ""}
     task = {
         "id": new_id(),
-        "title": item["text"],
-        "description": f"Dibuat dari rapat: {meeting['title']}",
-        "requester": {"user_id": None, "name": meeting.get("created_by_name", ""), "department": "", "phone": "", "email": ""},
-        "pic": {"user_id": None, "name": item.get("assignee", ""), "department": "", "phone": "", "email": ""},
-        "priority": "Medium",
-        "deadline": None,
-        "items": [],
-        "documents": [],
-        "comments": [],
+        "title": body.title or item["text"],
+        "description": body.description or f"Dibuat dari rapat: {meeting['title']}",
+        "requester": {**dict(EMPTY_PERSON), **requester},
+        "pic": {**dict(EMPTY_PERSON), **pic},
+        "priority": body.priority or "Medium",
+        "deadline": body.deadline,
+        "items": [{"id": new_id(), "title": t, "done": False, "done_at": None, "due_date": None, "documents": []} for t in (body.items or [])],
+        "documents": [], "comments": [],
         "history": [{"action": "created_from_meeting", "by": user["name"], "at": now_iso()}],
-        "status": "Pending",
-        "progress": 0,
-        "meeting_id": meeting_id,
-        "meeting_title": meeting["title"],
-        "created_by": user["id"],
-        "created_by_name": user["name"],
-        "created_at": now_iso(),
-        "updated_at": now_iso(),
+        "status": "Pending", "progress": 0, "is_deleted": False,
+        "meeting_id": meeting_id, "meeting_title": meeting["title"],
+        "created_by": user["id"], "created_by_name": user["name"],
+        "created_at": now_iso(), "updated_at": now_iso(),
     }
+    task = compute(task)
     await db.tasks.insert_one(dict(task))
     await db.meetings.update_one(
         {"id": meeting_id, "action_items.id": item_id},
@@ -151,7 +167,7 @@ async def convert_action_item(meeting_id: str, item_id: str, user: dict = Depend
     )
     task.pop("_id", None)
     await log_activity(db, user, "create", "task", task["id"], f"Mengonversi action item menjadi tugas '{task['title']}'")
-    await create_notification(None, "Action Item Dikonversi", f"'{task['title']}' kini menjadi tugas", "task", f"/tasks/{task['id']}")
+    await create_notification(task["pic"].get("user_id"), "Action Item Dikonversi", f"'{task['title']}' kini menjadi tugas", "task", f"/tasks/{task['id']}")
     return task
 
 

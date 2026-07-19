@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, CheckSquare, CalendarDays, Bell, FileText, Video, ScrollText,
   Search, Sun, Moon, LogOut, Menu, X, Waves, ChevronDown, PanelLeftClose, PanelLeft,
-  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal,
+  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,6 +44,7 @@ const NAV_GROUPS = [
       { to: "/users", label: "Kelola Pengguna", icon: Users2 },
       { to: "/database", label: "Kelola Database", icon: Database },
       { to: "/notification-settings", label: "Kelola Notifikasi", icon: BellRing },
+      { to: "/archive", label: "Arsip", icon: Archive },
       { to: "/activity", label: "Log Aktivitas", icon: ScrollText },
     ],
   },
@@ -181,7 +182,7 @@ export default function Layout({ children }) {
       )}
 
       <div className={cn("transition-all duration-300", collapsed ? "lg:pl-[76px]" : "lg:pl-[260px]")}>
-        <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 sm:px-6 backdrop-blur-xl bg-background/80 border-b border-border">
+        <header className="sticky top-0 z-30 h-16 flex items-center gap-3 px-4 sm:px-6 bg-card border-b border-border">
           <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)} data-testid="btn-mobile-menu">
             <Menu className="h-5 w-5" />
           </Button>

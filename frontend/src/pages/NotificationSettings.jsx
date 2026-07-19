@@ -6,8 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { BellRing, Mail, Send, Save, Loader2 } from "lucide-react";
+import { BellRing, Mail, Send, Save, Loader2, MonitorSmartphone } from "lucide-react";
 import { toast } from "sonner";
+import { pushSupported, isPushEnabled, enablePush, disablePush } from "@/lib/push";
 
 function Field({ label, children }) {
   return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
@@ -23,8 +24,20 @@ export default function NotificationSettings() {
   const [s, setS] = useState(null);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState("");
+  const [pushOn, setPushOn] = useState(false);
+  const [pushBusy, setPushBusy] = useState(false);
 
   useEffect(() => { api.get("/settings").then(({ data }) => setS(data)).catch((e) => toast.error(apiError(e))); }, []);
+  useEffect(() => { isPushEnabled().then(setPushOn); }, []);
+
+  const togglePush = async () => {
+    setPushBusy(true);
+    try {
+      if (pushOn) { await disablePush(); setPushOn(false); toast.success("Notifikasi browser dinonaktifkan di perangkat ini"); }
+      else { await enablePush(); setPushOn(true); toast.success("Notifikasi browser aktif di perangkat ini"); }
+    } catch (e) { toast.error(e.message || "Gagal mengaktifkan notifikasi"); }
+    finally { setPushBusy(false); }
+  };
   const up = (section, key, value) => setS((prev) => ({ ...prev, [section]: { ...prev[section], [key]: value } }));
 
   const save = async () => {
@@ -61,6 +74,15 @@ export default function NotificationSettings() {
                 <Switch checked={!!s.notification[n.key]} onCheckedChange={(v) => up("notification", n.key, v)} data-testid={`switch-${n.key}`} />
               </div>
             ))}
+          </div>
+          <div className="mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-secondary/60">
+            <div className="flex items-center gap-3">
+              <MonitorSmartphone className="h-5 w-5 text-primary shrink-0" />
+              <div><p className="font-medium text-sm">Push Browser di Perangkat Ini</p><p className="text-xs text-muted-foreground">Terima notifikasi asli walau tab tidak dibuka. {!pushSupported() && "(Tidak didukung browser ini)"}</p></div>
+            </div>
+            <Button variant={pushOn ? "outline" : "default"} className="rounded-xl" onClick={togglePush} disabled={pushBusy || !pushSupported()} data-testid="btn-toggle-push">
+              {pushBusy ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <BellRing className="h-4 w-4 mr-1.5" />} {pushOn ? "Nonaktifkan" : "Aktifkan"}
+            </Button>
           </div>
         </Card>
 

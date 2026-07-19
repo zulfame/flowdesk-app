@@ -3,7 +3,7 @@ import gzip
 import json
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from fastapi.responses import Response
 from pydantic import BaseModel
 from typing import Optional
@@ -59,14 +59,18 @@ async def _dump() -> tuple[bytes, dict]:
 async def create_backup(destination: str = "local", admin: dict = Depends(require_admin)):
     if destination not in ("local", "s3"):
         raise HTTPException(status_code=400, detail="Tujuan tidak valid")
+    return await run_backup(destination, admin["name"], admin)
+
+
+async def run_backup(destination: str, by_name: str, admin: dict = None):
     raw, counts = await _dump()
     bid = new_id()
     filename = f"flowdesk-backup-{now_iso()[:19].replace(':', '-')}.json.gz"
     doc = {
         "id": bid, "filename": filename, "size": len(raw),
         "collections": counts, "total_records": sum(counts.values()),
-        "destination": destination, "storage_key": None,
-        "created_at": now_iso(), "created_by_name": admin["name"],
+        "destination": destination, "storage_key": None, "auto": admin is None,
+        "created_at": now_iso(), "created_by_name": by_name,
     }
     if destination == "local":
         (BACKUP_DIR / f"{bid}.json.gz").write_bytes(raw)
@@ -74,15 +78,33 @@ async def create_backup(destination: str = "local", admin: dict = Depends(requir
         cfg = await _get_storage_cfg()
         if not s3_storage.is_configured(cfg):
             raise HTTPException(status_code=400, detail="Konfigurasi S3 belum lengkap. Isi & uji koneksi di bagian Penyimpanan.")
-        try:
-            key = s3_storage.put_bytes(cfg, f"backups/{filename}", raw, "application/gzip")
-            doc["storage_key"] = key
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Gagal mengunggah ke S3: {e}")
+        key = s3_storage.put_bytes(cfg, f"backups/{filename}", raw, "application/gzip")
+        doc["storage_key"] = key
     await db.backups.insert_one(dict(doc))
     doc.pop("_id", None)
-    await log_activity(db, admin, "create", "backup", bid, f"Membuat backup ({destination})")
+    await log_activity(db, admin, "create", "backup", bid, f"Membuat backup ({destination}{'' if admin else ', otomatis'})")
     return doc
+
+
+def _parse_backup(raw: bytes) -> dict:
+    try:
+        return json.loads(gzip.decompress(raw).decode("utf-8"))
+    except Exception:
+        raise HTTPException(status_code=400, detail="Berkas backup rusak / tidak dapat dibaca")
+
+
+async def _apply_restore(data: dict) -> dict:
+    if not isinstance(data.get("collections"), dict):
+        raise HTTPException(status_code=400, detail="Format backup tidak dikenali")
+    restored = {}
+    for name, docs in data["collections"].items():
+        if name not in BACKUP_COLLECTIONS:
+            continue
+        await db[name].delete_many({})
+        if docs:
+            await db[name].insert_many([dict(d) for d in docs])
+        restored[name] = len(docs)
+    return restored
 
 
 @router.get("/backups")
@@ -140,20 +162,19 @@ async def restore_backup(backup_id: str, admin: dict = Depends(require_admin)):
     if not meta:
         raise HTTPException(status_code=404, detail="Backup tidak ditemukan")
     raw = await _load_backup_bytes(meta)
-    try:
-        data = json.loads(gzip.decompress(raw).decode("utf-8"))
-    except Exception:
-        raise HTTPException(status_code=400, detail="Berkas backup rusak / tidak dapat dibaca")
-    restored = {}
-    for name, docs in data.get("collections", {}).items():
-        if name not in BACKUP_COLLECTIONS:
-            continue
-        await db[name].delete_many({})
-        if docs:
-            await db[name].insert_many([dict(d) for d in docs])
-        restored[name] = len(docs)
+    restored = await _apply_restore(_parse_backup(raw))
     await log_activity(db, admin, "restore", "backup", backup_id, f"Memulihkan database dari backup {meta['filename']}")
     return {"message": "Database berhasil dipulihkan", "restored": restored}
+
+
+@router.post("/restore-upload")
+async def restore_upload(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
+    raw = await file.read()
+    if not raw:
+        raise HTTPException(status_code=400, detail="Berkas kosong")
+    restored = await _apply_restore(_parse_backup(raw))
+    await log_activity(db, admin, "restore", "backup", None, f"Memulihkan database dari unggahan '{file.filename}'")
+    return {"message": "Database berhasil dipulihkan dari unggahan", "restored": restored}
 
 
 @router.delete("/backups/{backup_id}")

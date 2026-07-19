@@ -1,0 +1,41 @@
+{
+  "summary": "Iteration 6 full regression pass. Backend: 74/74 pytest across backend_test.py + test_iter4/5/6.py. New iter6 module (15 tests) verifies: reminder broadcast_at computed correctly for 10m/1h/1d offsets and 'custom' pass-through; archive full lifecycle for tasks & notes (soft-delete -> GET archive -> restore -> back in list -> purge); meeting->task convert validates missing PIC.name -> 400 'PIC ...', missing deadline -> 400 'Tenggat ...', re-convert -> 400, and sets action_items.$.converted_task_id + task.meeting_id/meeting_title; /api/push/public-key returns non-empty VAPID key; subscribe/unsubscribe lifecycle OK; /api/settings has new 'backup' section with auto_enabled/frequency/time/weekday/destination; PUT /api/settings backup persists weekly+time+weekday; /api/database/backup local -> download (gzip decompresses) -> restore-upload with the same file returns {restored:{users>0,...}}; bad-gzip upload -> 400. Legacy backend_test.py TestMeetings.test_convert_action_item updated to pass PIC+deadline (was calling old signature). Frontend E2E: sidebar shows Arsip in Menu Admin + all previous admin items; Reminders create dialog reveals channels + 'Kapan broadcast dikirim?' select on broadcast toggle; selecting 'Waktu khusus' reveals broadcast-date/time inputs; save creates card. Kelola Rapat: search + type filter present; 'Rapat Baru' navigates to /meetings/new (full 2-col form, NO dialog), fields present (title/type/location/agenda/date/times), participants add-via-chip works, save navigates to detail. Meeting detail: Edit button navigates to /meetings/:id/edit prefilled with title, delete uses confirm dialog. Action item 'Jadikan Tugas' opens dialog with convert-priority + convert-deadline. Arsip: deleted meeting appears (search filter works), Pulihkan restores + Trash purge confirm both functional. Kelola Database: auto-backup card with switch, frequency, jam, tujuan + 'Simpan Jadwal'; restore-upload card + dropzone; toggle+save flow works. Notifikasi: 'Push Browser di Perangkat Ini' row + Aktifkan button present. Regression: Dashboard, Kelola Tugas, Kalender, Kelola Pengguna, Kelola Peranan, Kelola Aplikasi, Log Aktivitas all load with correct headings.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "MeetingDetail", "issues": ["React console warning: 'Each child in a list should have a unique key prop' in MeetingDetail render. Non-blocking but should be fixed by adding a stable key= to a mapped list (likely action_items or generated_tasks)."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_iter4.py",
+    "/app/backend/tests/test_iter5.py",
+    "/app/backend/tests/test_iter6.py",
+    "/app/test_reports/pytest/iter6_results.xml",
+    "/app/test_reports/pytest/iter6_regression.xml"
+  ],
+  "action_items": [
+    "MINOR: Fix React 'unique key prop' warning in src/pages/MeetingDetail.jsx — a mapped list (action_items or generated_tasks) is missing a key= attribute."
+  ],
+  "critical_code_review_comments": [
+    "routers/reminders.py _broadcast_at: falls back to '10m' offset silently if an unknown offset string is passed; consider raising 400 for stricter validation (currently harmless because pydantic doesn't restrict enum).",
+    "routers/archive.py list_archive: iterates all TYPES sequentially with to_list(1000) each, then in-memory sorts and paginates — for very large archives this pulls up to 5000 rows per request. Fine for now but consider a MongoDB $unionWith or per-collection cursor for scale.",
+    "routers/meetings.py convert_action_item: requires body.pic.name but doesn't validate that pic.user_id (if provided) references a real user. If a stale/deleted user_id is passed, the task's PIC panel may be orphaned. Add an optional users lookup or accept name-only PICs explicitly.",
+    "routers/database.py _apply_restore: delete_many({}) per collection is destructive with no snapshot. restore-upload accepts any admin-uploaded gz file — recommend requiring a re-confirmation token / adding a pre-restore snapshot for safety.",
+    "routers/push.py: subscribe endpoint doesn't validate that subscription.keys has p256dh+auth (needed by pywebpush). Malformed subscription would be stored and later fail during send silently.",
+    "src/pages/MeetingDetail.jsx: React key warning present in rendered list — indicates missing key= on a .map() child. Should be trivially fixable."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iter6.py (new)",
+    "/app/backend/tests/backend_test.py (TestMeetings.test_convert_action_item + test_convert_again_400 now send required pic+deadline)"
+  ],
+  "success_rate": {"backend": "100% (74/74)", "frontend": "100% (all iter6 flows OK)"},
+  "test_credentials": "admin@flowdesk.com / admin123",
+  "seed_data_creation": "All test data prefixed TEST_iter6_/E2E_iter6_ and cleaned up. E2E created 1 reminder + 1 meeting + action item + participant chip; reminder soft-deleted (remains in archive but harmless), meeting deleted+restored+deleted+purged. Auto-backup setting flipped on->save->off->save to avoid triggering scheduled backups. Real 'Rapat Perencanaan Sprint' meeting and S3/SMTP/Telegram configs left untouched.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Meeting convert API now REQUIRES body { pic: {name,...}, deadline: 'YYYY-MM-DD' }. Any older test calling POST /meetings/{mid}/action-items/{iid}/convert with empty body will now 400 ('PIC ... wajib' or 'Tenggat ... wajib'). Reminder broadcast_at is computed server-side from broadcast_offset (10m/1h/1d subtract from remind_at) OR taken verbatim from broadcast_at when offset='custom'. Frontend /meetings/new is a NEW full-page 2-col form (not a dialog); /meetings/:id/edit is the same MeetingForm component. Archive route is /archive (label 'Arsip', admin-only). /api/archive?type=all|task|meeting|note|reminder|event returns {items,total,page,page_size} envelope. Database restore-upload wipes ALL collections in BACKUP_COLLECTIONS then re-inserts — only ever call with a backup created within same test run. React key-prop warning in MeetingDetail is the only surfaced UI console error.",
+  "rca of the issue": "N/A — no failures."
+}

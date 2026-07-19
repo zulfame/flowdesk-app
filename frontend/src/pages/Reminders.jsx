@@ -16,7 +16,8 @@ import { toast } from "sonner";
 
 const TYPE_LABELS = { today: "Hari Ini", tomorrow: "Besok", custom: "Tanggal Khusus", recurring: "Berulang" };
 const RECUR_LABELS = { daily: "Harian", weekly: "Mingguan", monthly: "Bulanan" };
-const emptyForm = { title: "", description: "", remind_type: "custom", date: "", time: "09:00", recurrence: "daily", broadcast: false, channels: [] };
+const emptyForm = { title: "", description: "", remind_type: "custom", date: "", time: "09:00", recurrence: "daily", broadcast: false, channels: [], broadcast_offset: "10m", broadcast_custom_date: "", broadcast_custom_time: "09:00" };
+const OFFSET_LABELS = { "10m": "10 menit sebelum (default)", "1h": "1 jam sebelum", "1d": "1 hari sebelum", "custom": "Waktu khusus" };
 
 function fmtDate(d) { return d ? new Date(d).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "-"; }
 
@@ -49,6 +50,9 @@ export default function Reminders() {
         title: form.title, description: form.description, remind_type: form.remind_type,
         date, time: form.time, recurrence: form.remind_type === "recurring" ? form.recurrence : null,
         broadcast: form.broadcast, channels: form.broadcast ? form.channels : [],
+        broadcast_offset: form.broadcast ? form.broadcast_offset : "10m",
+        broadcast_at: form.broadcast && form.broadcast_offset === "custom" && form.broadcast_custom_date
+          ? `${form.broadcast_custom_date}T${form.broadcast_custom_time}:00` : null,
       });
       toast.success("Pengingat dibuat");
       setOpen(false); setForm(emptyForm); load();
@@ -140,13 +144,28 @@ export default function Reminders() {
                 <Switch checked={form.broadcast} onCheckedChange={(v) => setForm({ ...form, broadcast: v })} data-testid="reminder-broadcast-switch" />
               </div>
               {form.broadcast && (
-                <div className="flex gap-2">
-                  {[{ k: "email", label: "Email", icon: Mail }, { k: "telegram", label: "Telegram", icon: Send }].map(({ k, label, icon: Icon }) => (
-                    <button key={k} type="button" onClick={() => toggleChannel(k)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm transition-colors ${form.channels.includes(k) ? "border-primary bg-primary/10 text-primary font-medium" : "border-border text-muted-foreground"}`} data-testid={`reminder-channel-${k}`}>
-                      <Icon className="h-4 w-4" /> {label}
-                    </button>
-                  ))}
-                </div>
+                <>
+                  <div className="flex gap-2">
+                    {[{ k: "email", label: "Email", icon: Mail }, { k: "telegram", label: "Telegram", icon: Send }].map(({ k, label, icon: Icon }) => (
+                      <button key={k} type="button" onClick={() => toggleChannel(k)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm transition-colors ${form.channels.includes(k) ? "border-primary bg-primary/10 text-primary font-medium" : "border-border text-muted-foreground"}`} data-testid={`reminder-channel-${k}`}>
+                        <Icon className="h-4 w-4" /> {label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="flex items-center gap-1.5 text-xs"><Clock className="h-3.5 w-3.5" /> Kapan broadcast dikirim?</Label>
+                    <Select value={form.broadcast_offset} onValueChange={(v) => setForm({ ...form, broadcast_offset: v })}>
+                      <SelectTrigger data-testid="reminder-broadcast-offset"><SelectValue /></SelectTrigger>
+                      <SelectContent>{Object.entries(OFFSET_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                  {form.broadcast_offset === "custom" && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1.5"><Label className="text-xs">Tanggal Kirim</Label><Input type="date" value={form.broadcast_custom_date} onChange={(e) => setForm({ ...form, broadcast_custom_date: e.target.value })} data-testid="reminder-broadcast-date" /></div>
+                      <div className="space-y-1.5"><Label className="text-xs">Jam Kirim</Label><Input type="time" value={form.broadcast_custom_time} onChange={(e) => setForm({ ...form, broadcast_custom_time: e.target.value })} data-testid="reminder-broadcast-time" /></div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>

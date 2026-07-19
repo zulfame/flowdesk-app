@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { api, apiError } from "@/lib/api";
 import { PageHeader, EmptyState } from "@/components/common";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
@@ -6,7 +6,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Database, HardDrive, Save, Loader2, DownloadCloud, UploadCloud, Search, RotateCcw, Trash2, Download, CheckCircle2, XCircle, Server } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Database, HardDrive, Save, Loader2, DownloadCloud, UploadCloud, Search, RotateCcw, Trash2, Download, Server, CalendarClock, FileUp } from "lucide-react";
 import { toast } from "sonner";
 
 function Field({ label, children, hint }) {
@@ -17,6 +19,8 @@ function fmtDate(iso) { return new Date(iso).toLocaleString("id-ID", { dateStyle
 
 export default function DatabasePage() {
   const [storage, setStorage] = useState(null);
+  const [backupCfg, setBackupCfg] = useState(null);
+  const [savingBackupCfg, setSavingBackupCfg] = useState(false);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [backups, setBackups] = useState([]);
@@ -24,9 +28,12 @@ export default function DatabasePage() {
   const [restoreTarget, setRestoreTarget] = useState(null);
   const [delTarget, setDelTarget] = useState(null);
   const [inspectResult, setInspectResult] = useState(null);
+  const [uploadFile, setUploadFile] = useState(null);
+  const [uploadRestoring, setUploadRestoring] = useState(false);
+  const uploadRef = useRef(null);
 
   const loadSettings = useCallback(async () => {
-    try { const { data } = await api.get("/settings"); setStorage(data.storage); } catch (e) { toast.error(apiError(e)); }
+    try { const { data } = await api.get("/settings"); setStorage(data.storage); setBackupCfg(data.backup); } catch (e) { toast.error(apiError(e)); }
   }, []);
   const loadBackups = useCallback(async () => {
     try { const { data } = await api.get("/database/backups"); setBackups(data); } catch (e) { toast.error(apiError(e)); }
@@ -76,6 +83,7 @@ export default function DatabasePage() {
   };
 
   const doRestore = async () => {
+    if (restoreTarget?.upload) { await uploadRestore(); setRestoreTarget(null); return; }
     setBusy(`restore-${restoreTarget.id}`);
     try { await api.post(`/database/backups/${restoreTarget.id}/restore`); toast.success("Database berhasil dipulihkan"); setRestoreTarget(null); loadBackups(); }
     catch (e) { toast.error(apiError(e)); }
@@ -86,6 +94,28 @@ export default function DatabasePage() {
     try { await api.delete(`/database/backups/${delTarget.id}`); toast.success("Backup dihapus"); setDelTarget(null); loadBackups(); }
     catch (e) { toast.error(apiError(e)); }
   };
+
+  const saveBackupCfg = async () => {
+    setSavingBackupCfg(true);
+    try { await api.put("/settings", { backup: backupCfg }); toast.success("Pengaturan backup otomatis disimpan"); }
+    catch (e) { toast.error(apiError(e)); }
+    finally { setSavingBackupCfg(false); }
+  };
+
+  const uploadRestore = async () => {
+    if (!uploadFile) return;
+    setUploadRestoring(true);
+    try {
+      const fd = new FormData(); fd.append("file", uploadFile);
+      const { data } = await api.post("/database/restore-upload", fd, { headers: { "Content-Type": "multipart/form-data" } });
+      const n = Object.values(data.restored || {}).reduce((a, b) => a + b, 0);
+      toast.success(`Database dipulihkan dari unggahan (${n} data)`);
+      setUploadFile(null); loadBackups();
+    } catch (e) { toast.error(apiError(e)); }
+    finally { setUploadRestoring(false); }
+  };
+
+  const bcUp = (k, v) => setBackupCfg((c) => ({ ...c, [k]: v }));
 
   if (!storage) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
@@ -125,6 +155,55 @@ export default function DatabasePage() {
               <span>Backup ke Object Storage</span>
             </Button>
           </div>
+        </Card>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2 mt-6">
+        <Card className="p-6 rounded-2xl shadow-soft" data-testid="auto-backup-card">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center gap-2"><CalendarClock className="h-5 w-5 text-primary" /><h2 className="font-semibold">Backup Otomatis</h2></div>
+            {backupCfg && <Switch checked={!!backupCfg.auto_enabled} onCheckedChange={(v) => bcUp("auto_enabled", v)} data-testid="auto-backup-switch" />}
+          </div>
+          {backupCfg && (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5"><Label>Frekuensi</Label>
+                  <Select value={backupCfg.frequency} onValueChange={(v) => bcUp("frequency", v)}>
+                    <SelectTrigger data-testid="auto-backup-frequency"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="daily">Harian</SelectItem><SelectItem value="weekly">Mingguan</SelectItem></SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5"><Label>Jam</Label><Input type="time" value={backupCfg.time} onChange={(e) => bcUp("time", e.target.value)} data-testid="auto-backup-time" /></div>
+                {backupCfg.frequency === "weekly" && (
+                  <div className="space-y-1.5"><Label>Hari</Label>
+                    <Select value={String(backupCfg.weekday)} onValueChange={(v) => bcUp("weekday", parseInt(v))}>
+                      <SelectTrigger data-testid="auto-backup-weekday"><SelectValue /></SelectTrigger>
+                      <SelectContent>{["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"].map((d, i) => <SelectItem key={i} value={String(i + 1)}>{d}</SelectItem>)}</SelectContent>
+                    </Select>
+                  </div>
+                )}
+                <div className="space-y-1.5"><Label>Tujuan</Label>
+                  <Select value={backupCfg.destination} onValueChange={(v) => bcUp("destination", v)}>
+                    <SelectTrigger data-testid="auto-backup-destination"><SelectValue /></SelectTrigger>
+                    <SelectContent><SelectItem value="s3">Object Storage (S3)</SelectItem><SelectItem value="local">Server</SelectItem></SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground mt-3">Backup terakhir otomatis: {backupCfg.last_run ? fmtDate(backupCfg.last_run) : "belum pernah"}</p>
+              <div className="mt-4"><Button onClick={saveBackupCfg} disabled={savingBackupCfg} className="rounded-xl" data-testid="btn-save-auto-backup">{savingBackupCfg ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan Jadwal</Button></div>
+            </>
+          )}
+        </Card>
+
+        <Card className="p-6 rounded-2xl shadow-soft" data-testid="restore-upload-card">
+          <div className="flex items-center gap-2 mb-5"><FileUp className="h-5 w-5 text-primary" /><h2 className="font-semibold">Restore dari Unggahan</h2></div>
+          <p className="text-sm text-muted-foreground mb-4">Punya berkas backup (.json.gz) hasil unduhan? Unggah untuk memulihkan database. Semua data saat ini akan diganti.</p>
+          <button onClick={() => uploadRef.current?.click()} className="w-full border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center gap-2 hover:border-primary transition-colors" data-testid="restore-upload-dropzone">
+            <UploadCloud className="h-7 w-7 text-muted-foreground" />
+            <span className="text-sm font-medium">{uploadFile ? uploadFile.name : "Pilih berkas backup (.json.gz)"}</span>
+          </button>
+          <input ref={uploadRef} type="file" accept=".gz,.json" className="hidden" onChange={(e) => { setUploadFile(e.target.files?.[0] || null); e.target.value = ""; }} data-testid="restore-upload-input" />
+          {uploadFile && <Button variant="secondary" className="w-full rounded-xl mt-3 text-destructive" onClick={() => setRestoreTarget({ upload: true })} data-testid="btn-restore-upload">Pulihkan dari Berkas Ini</Button>}
         </Card>
       </div>
 

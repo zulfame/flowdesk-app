@@ -28,14 +28,14 @@ class NoteUpdate(BaseModel):
 
 @router.get("")
 async def list_notes(user: dict = Depends(get_current_user)):
-    notes = await db.notes.find({}, {"_id": 0}).sort("updated_at", -1).to_list(1000)
+    notes = await db.notes.find({"is_deleted": {"$ne": True}}, {"_id": 0}).sort("updated_at", -1).to_list(1000)
     notes.sort(key=lambda n: (not n.get("pinned", False)))
     return notes
 
 
 @router.get("/{note_id}")
 async def get_note(note_id: str, user: dict = Depends(get_current_user)):
-    note = await db.notes.find_one({"id": note_id}, {"_id": 0})
+    note = await db.notes.find_one({"id": note_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not note:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
     note["attachments"] = await db.files.find({"parent_id": note_id, "is_deleted": False}, {"_id": 0}).to_list(200)

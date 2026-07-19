@@ -72,6 +72,12 @@ async def create_notification(user_id, title, message, ntype="info", link=None, 
             _send_telegram(settings.get("telegram", {}), title, message)
         if notif_cfg.get("email_enabled"):
             _send_email(settings.get("email", {}), title, message)
+        if notif_cfg.get("browser_enabled", True):
+            try:
+                from webpush import send_push
+                await send_push(user_id, title, message, link or "/")
+            except Exception:
+                pass
     doc.pop("_id", None)
     return doc
 

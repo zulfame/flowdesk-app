@@ -241,14 +241,26 @@ class TestMeetings:
         TestMeetings.item_id = m["action_items"][0]["id"]
 
     def test_convert_action_item(self, admin_client):
-        r = admin_client.post(f"{API}/meetings/{TestMeetings.meeting_id}/action-items/{TestMeetings.item_id}/convert")
+        payload = {
+            "pic": {"user_id": None, "name": "Admin", "email": "admin@flowdesk.com"},
+            "deadline": "2026-12-31",
+            "priority": "Medium",
+        }
+        r = admin_client.post(
+            f"{API}/meetings/{TestMeetings.meeting_id}/action-items/{TestMeetings.item_id}/convert",
+            json=payload,
+        )
         assert r.status_code == 200, r.text
         task = r.json()
         assert task["meeting_id"] == TestMeetings.meeting_id
         TestMeetings.task_id = task["id"]
 
     def test_convert_again_400(self, admin_client):
-        r = admin_client.post(f"{API}/meetings/{TestMeetings.meeting_id}/action-items/{TestMeetings.item_id}/convert")
+        payload = {"pic": {"name": "Admin"}, "deadline": "2026-12-31"}
+        r = admin_client.post(
+            f"{API}/meetings/{TestMeetings.meeting_id}/action-items/{TestMeetings.item_id}/convert",
+            json=payload,
+        )
         assert r.status_code == 400
 
     def test_cleanup_meeting(self, admin_client):

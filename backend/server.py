@@ -14,7 +14,7 @@ from helpers import new_id, now_iso
 from security import hash_password, verify_password
 from storage import init_storage
 
-from routers import auth, users, tasks, meetings, reminders, notes, attachments, feeds, aggregate, settings, profile, database
+from routers import auth, users, tasks, meetings, reminders, notes, attachments, feeds, aggregate, settings, profile, database, push, archive
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 logger = logging.getLogger("flowdesk")
@@ -40,6 +40,8 @@ api_router.include_router(aggregate.router)
 api_router.include_router(settings.router)
 api_router.include_router(profile.router)
 api_router.include_router(database.router)
+api_router.include_router(push.router)
+api_router.include_router(archive.router)
 
 app.include_router(api_router)
 
@@ -90,6 +92,42 @@ async def startup():
         logger.error(f"Storage init failed: {e}")
     import asyncio
     asyncio.create_task(deadline_reminder_loop())
+    asyncio.create_task(scheduled_backup_loop())
+
+
+async def scheduled_backup_loop():
+    import asyncio
+    from datetime import datetime, timezone
+    from notifications import get_settings
+    from routers.database import run_backup
+    while True:
+        try:
+            s = await get_settings()
+            cfg = s.get("backup", {}) or {}
+            if cfg.get("auto_enabled"):
+                now = datetime.now(timezone.utc)
+                hh, mm = (cfg.get("time") or "02:00").split(":")
+                due_today = now.hour > int(hh) or (now.hour == int(hh) and now.minute >= int(mm))
+                last = cfg.get("last_run")
+                last_date = last[:10] if last else None
+                today = now.date().isoformat()
+                should = False
+                if cfg.get("frequency") == "daily":
+                    should = due_today and last_date != today
+                elif cfg.get("frequency") == "weekly":
+                    # run on configured weekday (1=Mon..7=Sun) once that day
+                    if now.isoweekday() == int(cfg.get("weekday", 1)) and due_today and last_date != today:
+                        should = True
+                if should:
+                    try:
+                        await run_backup(cfg.get("destination", "s3"), "Backup Otomatis", None)
+                        await db.settings.update_one({"key": "app"}, {"$set": {"backup.last_run": now.isoformat()}})
+                        logger.info("Scheduled backup completed")
+                    except Exception as e:
+                        logger.error(f"Scheduled backup failed: {e}")
+        except Exception as e:
+            logger.error(f"scheduled_backup_loop: {e}")
+        await asyncio.sleep(300)
 
 
 async def deadline_reminder_loop():
@@ -127,8 +165,10 @@ async def _dispatch_reminders(now):
     from datetime import datetime, timedelta
     from notifications import create_notification, get_settings, _send_email, _send_telegram
     now_local = now.isoformat()
+
+    # 1) In-app notification to creator at remind_at
     cursor = db.reminders.find({
-        "done": {"$ne": True},
+        "done": {"$ne": True}, "is_deleted": {"$ne": True},
         "dispatched": {"$ne": True},
         "remind_at": {"$ne": None, "$lte": now_local},
     })
@@ -136,14 +176,6 @@ async def _dispatch_reminders(now):
         title = r.get("title", "Pengingat")
         body = r.get("description") or "Waktunya pengingat Anda."
         await create_notification(r.get("created_by"), f"Pengingat: {title}", body, "reminder", "/reminders")
-        if r.get("broadcast"):
-            settings = await get_settings()
-            channels = r.get("channels", []) or []
-            if "email" in channels:
-                _send_email(settings.get("email", {}), f"Pengingat: {title}", body)
-            if "telegram" in channels:
-                _send_telegram(settings.get("telegram", {}), f"Pengingat: {title}", body)
-        # Recurring: advance to next occurrence; otherwise mark dispatched
         if r.get("remind_type") == "recurring" and r.get("date"):
             try:
                 base = datetime.fromisoformat(r["date"])
@@ -151,14 +183,31 @@ async def _dispatch_reminders(now):
                 nxt = base
                 while nxt <= now.replace(tzinfo=None):
                     nxt = nxt + step
-                new_date = nxt.date().isoformat()
+                nd = nxt.date().isoformat()
                 await db.reminders.update_one({"id": r["id"]}, {"$set": {
-                    "date": new_date, "remind_at": f"{new_date}T{r.get('time', '09:00')}:00", "dispatched": False,
+                    "date": nd, "remind_at": f"{nd}T{r.get('time', '09:00')}:00", "dispatched": False, "broadcast_sent": False,
                 }})
             except Exception:
                 await db.reminders.update_one({"id": r["id"]}, {"$set": {"dispatched": True}})
         else:
             await db.reminders.update_one({"id": r["id"]}, {"$set": {"dispatched": True}})
+
+    # 2) Broadcast via email/telegram at broadcast_at
+    bcur = db.reminders.find({
+        "done": {"$ne": True}, "is_deleted": {"$ne": True}, "broadcast": True,
+        "broadcast_sent": {"$ne": True},
+        "broadcast_at": {"$ne": None, "$lte": now_local},
+    })
+    async for r in bcur:
+        title = r.get("title", "Pengingat")
+        body = r.get("description") or "Waktunya pengingat Anda."
+        settings = await get_settings()
+        channels = r.get("channels", []) or []
+        if "email" in channels:
+            _send_email(settings.get("email", {}), f"Pengingat: {title}", body)
+        if "telegram" in channels:
+            _send_telegram(settings.get("telegram", {}), f"Pengingat: {title}", body)
+        await db.reminders.update_one({"id": r["id"]}, {"$set": {"broadcast_sent": True}})
 
 
 @app.on_event("shutdown")

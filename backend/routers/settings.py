@@ -23,6 +23,7 @@ DEFAULT_SETTINGS = {
     "storage": {"max_file_mb": 50, "allowed_types": "image,pdf,office,zip,video,audio",
                 "endpoint": "", "bucket": "", "access_key": "", "secret_key": "", "region": "", "path": ""},
     "application": {"theme": "system", "primary_color": "#4F46E5", "date_format": "DD/MM/YYYY"},
+    "backup": {"auto_enabled": False, "frequency": "daily", "time": "02:00", "weekday": 1, "destination": "s3", "last_run": None},
 }
 
 
@@ -44,6 +45,7 @@ class SettingsUpdate(BaseModel):
     notification: Optional[Dict[str, Any]] = None
     storage: Optional[Dict[str, Any]] = None
     application: Optional[Dict[str, Any]] = None
+    backup: Optional[Dict[str, Any]] = None
 
 
 class TestNotifyBody(BaseModel):
