@@ -15,7 +15,7 @@ import s3_storage
 
 router = APIRouter(prefix="/database", tags=["database"])
 
-BACKUP_DIR = Path("/app/backups")
+BACKUP_DIR = Path(os.environ.get("LOCAL_STORAGE_DIR", "/app/data")) / "backups"
 BACKUP_DIR.mkdir(parents=True, exist_ok=True)
 
 # Collections included in a full backup (login attempts & backups meta excluded)

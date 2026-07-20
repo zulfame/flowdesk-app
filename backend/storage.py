@@ -13,18 +13,19 @@ APP_NAME = "flowdesk"
 # Aktif bila LOCAL_STORAGE_DIR di-set ATAU EMERGENT_LLM_KEY tidak tersedia
 # (mis. di mesin lokal tanpa integrasi Emergent). Di preview/pod Emergent,
 # EMERGENT_LLM_KEY tersedia sehingga tetap memakai Object Storage Emergent.
-LOCAL_STORAGE_DIR = os.environ.get("LOCAL_STORAGE_DIR")
+LOCAL_STORAGE_DIR = os.environ.get("LOCAL_STORAGE_DIR", "/app/data")
 
 _storage_key = None
 
 
 def _use_local() -> bool:
-    return bool(LOCAL_STORAGE_DIR) or not EMERGENT_KEY
+    # Gunakan Object Storage Emergent bila EMERGENT_LLM_KEY tersedia (platform);
+    # selain itu simpan ke filesystem lokal di LOCAL_STORAGE_DIR (default /app/data).
+    return not EMERGENT_KEY
 
 
 def _local_base() -> Path:
-    base = LOCAL_STORAGE_DIR or os.path.join(os.path.dirname(__file__), "data", "storage")
-    return Path(base)
+    return Path(LOCAL_STORAGE_DIR) / "uploads"
 
 
 def _local_path(path: str) -> Path:

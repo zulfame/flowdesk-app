@@ -78,6 +78,14 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - ✅ README.md diperbarui menyeluruh: Fitur Utama (Time Schedule, broadcast WhatsApp), pemisahan penyimpanan lampiran (Emergent/filesystem `LOCAL_STORAGE_DIR`) vs backup database (S3 eksternal), struktur proyek (roles/time_schedule/deploy), tabel env (`LOCAL_STORAGE_DIR`), hak akses Time Schedule, konfigurasi deploy lokal via `.env`/wizard, catatan storage produksi, bagian Notifikasi ditulis ulang (kanal aktif, Nama Pengirim, Telegram=sistem, WhatsApp, wording nama).
 - ✅ root `docker-compose.yml`: tambah volume `uploads_data` + `LOCAL_STORAGE_DIR=/data/uploads` agar lampiran persisten pada quick-start. Kedua compose divalidasi YAML.
 
+## Update (2026-07) — Audit deployability (Nexus Panel / Docker generik)
+- ✅ Hapus artefak Docker root kustom: `Dockerfile.backend`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx.conf` (panel menghasilkan sendiri). `deploy/local/` dipertahankan.
+- ✅ `storage.py`: `LOCAL_STORAGE_DIR` default `/app/data`; `_use_local()` = `not EMERGENT_KEY` (preview pakai Emergent, self-host pakai filesystem `LOCAL_STORAGE_DIR/uploads`).
+- ✅ `database.py`: `BACKUP_DIR` = `LOCAL_STORAGE_DIR/backups` (sebelumnya hardcoded `/app/backups`).
+- ✅ `frontend/.env`: tambah `DISABLE_ESLINT_PLUGIN=true` agar `yarn build` sukses walau ada eslint warning (terbukti build OK).
+- ✅ README: bagian `## Environment Variables` (tabel lengkap 4 kolom) + subseksi "Deploy via Control Panel"; `.gitignore` menambah `/data/` & `/backups/`.
+- Verifikasi: `server:app` ada, semua route `/api`, upload/download/delete lampiran 200 di preview (Emergent), backend sehat, `yarn build` sukses. Var wajib: MONGO_URL, DB_NAME, JWT_SECRET, REACT_APP_BACKEND_URL.
+
 ## Update (2026-06) — Perbaikan deploy lokal + skrip reset
 - ✅ Fix Docker build lokal gagal (`frontend/yarn.lock not found`): `deploy/local/flowdesk.frontend` kini `COPY frontend/package.json frontend/yarn.lock* ./` + `yarn install` (lockfile opsional; yarn.lock tak ter-track di git). README manual-build disamakan (`yarn install`).
 - ✅ Skrip reset data: `deploy/local/seed.sh` — jalankan `python seed.py --force` via `docker compose exec backend`; auto-start stack; konfirmasi 'YA' atau `-y`.

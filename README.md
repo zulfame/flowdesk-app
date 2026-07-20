@@ -59,11 +59,11 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 │   ├── src/                 # pages/, components/, context/, lib/
 │   ├── public/sw.js         # service worker Web Push
 │   ├── Dockerfile, nginx.conf, package.json, .env
-├── deploy/local/            # skrip deploy lokal: start.sh, stop.sh, seed.sh,
-│                            #   deploy.sh, docker-compose.yml, .env.example
-├── Dockerfile.backend
-└── docker-compose.yml       # quick-start Docker (root)
+├── deploy/local/            # skrip deploy lokal opsional: start.sh, stop.sh,
+│                            #   seed.sh, deploy.sh, docker-compose.yml, .env.example
+└── README.md
 ```
+> Catatan: Dockerfile/`docker-compose.yml` di root **sengaja tidak disertakan** — panel/deployer Anda (mis. Nexus Panel) yang menghasilkannya. Folder `deploy/local/` bersifat opsional untuk uji coba lokal manual.
 
 ## Variabel Lingkungan
 ### Backend (`backend/.env`)
@@ -84,6 +84,24 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 | `REACT_APP_BACKEND_URL` | Base URL backend (tanpa `/api`) |
 
 > Jangan menaruh nilai default rahasia di `.env` produksi. Ganti `JWT_SECRET` dan `ADMIN_PASSWORD`.
+
+## Environment Variables
+Tabel lengkap seluruh variabel yang dibaca aplikasi (backend & frontend). Hanya variabel bertanda **Required** yang wajib disediakan; sisanya memiliki nilai default yang aman.
+
+| Variable | Required/Optional | Default Value | Description |
+|----------|-------------------|---------------|-------------|
+| `MONGO_URL` | Required | - | MongoDB connection string (mis. `mongodb://localhost:27017`). |
+| `DB_NAME` | Required | - | Nama database MongoDB. |
+| `JWT_SECRET` | Required | - | Kunci rahasia untuk menandatangani & memverifikasi token JWT. |
+| `REACT_APP_BACKEND_URL` | Required | - | Base URL backend saat build frontend, **tanpa** `/api` (mis. `https://app.example.com`). |
+| `ADMIN_EMAIL` | Optional | `admin@flowdesk.com` | Email superadmin yang di-seed saat startup (idempoten). |
+| `ADMIN_PASSWORD` | Optional | `admin123` | Kata sandi superadmin awal (disimpan ter-hash). Ganti di produksi. |
+| `CORS_ORIGINS` | Optional | `*` | Daftar origin yang diizinkan, dipisah koma. |
+| `LOCAL_STORAGE_DIR` | Optional | `/app/data` | Folder berkas persisten: lampiran (`/uploads`) & backup DB lokal (`/backups`). |
+| `EMERGENT_LLM_KEY` | Optional | - | Kunci integrasi Emergent. Bila diisi, lampiran memakai Object Storage Emergent; bila kosong, lampiran disimpan di filesystem lokal di `LOCAL_STORAGE_DIR`. |
+| `DISABLE_ESLINT_PLUGIN` | Optional | `false` | Flag build frontend. Set `true` agar `yarn build` tetap sukses walau ada peringatan ESLint. |
+| `WDS_SOCKET_PORT` | Optional | - | (Hanya dev) port websocket dev-server CRA. Tidak dipakai pada build produksi. |
+| `ENABLE_HEALTH_CHECK` | Optional | `false` | (Hanya dev) flag internal preview; tidak dipakai logika aplikasi. |
 
 ## Akun Default (Superadmin)
 Saat pertama kali dijalankan, sistem membuat satu superadmin:
@@ -156,15 +174,6 @@ Wizard menyimpan pilihan ke `deploy/local/.env`:
 
 > Menjalankan >1 project Emergent di satu mesin? Cukup beri **nama project berbeda** dan **port berbeda** di wizard tiap project — container, volume MongoDB, dan network otomatis terpisah sehingga tidak ada konflik.
 
-Alternatif cepat (port default 3000/8001/27017/8081) dari root proyek:
-```bash
-docker compose up -d --build
-```
-Layanan (port default):
-- Frontend  → `http://localhost:3000`
-- Backend   → `http://localhost:8001`
-- MongoDB   → `localhost:27017`
-
 Perintah berguna (dari `deploy/local`):
 ```bash
 docker compose logs -f backend      # lihat log
@@ -176,6 +185,14 @@ docker compose down -v              # hentikan + hapus data MongoDB
 Konfigurasi disimpan di `deploy/local/.env` (dibuat oleh wizard `start.sh`). Ganti `JWT_SECRET` & `ADMIN_PASSWORD` untuk penggunaan nyata. Bila mengubah `BACKEND_PORT`/`REACT_APP_BACKEND_URL`, build ulang frontend: `docker compose up -d --build frontend`.
 
 > Catatan penyimpanan lampiran: deploy Docker menyimpan lampiran ke **filesystem** (volume `<project>_uploads_data` via `LOCAL_STORAGE_DIR=/data/uploads`) sehingga **tidak memerlukan** Object Storage Emergent. Menu **Kelola Database** (S3 eksternal) khusus untuk **backup database**, bukan lampiran.
+
+## Deploy via Control Panel (Nexus Panel / Docker)
+Panel meng-clone repo lalu membangun backend & frontend dengan Docker yang ia hasilkan sendiri — **tidak ada Dockerfile/compose di root**.
+- **Backend**: dijalankan dari folder `backend/` dengan `uvicorn server:app --host 0.0.0.0 --port 8001`. Objek FastAPI bernama `app` berada di `backend/server.py`.
+- **Frontend**: `yarn install && yarn build` dari folder `frontend/`, lalu sajikan folder `build/` sebagai statis. `REACT_APP_BACKEND_URL` di-set saat build.
+- Sediakan variabel **wajib** (lihat [Environment Variables](#environment-variables)): `MONGO_URL`, `DB_NAME`, `JWT_SECRET`, `REACT_APP_BACKEND_URL`.
+- Mount volume persisten ke `LOCAL_STORAGE_DIR` (default `/app/data`) agar lampiran (`/app/data/uploads`) & backup DB lokal (`/app/data/backups`) tidak hilang saat rebuild.
+- Semua endpoint backend berawalan `/api`; arahkan reverse-proxy path `/api` → backend `:8001`, sisanya → frontend statis.
 
 ## Deploy di Server Produksi (Ubuntu 22.04 LTS)
 OS rekomendasi: **Ubuntu Server 22.04 LTS** (juga cocok untuk 24.04 LTS).
