@@ -83,6 +83,13 @@ body {
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); background-clip: content-box; }
 
+/* Scroll area dengan scrollbar yang jelas terlihat (untuk daftar panjang: riwayat, dll) */
+.thin-scroll { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent; }
+.thin-scroll::-webkit-scrollbar { width: 8px; }
+.thin-scroll::-webkit-scrollbar-track { background: transparent; }
+.thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.45); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
+.thin-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.65); background-clip: content-box; }
+
 .rte-content:empty:before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
