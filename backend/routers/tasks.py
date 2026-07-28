@@ -35,6 +35,8 @@ class DocResponse(BaseModel):
     status: str = "revisi"       # revisi | final
     note: Optional[str] = ""
     created_at: Optional[str] = None
+    created_by: Optional[str] = None       # user_id pembuat balasan
+    created_by_name: Optional[str] = None
 
 
 class SourceDoc(BaseModel):
@@ -162,6 +164,66 @@ def _norm_items(items) -> list:
     return out
 
 
+def _pic_merge_docs(existing_docs, incoming_docs, uid, uname) -> list:
+    """PIC hanya boleh MENAMBAH balasan (responses) dan MENGHAPUS balasan miliknya sendiri.
+    Struktur dokumen sumber (tambah/hapus dokumen) tidak boleh diubah PIC."""
+    inc_by_id = {d.get("id"): d for d in (incoming_docs or []) if d.get("id")}
+    out = []
+    for ex in existing_docs or []:
+        ex_doc = dict(ex)
+        ex_resps = ex.get("responses", []) or []
+        inc = inc_by_id.get(ex.get("id"))
+        if inc is None:
+            # dokumen tidak dikirim balik -> pertahankan apa adanya (tidak boleh dihapus PIC)
+            out.append(ex_doc)
+            continue
+        inc_resps = inc.get("responses", []) or []
+        inc_resp_ids = {r.get("id") for r in inc_resps if r.get("id")}
+        ex_resp_ids = {r.get("id") for r in ex_resps if r.get("id")}
+        merged = []
+        # pertahankan balasan lama; boleh hilang HANYA jika milik PIC yang bersangkutan
+        for r in ex_resps:
+            if r.get("id") in inc_resp_ids:
+                merged.append(r)
+            elif r.get("created_by") == uid:
+                continue  # PIC menghapus balasannya sendiri -> diizinkan
+            else:
+                merged.append(r)  # balasan milik orang lain -> tidak boleh dihapus
+        # tambahkan balasan baru (id belum ada di existing) milik PIC
+        for r in inc_resps:
+            if r.get("id") not in ex_resp_ids:
+                nr = dict(r)
+                nr["created_by"] = uid
+                nr["created_by_name"] = uname
+                merged.append(nr)
+        ex_doc["responses"] = merged
+        out.append(ex_doc)
+    return out
+
+
+def _pic_safe_update(existing: dict, body: "TaskUpdate", uid: str, uname: str) -> dict:
+    """Batasi perubahan PIC: hanya toggle 'selesai' item + kirim/hapus balasan miliknya."""
+    changed = {}
+    if body.items is not None:
+        incoming = _norm_items(body.items)
+        inc_by_id = {it.get("id"): it for it in incoming if it.get("id")}
+        merged_items = []
+        for ex in existing.get("items", []) or []:
+            new_it = dict(ex)
+            inc = inc_by_id.get(ex.get("id"))
+            if inc is not None:
+                done = bool(inc.get("done"))
+                new_it["done"] = done
+                new_it["done_at"] = (inc.get("done_at") or now_iso()) if done else None
+                new_it["documents"] = _pic_merge_docs(ex.get("documents", []), inc.get("documents", []), uid, uname)
+            merged_items.append(new_it)
+        changed["items"] = merged_items
+    if body.documents is not None:
+        incoming = _norm_docs(body.documents)
+        changed["documents"] = _pic_merge_docs(existing.get("documents", []), incoming, uid, uname)
+    return changed
+
+
 async def _notify_pic(task: dict):
     """Notify the assigned PIC: in-app notification + best-effort email; returns wa.me URL if phone set."""
     pic = task.get("pic") or {}
@@ -283,6 +345,8 @@ async def _notify_response(task: dict):
 
 @router.post("")
 async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
+    if not body.items or len(body.items) == 0:
+        raise HTTPException(status_code=400, detail="Tugas harus memiliki minimal satu item tugas")
     tid = body.id or new_id()
     if await db.tasks.find_one({"id": tid}):
         raise HTTPException(status_code=400, detail="Tugas dengan id ini sudah ada")
@@ -318,23 +382,23 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     is_pic = (existing.get("pic") or {}).get("user_id") == user["id"]
     if not full and not is_pic:
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses untuk mengubah tugas ini")
-    update = {k: v for k, v in body.model_dump().items() if v is not None}
-    if "items" in update:
-        update["items"] = _norm_items(body.items)
-    if "documents" in update:
-        update["documents"] = _norm_docs(body.documents)
-    if body.requester is not None:
-        update["requester"] = body.requester.model_dump()
-    if body.pic is not None:
-        update["pic"] = body.pic.model_dump()
-    # PIC (bukan pembuat/admin) hanya boleh memperbarui progres/status/checklist/dokumen
     if not full and is_pic:
-        allowed = {"items", "documents", "status"}
-        for k in list(update.keys()):
-            if k not in allowed:
-                update.pop(k, None)
+        # PIC hanya boleh: menandai item selesai + mengirim/menghapus dokumen balasan miliknya
+        update = _pic_safe_update(existing, body, user["id"], user["name"])
         if not update:
-            raise HTTPException(status_code=403, detail="Sebagai PIC Anda hanya dapat memperbarui progres, status, dan checklist")
+            raise HTTPException(status_code=403, detail="Sebagai PIC Anda hanya dapat memperbarui progres item dan mengirim dokumen balasan")
+    else:
+        update = {k: v for k, v in body.model_dump().items() if v is not None}
+        if "items" in update:
+            update["items"] = _norm_items(body.items)
+        if "documents" in update:
+            update["documents"] = _norm_docs(body.documents)
+        if body.requester is not None:
+            update["requester"] = body.requester.model_dump()
+        if body.pic is not None:
+            update["pic"] = body.pic.model_dump()
+    if "items" in update and len(update["items"]) == 0:
+        raise HTTPException(status_code=400, detail="Tugas harus memiliki minimal satu item tugas")
     if "deadline" in update:
         update["deadline_reminded"] = False
     update["updated_at"] = now_iso()

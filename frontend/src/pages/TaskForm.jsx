@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import { PageHeader, SectionTitle } from "@/components/common";
 import UserSelect from "@/components/UserSelect";
 import DocumentManager from "@/components/DocumentManager";
@@ -40,6 +41,7 @@ export default function TaskForm() {
   const { id } = useParams();
   const editing = !!id;
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [draftId] = useState(genId);
   const taskId = editing ? id : draftId;
 
@@ -73,6 +75,20 @@ export default function TaskForm() {
     loadTask();
   }, [loadTask]);
 
+  // Default "Pemberi Tugas" ke pengguna yang sedang login saat membuat tugas baru (tetap bisa diganti)
+  useEffect(() => {
+    if (!editing && user && !requester) {
+      setRequester({
+        user_id: user.id,
+        name: user.name,
+        department: user.department || "",
+        phone: user.phone || "",
+        email: user.email || "",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editing, user]);
+
   const addItem = () => {
     if (!newItem.trim()) return;
     setItems([...items, { title: newItem.trim(), done: false, due_date: newItemDue ? new Date(newItemDue).toISOString() : null }]);
@@ -82,6 +98,7 @@ export default function TaskForm() {
 
   const save = async () => {
     if (!form.title.trim()) { toast.error("Judul wajib diisi"); return; }
+    if (items.length === 0) { toast.error("Tugas harus memiliki minimal satu item tugas"); return; }
     setSaving(true);
     const payload = {
       title: form.title,
@@ -154,7 +171,8 @@ export default function TaskForm() {
           </Card>
 
           <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={ListChecks}>Item Tugas ({items.filter((i) => i.done).length}/{items.length})</SectionTitle>
+            <SectionTitle icon={ListChecks}>Item Tugas * ({items.filter((i) => i.done).length}/{items.length})</SectionTitle>
+            {items.length === 0 && <p className="text-xs text-destructive mb-2">Minimal satu item tugas wajib ditambahkan.</p>}
             <div className="space-y-2">
               {items.map((item, idx) => (
                 <div key={item.id || idx} className="flex items-center gap-2 p-2.5 rounded-xl border border-border">

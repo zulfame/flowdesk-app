@@ -45,7 +45,7 @@ function DocLink({ doc }) {
   );
 }
 
-export default function DocumentManager({ taskId, documents = [], onChange, label = "Dokumen Sumber", idPrefix = "task" }) {
+export default function DocumentManager({ taskId, documents = [], onChange, label = "Dokumen Sumber", idPrefix = "task", canManage = true, canRespond = true, currentUserId = null }) {
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
@@ -116,13 +116,15 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> {label} ({(documents || []).length})</h3>
-        <div className="flex gap-1.5">
-          <input ref={fileRef} type="file" className="hidden" onChange={addFileDoc} data-testid={`${idPrefix}-doc-file-input`} />
-          <Button size="sm" variant="secondary" onClick={() => setUrlOpen(true)} data-testid={`${idPrefix}-doc-add-url`}><Link2 className="h-4 w-4 mr-1" /> URL</Button>
-          <Button size="sm" variant="secondary" disabled={uploading} onClick={() => fileRef.current?.click()} data-testid={`${idPrefix}-doc-add-file`}>
-            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}<span className="ml-1">Unggah</span>
-          </Button>
-        </div>
+        {canManage && (
+          <div className="flex gap-1.5">
+            <input ref={fileRef} type="file" className="hidden" onChange={addFileDoc} data-testid={`${idPrefix}-doc-file-input`} />
+            <Button size="sm" variant="secondary" onClick={() => setUrlOpen(true)} data-testid={`${idPrefix}-doc-add-url`}><Link2 className="h-4 w-4 mr-1" /> URL</Button>
+            <Button size="sm" variant="secondary" disabled={uploading} onClick={() => fileRef.current?.click()} data-testid={`${idPrefix}-doc-add-file`}>
+              {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}<span className="ml-1">Unggah</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {(documents || []).length === 0 ? (
@@ -140,7 +142,9 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
                 {doc.kind === "url"
                   ? <a href={doc.url} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7"><ExternalLink className="h-3.5 w-3.5" /></Button></a>
                   : <a href={fileDownloadUrl(doc.file_id)} target="_blank" rel="noreferrer" download><Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button></a>}
-                <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDoc(doc.id)} data-testid={`${idPrefix}-doc-del-${doc.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+                {canManage && (
+                  <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDoc(doc.id)} data-testid={`${idPrefix}-doc-del-${doc.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
+                )}
               </div>
 
               {/* responses */}
@@ -155,15 +159,19 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
                         : <a href={fileDownloadUrl(r.file_id)} target="_blank" rel="noreferrer" download className="truncate hover:underline min-w-0">{r.filename}</a>}
                       {r.note && <span className="text-muted-foreground truncate">· {r.note}</span>}
                       <div className="flex-1" />
-                      <button onClick={() => removeResp(doc.id, r.id)} className="text-muted-foreground hover:text-destructive shrink-0"><Trash2 className="h-3 w-3" /></button>
+                      {(canManage || (currentUserId && r.created_by === currentUserId)) && (
+                        <button onClick={() => removeResp(doc.id, r.id)} className="text-muted-foreground hover:text-destructive shrink-0"><Trash2 className="h-3 w-3" /></button>
+                      )}
                     </div>
                   ))}
                 </div>
               )}
 
-              <Button size="sm" variant="ghost" className="h-7 mt-2 text-xs text-primary" onClick={() => openResp(doc.id)} data-testid={`${idPrefix}-doc-add-resp-${doc.id}`}>
-                <Plus className="h-3 w-3 mr-1" /> Dokumen Balasan
-              </Button>
+              {canRespond && (
+                <Button size="sm" variant="ghost" className="h-7 mt-2 text-xs text-primary" onClick={() => openResp(doc.id)} data-testid={`${idPrefix}-doc-add-resp-${doc.id}`}>
+                  <Plus className="h-3 w-3 mr-1" /> Dokumen Balasan
+                </Button>
+              )}
             </div>
           ))}
         </div>

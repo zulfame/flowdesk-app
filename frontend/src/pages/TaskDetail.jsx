@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
-import { canManage } from "@/lib/perms";
+import { canManage, isTaskPic } from "@/lib/perms";
 import { StatusBadge, PriorityBadge, ProgressBar, SectionTitle } from "@/components/common";
 import DocumentManager from "@/components/DocumentManager";
 import { Card } from "@/components/ui/card";
@@ -74,6 +74,7 @@ export default function TaskDetail() {
     patch({ items: next });
   };
   const removeItem = (itemId) => {
+    if (items.length <= 1) { toast.error("Tugas harus memiliki minimal satu item tugas"); return; }
     const next = items.filter((it) => it.id !== itemId);
     patch({ items: next }, { items: next });
   };
@@ -121,6 +122,12 @@ export default function TaskDetail() {
   const req = typeof task.requester === "string" ? { name: task.requester } : (task.requester || {});
   const doneCount = items.filter((i) => i.done).length;
 
+  // Hak akses: pemilik/pembuat & admin bisa ubah struktur; PIC hanya progres + balasan.
+  const isOwner = canManage(user, task);
+  const isPic = isTaskPic(user, task);
+  const canEditStructure = isOwner;         // tambah/hapus/ubah item, tenggat, dokumen sumber
+  const canProgress = isOwner || isPic;     // centang item selesai
+
   return (
     <div>
       <button onClick={() => navigate("/tasks")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition-colors" data-testid="btn-back"><ArrowLeft className="h-4 w-4" /> Kembali ke Tugas</button>
@@ -164,41 +171,54 @@ export default function TaskDetail() {
               {items.map((item) => (
                 <Collapsible key={item.id} className={cn("rounded-xl border", itemOverdue(item) ? "border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-900/10" : "border-border")} data-testid={`item-${item.id}`}>
                   <div className="flex items-center gap-3 p-3">
-                    <input type="checkbox" checked={!!item.done} onChange={() => toggleItem(item.id)} className="h-4 w-4 rounded accent-indigo-600 shrink-0" data-testid={`item-check-${item.id}`} />
+                    <input type="checkbox" checked={!!item.done} disabled={!canProgress} onChange={() => toggleItem(item.id)} className="h-4 w-4 rounded accent-indigo-600 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" data-testid={`item-check-${item.id}`} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className={`text-sm ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.title}</p>
                         {itemOverdue(item) && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">TERLAMBAT</span>}
                       </div>
                       <div className="flex items-center gap-4 mt-1.5 flex-wrap">
-                        <div className="flex items-center gap-1.5">
-                          <span className="text-xs text-muted-foreground">Tenggat:</span>
-                          <Input type="date" value={item.due_date ? item.due_date.slice(0, 10) : ""} onChange={(e) => setItemDue(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-due-${item.id}`} />
-                        </div>
-                        {item.done && (
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs text-muted-foreground">Selesai:</span>
-                            <Input type="date" value={item.done_at ? item.done_at.slice(0, 10) : ""} onChange={(e) => setItemDate(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-date-${item.id}`} />
-                          </div>
+                        {canEditStructure ? (
+                          <>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-xs text-muted-foreground">Tenggat:</span>
+                              <Input type="date" value={item.due_date ? item.due_date.slice(0, 10) : ""} onChange={(e) => setItemDue(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-due-${item.id}`} />
+                            </div>
+                            {item.done && (
+                              <div className="flex items-center gap-1.5">
+                                <span className="text-xs text-muted-foreground">Selesai:</span>
+                                <Input type="date" value={item.done_at ? item.done_at.slice(0, 10) : ""} onChange={(e) => setItemDate(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-date-${item.id}`} />
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            {item.due_date && <span className="text-xs text-muted-foreground">Tenggat: {new Date(item.due_date).toLocaleDateString("id-ID")}</span>}
+                            {item.done && item.done_at && <span className="text-xs text-muted-foreground">Selesai: {new Date(item.done_at).toLocaleDateString("id-ID")}</span>}
+                          </>
                         )}
                       </div>
                     </div>
                     <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`item-docs-toggle-${item.id}`}><FileText className="h-3.5 w-3.5 mr-1" /> {(item.documents || []).length} <ChevronDown className="h-3.5 w-3.5 ml-1" /></Button></CollapsibleTrigger>
-                    <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-4 w-4" /></button>
+                    {canEditStructure && (
+                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-4 w-4" /></button>
+                    )}
                   </div>
                   <CollapsibleContent>
                     <div className="px-3 pb-3 pt-1 border-t border-border">
-                      <DocumentManager taskId={id} documents={item.documents || []} onChange={(docs) => setItemDocs(item.id, docs)} label="Dokumen Item" idPrefix={`item-${item.id}`} />
+                      <DocumentManager taskId={id} documents={item.documents || []} onChange={(docs) => setItemDocs(item.id, docs)} label="Dokumen Item" idPrefix={`item-${item.id}`} canManage={canEditStructure} canRespond={canProgress} currentUserId={user?.id} />
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
               ))}
               {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Belum ada item tugas.</p>}
-              <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="Tambah item tugas..." className="flex-1" data-testid="detail-item-input" />
-                <Input type="date" value={newItemDue} onChange={(e) => setNewItemDue(e.target.value)} className="sm:w-40" title="Tenggat item (opsional)" data-testid="detail-item-due-input" />
-                <Button variant="secondary" onClick={addItem} data-testid="btn-detail-add-item"><Plus className="h-4 w-4" /></Button>
-              </div>
+              {canEditStructure && (
+                <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                  <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="Tambah item tugas..." className="flex-1" data-testid="detail-item-input" />
+                  <Input type="date" value={newItemDue} onChange={(e) => setNewItemDue(e.target.value)} className="sm:w-40" title="Tenggat item (opsional)" data-testid="detail-item-due-input" />
+                  <Button variant="secondary" onClick={addItem} data-testid="btn-detail-add-item"><Plus className="h-4 w-4" /></Button>
+                </div>
+              )}
             </div>
           </Card>
 
@@ -245,7 +265,7 @@ export default function TaskDetail() {
 
           {/* Dokumen Sumber (task-level) */}
           <Card className="p-6 rounded-2xl shadow-soft">
-            <DocumentManager taskId={id} documents={task.documents || []} onChange={setTaskDocs} label="Dokumen Sumber" idPrefix="task" />
+            <DocumentManager taskId={id} documents={task.documents || []} onChange={setTaskDocs} label="Dokumen Sumber" idPrefix="task" canManage={canEditStructure} canRespond={canProgress} currentUserId={user?.id} />
           </Card>
 
           {/* Riwayat */}
