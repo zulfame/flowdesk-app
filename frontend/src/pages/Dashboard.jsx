@@ -46,7 +46,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         {STAT_CARDS.map((c) => (
-          <Card key={c.key} className="p-5 rounded-2xl border-border shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 transition-all" data-testid={`stat-${c.key}`}>
+          <Card key={c.key} className="p-5 rounded-lg border-border shadow-soft hover:shadow-soft-lg hover:-translate-y-0.5 transition-all" data-testid={`stat-${c.key}`}>
             <div className={`h-11 w-11 rounded-xl flex items-center justify-center ${c.color}`}>
               <c.icon className="h-5 w-5" />
             </div>
@@ -58,7 +58,7 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent tasks */}
-        <Card className="lg:col-span-2 p-6 rounded-2xl shadow-soft">
+        <Card className="lg:col-span-2 p-6 rounded-lg shadow-soft">
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-semibold">Tugas Terbaru</h2>
             <Button variant="ghost" size="sm" onClick={() => navigate("/tasks")} className="text-primary" data-testid="link-all-tasks">
@@ -84,7 +84,7 @@ export default function Dashboard() {
 
         {/* Upcoming meetings + activity */}
         <div className="space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <h2 className="text-lg font-semibold mb-4 flex items-center gap-2"><Video className="h-5 w-5 text-primary" /> Rapat Mendatang</h2>
             <div className="space-y-3">
               {(s.upcoming_meetings || []).length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">Tidak ada rapat terjadwal.</p>}
@@ -102,7 +102,7 @@ export default function Dashboard() {
             </div>
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <h2 className="text-lg font-semibold mb-4">Aktivitas Terkini</h2>
             <div className="space-y-3">
               {(s.recent_activity || []).slice(0, 6).map((a) => (
@@ -121,7 +121,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-        <Card className="p-6 rounded-2xl shadow-soft">
+        <Card className="p-6 rounded-lg shadow-soft">
           <h2 className="text-lg font-semibold mb-4">Beban Kerja PIC</h2>
           {(s.workload || []).length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">Belum ada tugas aktif.</p>
@@ -140,7 +140,7 @@ export default function Dashboard() {
           )}
         </Card>
 
-        <Card className="p-6 rounded-2xl shadow-soft">
+        <Card className="p-6 rounded-lg shadow-soft">
           <h2 className="text-lg font-semibold mb-4">Tren Mingguan</h2>
           <ResponsiveContainer width="100%" height={220}>
             <BarChart data={s.trend || []} barGap={4}>

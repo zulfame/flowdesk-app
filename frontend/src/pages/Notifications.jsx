@@ -34,11 +34,11 @@ export default function Notifications() {
       </PageHeader>
 
       {items.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={Bell} title="Tidak ada notifikasi" description="Notifikasi baru akan muncul di sini." /></Card>
+        <Card className="rounded-lg shadow-soft"><EmptyState icon={Bell} title="Tidak ada notifikasi" description="Notifikasi baru akan muncul di sini." /></Card>
       ) : (
         <div className="space-y-2">
           {items.map((n) => (
-            <Card key={n.id} onClick={() => { markRead(n.id); if (n.link) navigate(n.link); }} className={`p-4 rounded-2xl shadow-soft flex items-start gap-3 cursor-pointer hover:bg-secondary/40 transition-colors ${!n.is_read ? "border-l-4 border-l-primary" : ""}`} data-testid={`notification-${n.id}`}>
+            <Card key={n.id} onClick={() => { markRead(n.id); if (n.link) navigate(n.link); }} className={`p-4 rounded-lg shadow-soft flex items-start gap-3 cursor-pointer hover:bg-secondary/40 transition-colors ${!n.is_read ? "border-l-4 border-l-primary" : ""}`} data-testid={`notification-${n.id}`}>
               <div className="h-9 w-9 rounded-xl bg-accent flex items-center justify-center shrink-0"><Bell className="h-4 w-4 text-primary" /></div>
               <div className="min-w-0 flex-1">
                 <p className="font-medium flex items-center gap-2">{n.title} {!n.is_read && <Circle className="h-2 w-2 fill-primary text-primary" />}</p>

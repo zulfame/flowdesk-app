@@ -139,13 +139,13 @@ export default function MeetingDetail() {
               <Button onClick={saveNotes} disabled={saving} data-testid="btn-save-decisions">{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan Keputusan</Button>
             </TabsContent>
             <TabsContent value="agenda">
-              <Card className="p-6 rounded-2xl shadow-soft"><p className="text-sm whitespace-pre-wrap text-muted-foreground">{meeting.agenda || "Tidak ada agenda."}</p></Card>
+              <Card className="p-6 rounded-lg shadow-soft"><p className="text-sm whitespace-pre-wrap text-muted-foreground">{meeting.agenda || "Tidak ada agenda."}</p></Card>
             </TabsContent>
           </Tabs>
         </div>
 
         <div className="space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <h3 className="text-sm font-semibold mb-4 flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> Action Items</h3>
             <div className="space-y-2 mb-4">
               {(meeting.action_items || []).map((a, idx) => (
@@ -183,7 +183,7 @@ export default function MeetingDetail() {
           </Card>
 
           {(meeting.generated_tasks || []).length > 0 && (
-            <Card className="p-6 rounded-2xl shadow-soft">
+            <Card className="p-6 rounded-lg shadow-soft">
               <h3 className="text-sm font-semibold mb-4">Tugas Turunan</h3>
               <div className="space-y-2">
                 {meeting.generated_tasks.map((t) => (
@@ -197,7 +197,7 @@ export default function MeetingDetail() {
           )}
 
           {(meeting.participants || []).length > 0 && (
-            <Card className="p-6 rounded-2xl shadow-soft">
+            <Card className="p-6 rounded-lg shadow-soft">
               <h3 className="text-sm font-semibold mb-3 flex items-center gap-2"><Users2 className="h-4 w-4" /> Peserta</h3>
               <div className="flex flex-wrap gap-2">
                 {meeting.participants.map((p, i) => <span key={i} className="px-2.5 py-1 rounded-full bg-secondary text-xs font-medium">{p}</span>)}
@@ -205,7 +205,7 @@ export default function MeetingDetail() {
             </Card>
           )}
 
-          <Card className="p-6 rounded-2xl shadow-soft"><AttachmentPanel module="meeting" parentId={id} /></Card>
+          <Card className="p-6 rounded-lg shadow-soft"><AttachmentPanel module="meeting" parentId={id} /></Card>
         </div>
       </div>
 

@@ -114,7 +114,7 @@ export default function Users() {
         </Select>
       </div>
 
-      <Card className="rounded-2xl shadow-soft overflow-hidden">
+      <Card className="rounded-lg shadow-soft overflow-hidden">
         {loading ? (
           <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : data.items.length === 0 ? (
@@ -182,7 +182,7 @@ export default function Users() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <Button variant="outline" className="w-full rounded-xl" onClick={downloadTemplate} data-testid="btn-download-template"><Download className="h-4 w-4 mr-1.5" /> Unduh Template CSV</Button>
-            <button onClick={() => fileRef.current?.click()} disabled={importing} className="w-full border-2 border-dashed border-border rounded-2xl p-8 flex flex-col items-center gap-2 hover:border-primary transition-colors" data-testid="import-dropzone">
+            <button onClick={() => fileRef.current?.click()} disabled={importing} className="w-full border-2 border-dashed border-border rounded-lg p-8 flex flex-col items-center gap-2 hover:border-primary transition-colors" data-testid="import-dropzone">
               {importing ? <Loader2 className="h-8 w-8 animate-spin text-primary" /> : <FileSpreadsheet className="h-8 w-8 text-muted-foreground" />}
               <span className="text-sm font-medium">{importing ? "Mengimpor..." : "Pilih berkas CSV / XLSX"}</span>
             </button>

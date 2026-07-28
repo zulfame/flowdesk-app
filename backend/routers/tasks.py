@@ -55,8 +55,11 @@ class SourceDoc(BaseModel):
 class TaskItem(BaseModel):
     id: Optional[str] = None
     title: str
-    done: bool = False
+    done: bool = False              # tahap-2: disetujui pemberi tugas (final)
     done_at: Optional[str] = None
+    approved_by: Optional[str] = None
+    pic_done: bool = False          # tahap-1: ditandai selesai oleh PIC
+    pic_done_at: Optional[str] = None
     due_date: Optional[str] = None
     result: Optional[str] = ""      # catatan tugas / hasil pengerjaan item
     documents: List[SourceDoc] = []       # dokumen dari pemberi tugas (source)
@@ -247,9 +250,16 @@ def _pic_safe_update(existing: dict, body: "TaskUpdate", uid: str, uname: str) -
             new_it = dict(ex)
             inc = inc_by_id.get(ex.get("id"))
             if inc is not None:
-                done = bool(inc.get("done"))
-                new_it["done"] = done
-                new_it["done_at"] = (inc.get("done_at") or now_iso()) if done else None
+                # PIC hanya boleh menandai/melepas tahap-1 (pic_done) selama BELUM disetujui owner
+                approved = bool(ex.get("done"))
+                if not approved:
+                    picd = bool(inc.get("pic_done"))
+                    new_it["pic_done"] = picd
+                    new_it["pic_done_at"] = (inc.get("pic_done_at") or now_iso()) if picd else None
+                # Persetujuan (done) TIDAK boleh diubah PIC -> pertahankan nilai lama
+                new_it["done"] = ex.get("done", False)
+                new_it["done_at"] = ex.get("done_at")
+                new_it["approved_by"] = ex.get("approved_by")
                 new_it["result"] = inc.get("result", ex.get("result", ""))
                 new_it["documents"] = _pic_merge_docs(ex.get("documents", []), inc.get("documents", []), uid, uname)
                 new_it["result_docs"] = _pic_merge_attachments(ex.get("result_docs", []), inc.get("result_docs", []), uid, uname)
@@ -259,6 +269,42 @@ def _pic_safe_update(existing: dict, body: "TaskUpdate", uid: str, uname: str) -
         incoming = _norm_docs(body.documents)
         changed["documents"] = _pic_merge_docs(existing.get("documents", []), incoming, uid, uname)
     return changed
+
+
+def _owner_merge_items(existing: dict, incoming_items, uid: str, uname: str) -> list:
+    """Owner/admin boleh mengelola struktur item & MENYETUJUI (done), tetapi TIDAK boleh
+    mengubah pic_done (tahap-1 milik PIC). Persetujuan hanya berlaku bila item sudah
+    ditandai selesai oleh PIC (pic_done, atau legacy done)."""
+    incoming = _norm_items(incoming_items, uid, uname)
+    ex_by_id = {it.get("id"): it for it in (existing.get("items", []) or []) if it.get("id")}
+    out = []
+    for inc in incoming:
+        ex = ex_by_id.get(inc.get("id"))
+        it = dict(inc)  # owner mengontrol title/due_date/result/documents/result_docs
+        if ex is not None:
+            # pic_done dikunci ke nilai existing (owner tidak bisa palsukan)
+            eff_pic_done = bool(ex.get("pic_done") or ex.get("done"))
+            it["pic_done"] = eff_pic_done
+            it["pic_done_at"] = ex.get("pic_done_at") or (ex.get("done_at") if ex.get("done") else None)
+            approve_intent = bool(inc.get("done"))
+            done = approve_intent and eff_pic_done
+            it["done"] = done
+            if done:
+                it["done_at"] = ex.get("done_at") if ex.get("done") else now_iso()
+                it["approved_by"] = ex.get("approved_by") if ex.get("done") else uname
+            else:
+                it["done_at"] = None
+                it["approved_by"] = None
+        else:
+            # item baru: mulai dari nol, tidak boleh langsung disetujui
+            it["pic_done"] = False
+            it["pic_done_at"] = None
+            it["done"] = False
+            it["done_at"] = None
+            it["approved_by"] = None
+        out.append(it)
+    return out
+
 
 
 async def _notify_pic(task: dict):
@@ -392,6 +438,13 @@ async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
     doc["requester"] = (body.requester.model_dump() if body.requester else dict(EMPTY_PERSON))
     doc["pic"] = (body.pic.model_dump() if body.pic else dict(EMPTY_PERSON))
     doc["items"] = _norm_items(body.items, user["id"], user["name"])
+    # Item baru selalu mulai bersih: belum dikerjakan PIC & belum disetujui
+    for _it in doc["items"]:
+        _it["pic_done"] = False
+        _it["pic_done_at"] = None
+        _it["done"] = False
+        _it["done_at"] = None
+        _it["approved_by"] = None
     doc["documents"] = _norm_docs(body.documents, user["id"], user["name"])
     doc.update({
         "id": tid,
@@ -427,7 +480,7 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     else:
         update = {k: v for k, v in body.model_dump().items() if v is not None}
         if "items" in update:
-            update["items"] = _norm_items(body.items, user["id"], user["name"])
+            update["items"] = _owner_merge_items(existing, body.items, user["id"], user["name"])
         if "documents" in update:
             update["documents"] = _norm_docs(body.documents, user["id"], user["name"])
         if body.requester is not None:

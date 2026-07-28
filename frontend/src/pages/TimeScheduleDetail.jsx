@@ -177,7 +177,7 @@ export default function TimeScheduleDetail() {
       </div>
 
       {/* Gantt */}
-      <Card className="rounded-2xl shadow-soft overflow-hidden mb-6" data-testid="gantt-chart">
+      <Card className="rounded-lg shadow-soft overflow-hidden mb-6" data-testid="gantt-chart">
         {days.length === 0 ? (
           <div className="p-8 text-center text-sm text-muted-foreground">Tentukan Tanggal Mulai & Selesai jadwal (lewat Pengaturan) atau tambahkan kegiatan bertanggal untuk menampilkan linimasa.</div>
         ) : (
@@ -232,7 +232,7 @@ export default function TimeScheduleDetail() {
       </Card>
 
       {/* Activity table (mobile-friendly summary) */}
-      <Card className="rounded-2xl shadow-soft p-5">
+      <Card className="rounded-lg shadow-soft p-5">
         <h3 className="font-semibold flex items-center gap-2 mb-3"><ListChecks className="h-4 w-4 text-primary" /> Daftar Kegiatan ({acts.length})</h3>
         <div className="space-y-2">
           {acts.map((a) => { const prog = autoProgress(a); return (

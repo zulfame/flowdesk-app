@@ -62,7 +62,7 @@ export default function MeetingForm() {
 
       <div className="flex items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-2xl bg-accent flex items-center justify-center"><Video className="h-5 w-5 text-primary" /></div>
+          <div className="h-11 w-11 rounded-lg bg-accent flex items-center justify-center"><Video className="h-5 w-5 text-primary" /></div>
           <h1 className="text-2xl font-bold tracking-tight">{editing ? "Ubah Rapat" : "Rapat Baru"}</h1>
         </div>
         <div className="hidden sm:flex gap-2">
@@ -73,7 +73,7 @@ export default function MeetingForm() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft space-y-4" data-testid="meeting-main-card">
+          <Card className="p-6 rounded-lg shadow-soft space-y-4" data-testid="meeting-main-card">
             <h2 className="font-semibold">Informasi Rapat</h2>
             <Field label="Judul Rapat" required><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Rapat Mingguan Tim" data-testid="meeting-title-input" /></Field>
             <div className="grid sm:grid-cols-2 gap-4">
@@ -90,7 +90,7 @@ export default function MeetingForm() {
         </div>
 
         <div className="space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft space-y-4" data-testid="meeting-schedule-card">
+          <Card className="p-6 rounded-lg shadow-soft space-y-4" data-testid="meeting-schedule-card">
             <h2 className="font-semibold">Jadwal</h2>
             <Field label="Tanggal"><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="meeting-date-input" /></Field>
             <div className="grid grid-cols-2 gap-3">
@@ -99,7 +99,7 @@ export default function MeetingForm() {
             </div>
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft space-y-3" data-testid="meeting-participants-card">
+          <Card className="p-6 rounded-lg shadow-soft space-y-3" data-testid="meeting-participants-card">
             <h2 className="font-semibold">Peserta</h2>
             <div className="flex gap-2">
               <Input value={participantInput} onChange={(e) => setParticipantInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addParticipant())} placeholder="Nama peserta" data-testid="meeting-participant-input" />

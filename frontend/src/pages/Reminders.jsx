@@ -78,11 +78,11 @@ export default function Reminders() {
       </Tabs>
 
       {reminders.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={Bell} title="Belum ada pengingat" description="Buat pengingat agar tidak melewatkan hal penting." action={<Button onClick={() => setOpen(true)} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Pengingat</Button>} /></Card>
+        <Card className="rounded-lg shadow-soft"><EmptyState icon={Bell} title="Belum ada pengingat" description="Buat pengingat agar tidak melewatkan hal penting." action={<Button onClick={() => setOpen(true)} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Pengingat</Button>} /></Card>
       ) : (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {reminders.map((r) => (
-            <Card key={r.id} className={`p-5 rounded-2xl shadow-soft flex flex-col gap-3 group hover:shadow-soft-lg transition-all ${r.done ? "opacity-70" : ""}`} data-testid={`reminder-${r.id}`}>
+            <Card key={r.id} className={`p-5 rounded-lg shadow-soft flex flex-col gap-3 group hover:shadow-soft-lg transition-all ${r.done ? "opacity-70" : ""}`} data-testid={`reminder-${r.id}`}>
               <div className="flex items-start gap-3">
                 <button onClick={() => toggleDone(r)} className="shrink-0 mt-0.5" data-testid={`reminder-toggle-${r.id}`}>
                   {r.done ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />}

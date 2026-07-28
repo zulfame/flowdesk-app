@@ -100,7 +100,7 @@ export default function Tasks() {
       draggable={draggable}
       onDragStart={draggable ? (e) => e.dataTransfer.setData("text/task", t.id) : undefined}
       onClick={() => navigate(`/tasks/${t.id}`)}
-      className="rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all overflow-hidden"
+      className="rounded-lg shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all overflow-hidden"
       data-testid={`task-card-${t.id}`}
     >
       <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border">
@@ -168,13 +168,13 @@ export default function Tasks() {
       </div>
 
       {loading ? (
-        <div className="grid gap-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 rounded-2xl bg-secondary/50 animate-pulse" />)}</div>
+        <div className="grid gap-3">{[...Array(3)].map((_, i) => <div key={i} className="h-24 rounded-lg bg-secondary/50 animate-pulse" />)}</div>
       ) : view === "kanban" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
           {KANBAN_COLS.map((col) => {
             const colTasks = filtered.filter((t) => t.status === col);
             return (
-              <div key={col} className="bg-secondary/40 rounded-2xl p-3" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("text/task"); if (id) changeStatus(id, col); }} data-testid={`kanban-col-${col}`}>
+              <div key={col} className="bg-secondary/40 rounded-lg p-3" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("text/task"); if (id) changeStatus(id, col); }} data-testid={`kanban-col-${col}`}>
                 <div className="flex items-center justify-between px-1 mb-3">
                   <span className="text-sm font-semibold">{KANBAN_LABEL[col]}</span>
                   <span className="text-xs text-muted-foreground bg-card rounded-full px-2 py-0.5">{colTasks.length}</span>
@@ -187,7 +187,7 @@ export default function Tasks() {
           })}
         </div>
       ) : filtered.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={CheckSquare} title="Tidak ada tugas" description="Sesuaikan filter atau buat tugas baru." action={<Button onClick={() => navigate("/tasks/new")}><Plus className="h-4 w-4 mr-1.5" /> Tugas Baru</Button>} /></Card>
+        <Card className="rounded-lg shadow-soft"><EmptyState icon={CheckSquare} title="Tidak ada tugas" description="Sesuaikan filter atau buat tugas baru." action={<Button onClick={() => navigate("/tasks/new")}><Plus className="h-4 w-4 mr-1.5" /> Tugas Baru</Button>} /></Card>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
           {filtered.map((t) => <TaskCard key={t.id} t={t} />)}

@@ -65,7 +65,7 @@ export default function NotificationSettings() {
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 rounded-2xl shadow-soft lg:col-span-2" data-testid="notif-channels-card">
+        <Card className="p-6 rounded-lg shadow-soft lg:col-span-2" data-testid="notif-channels-card">
           <div className="flex items-center gap-2 mb-5"><BellRing className="h-5 w-5 text-primary" /><h2 className="font-semibold">Status Kanal</h2></div>
           <div className="grid gap-3 sm:grid-cols-3">
             {CHANNELS.map((n) => (
@@ -86,7 +86,7 @@ export default function NotificationSettings() {
           </div>
         </Card>
 
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="notif-email-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="notif-email-card">
           <div className="flex items-center gap-2 mb-5"><Mail className="h-5 w-5 text-primary" /><h2 className="font-semibold">Email (SMTP)</h2></div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="SMTP Host"><Input value={s.email.smtp_host} onChange={(e) => up("email", "smtp_host", e.target.value)} placeholder="smtp.gmail.com" data-testid="setting-smtp-host" /></Field>
@@ -100,7 +100,7 @@ export default function NotificationSettings() {
           <div className="mt-4"><Button variant="secondary" className="rounded-xl" onClick={() => test("email")} disabled={testing === "email"} data-testid="btn-test-email">{testing === "email" ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Mail className="h-4 w-4 mr-1.5" />} Kirim Email Uji</Button></div>
         </Card>
 
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="notif-telegram-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="notif-telegram-card">
           <div className="flex items-center gap-2 mb-5"><Send className="h-5 w-5 text-primary" /><h2 className="font-semibold">Telegram</h2></div>
           <div className="space-y-4">
             <Field label="Bot Token"><Input value={s.telegram.bot_token} onChange={(e) => up("telegram", "bot_token", e.target.value)} placeholder="123456:ABC-DEF..." data-testid="setting-bot-token" /></Field>

@@ -66,7 +66,7 @@ export function ProgressBar({ value = 0, className }) {
 export function SectionCard({ icon: Icon, title, headerRight, header, footer, footerClassName, children, className, bodyClassName, headerClassName }) {
   const hasHeader = header || title || headerRight;
   return (
-    <div className={cn("rounded-2xl border border-border bg-card shadow-soft overflow-hidden", className)}>
+    <div className={cn("rounded-lg border border-border bg-card shadow-soft overflow-hidden", className)}>
       {hasHeader && (
         <div className={cn("flex items-center justify-between gap-3 px-5 py-4 border-b border-border", headerClassName)}>
           {header ? header : (
@@ -102,7 +102,7 @@ export function EmptyState({ icon: Icon, title, description, action }) {
   return (
     <div className="flex flex-col items-center justify-center text-center py-20 px-6">
       {Icon && (
-        <div className="h-16 w-16 rounded-2xl bg-accent flex items-center justify-center mb-5">
+        <div className="h-16 w-16 rounded-lg bg-accent flex items-center justify-center mb-5">
           <Icon className="h-8 w-8 text-primary" />
         </div>
       )}

@@ -62,7 +62,7 @@ export default function Calendar() {
         })}
       </div>
 
-      <Card className="p-4 sm:p-6 rounded-2xl shadow-soft">
+      <Card className="p-4 sm:p-6 rounded-lg shadow-soft">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-semibold">{MONTHS[month]} {year}</h2>
           <div className="flex gap-2">

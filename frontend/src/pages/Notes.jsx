@@ -51,11 +51,11 @@ export default function Notes() {
       </PageHeader>
 
       {notes.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={FileText} title="Belum ada catatan" description="Buat catatan pertama untuk menyimpan pemikiran Anda." action={<Button onClick={openNew}><Plus className="h-4 w-4 mr-1.5" /> Catatan</Button>} /></Card>
+        <Card className="rounded-lg shadow-soft"><EmptyState icon={FileText} title="Belum ada catatan" description="Buat catatan pertama untuk menyimpan pemikiran Anda." action={<Button onClick={openNew}><Plus className="h-4 w-4 mr-1.5" /> Catatan</Button>} /></Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {notes.map((n) => (
-            <Card key={n.id} className={`p-5 rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg transition-all group ${COLORS[n.color] || COLORS.default}`} onClick={() => openEdit(n)} data-testid={`note-card-${n.id}`}>
+            <Card key={n.id} className={`p-5 rounded-lg shadow-soft cursor-pointer hover:shadow-soft-lg transition-all group ${COLORS[n.color] || COLORS.default}`} onClick={() => openEdit(n)} data-testid={`note-card-${n.id}`}>
               <div className="flex items-start justify-between gap-2 mb-2">
                 <h3 className="font-semibold truncate flex items-center gap-1.5">{n.pinned && <Pin className="h-3.5 w-3.5 text-primary shrink-0" />}{n.title}</h3>
                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>

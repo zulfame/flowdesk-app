@@ -67,7 +67,7 @@ export default function Roles() {
             const isCore = CORE.includes(r.name);
             const all = r.permissions?.includes("*");
             return (
-              <Card key={r.id} className="p-5 rounded-2xl shadow-soft flex flex-col" data-testid={`role-card-${r.name}`}>
+              <Card key={r.id} className="p-5 rounded-lg shadow-soft flex flex-col" data-testid={`role-card-${r.name}`}>
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2"><div className="h-9 w-9 rounded-xl bg-accent flex items-center justify-center"><ShieldCheck className="h-4 w-4 text-primary" /></div><div><h3 className="font-semibold leading-tight">{r.label}</h3><p className="text-xs text-muted-foreground">{r.name}</p></div></div>
                   <div className="flex gap-1">

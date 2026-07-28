@@ -143,7 +143,7 @@ export default function TaskForm() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <SectionTitle icon={ClipboardList}>Informasi Tugas</SectionTitle>
             <div className="space-y-4">
               <div className="space-y-1.5"><Label>Judul *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Siapkan laporan bulanan" className="h-11" data-testid="task-title-input" /></div>
@@ -170,7 +170,7 @@ export default function TaskForm() {
             </div>
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <SectionTitle icon={ListChecks}>Item Tugas * ({items.filter((i) => i.done).length}/{items.length})</SectionTitle>
             {items.length === 0 && <p className="text-xs text-destructive mb-2">Minimal satu item tugas wajib ditambahkan.</p>}
             <div className="space-y-2">
@@ -198,19 +198,19 @@ export default function TaskForm() {
 
         {/* Right column */}
         <div className="space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <SectionTitle icon={User}>Pemberi Tugas</SectionTitle>
             <UserSelect users={users} value={requester} onChange={setRequester} placeholder="Pilih pemberi tugas..." testid="requester-select" />
             <PersonPreview person={requester} />
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <SectionTitle icon={UserCog}>PIC Pelaksana</SectionTitle>
             <UserSelect users={users} value={pic} onChange={setPic} placeholder="Pilih pelaksana..." testid="pic-select" />
             <PersonPreview person={pic} />
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft">
+          <Card className="p-6 rounded-lg shadow-soft">
             <DocumentManager taskId={taskId} documents={documents} onChange={setDocuments} label="Dokumen Sumber" idPrefix="task" />
           </Card>
         </div>

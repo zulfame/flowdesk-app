@@ -124,7 +124,7 @@ export default function DatabasePage() {
       <PageHeader title="Kelola Database" subtitle="Konfigurasi penyimpanan S3 serta backup & restore database." />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="storage-config-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="storage-config-card">
           <div className="flex items-center gap-2 mb-5"><HardDrive className="h-5 w-5 text-primary" /><h2 className="font-semibold">Penyimpanan (S3)</h2></div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Endpoint" hint="mis. https://s3.amazonaws.com"><Input value={storage.endpoint} onChange={(e) => up("endpoint", e.target.value)} placeholder="https://..." data-testid="s3-endpoint" /></Field>
@@ -142,7 +142,7 @@ export default function DatabasePage() {
           </div>
         </Card>
 
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="backup-actions-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="backup-actions-card">
           <div className="flex items-center gap-2 mb-5"><Database className="h-5 w-5 text-primary" /><h2 className="font-semibold">Backup Database</h2></div>
           <p className="text-sm text-muted-foreground mb-5">Buat cadangan penuh seluruh data aplikasi. Unduh langsung ke perangkat Anda, atau simpan ke object storage (S3).</p>
           <div className="grid gap-3 sm:grid-cols-2">
@@ -159,7 +159,7 @@ export default function DatabasePage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mt-6">
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="auto-backup-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="auto-backup-card">
           <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-2"><CalendarClock className="h-5 w-5 text-primary" /><h2 className="font-semibold">Backup Otomatis</h2></div>
             {backupCfg && <Switch checked={!!backupCfg.auto_enabled} onCheckedChange={(v) => bcUp("auto_enabled", v)} data-testid="auto-backup-switch" />}
@@ -195,10 +195,10 @@ export default function DatabasePage() {
           )}
         </Card>
 
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="restore-upload-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="restore-upload-card">
           <div className="flex items-center gap-2 mb-5"><FileUp className="h-5 w-5 text-primary" /><h2 className="font-semibold">Restore dari Unggahan</h2></div>
           <p className="text-sm text-muted-foreground mb-4">Punya berkas backup (.json.gz) hasil unduhan? Unggah untuk memulihkan database. Semua data saat ini akan diganti.</p>
-          <button onClick={() => uploadRef.current?.click()} className="w-full border-2 border-dashed border-border rounded-2xl p-6 flex flex-col items-center gap-2 hover:border-primary transition-colors" data-testid="restore-upload-dropzone">
+          <button onClick={() => uploadRef.current?.click()} className="w-full border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center gap-2 hover:border-primary transition-colors" data-testid="restore-upload-dropzone">
             <UploadCloud className="h-7 w-7 text-muted-foreground" />
             <span className="text-sm font-medium">{uploadFile ? uploadFile.name : "Pilih berkas backup (.json.gz)"}</span>
           </button>
@@ -207,7 +207,7 @@ export default function DatabasePage() {
         </Card>
       </div>
 
-      <Card className="p-6 rounded-2xl shadow-soft mt-6" data-testid="backup-list-card">
+      <Card className="p-6 rounded-lg shadow-soft mt-6" data-testid="backup-list-card">
         <h2 className="font-semibold mb-5">Riwayat Backup</h2>
         {backups.length === 0 ? (
           <EmptyState icon={Database} title="Belum ada backup" description="Buat backup pertama Anda menggunakan tombol di atas." />

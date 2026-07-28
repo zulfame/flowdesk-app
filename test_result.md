@@ -192,15 +192,29 @@ frontend:
         -agent: "testing"
         -comment: "✅ ALL TESTS PASSED (6/6) after fix. Fixed _norm_docs and _norm_items to accept uid/uname parameters and set created_by for new documents. Test E1: OWNER creates task with 1 item, PIC assigned -> 200. Test E2: PIC adds result_doc -> created_by == PIC user id. Test E3: OWNER adds result_doc -> 2 result_docs with correct created_by (both PIC and OWNER). Test E4: PIC tries to delete OWNER's result_doc -> OWNER's doc remains (PIC cannot delete others' docs). Test E5: PIC deletes their own result_doc -> removed, OWNER's doc remains. Test E6: Regression - PIC cannot change title or add source documents. All result_docs functionality working correctly with proper ownership tracking."
 
+  - task: "Ceklis 2 tahap: PIC menandai (pic_done), Owner menyetujui (done)"
+    implemented: true
+    working: true
+    file: "backend/routers/tasks.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "Item punya 2 tahap: pic_done (tahap-1, hanya PIC) & done (tahap-2/persetujuan, hanya OWNER). Progress dihitung dari done (disetujui). Aturan: PIC boleh set pic_done selama belum disetujui, PIC TIDAK boleh set done. OWNER boleh set done HANYA jika pic_done true (existing), OWNER TIDAK boleh set/ubah pic_done. Item baru selalu pic_done=false & done=false. Perlu test 2 akun (OWNER+PIC)."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (8/8). Test F1: OWNER creates task with 1 item -> pic_done=false, done=false, progress=0 ✓. Test F2: OWNER tries done=true while pic_done=false -> done stays false (owner cannot approve before PIC marks) ✓. Test F3: PIC sets pic_done=true -> pic_done=true, done=false, pic_done_at set, progress=0 ✓. Test F4: PIC tries done=true -> done stays false (PIC cannot approve) ✓. Test F5: OWNER sets done=true -> done=true, approved_by='Test Owner', progress=100, status=Completed ✓. Test F6: OWNER tries pic_done=false while approved -> pic_done stays true (owner cannot alter pic_done) ✓. Test F7: OWNER sets done=false (unapprove) -> done=false, progress=0 ✓. Test F8: OWNER adds new item with done=true, pic_done=true -> both false (new items cannot be pre-approved/pre-marked) ✓. All two-stage checklist rules working correctly."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 3
+  test_sequence: 5
   run_ui: false
 
 test_plan:
-  current_focus:
-    - "Item result_docs (Lampiran Catatan) - PIC bisa unggah lampiran hasil"
+  current_focus: []
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -216,3 +230,7 @@ agent_communication:
     -message: "Test baru: field 'result_docs' (Lampiran Catatan) pada item tugas. Kredensial admin: sa@bprbangunarta.co.id / SA@4dm1n. Buat 2 user (OWNER, PIC). Test: (1) OWNER POST /api/tasks dengan items:[{title:'I1'}], pic=PIC -> 200. (2) PIC PUT items dengan items[0].result_docs=[{kind:url,url:http://pic-doc,label:Hasil PIC,responses:[]}] -> 200, GET -> items[0].result_docs[0].created_by==PIC id. (3) OWNER PUT menambah result_doc -> 2 result_docs, created_by berbeda. (4) PIC coba hapus result_doc OWNER -> result_doc OWNER tetap ada. (5) PIC hapus result_doc miliknya -> berhasil, result_doc OWNER tetap. (6) Regression: PIC tidak bisa ubah title atau tambah documents (source). Jangan test frontend."
     -agent: "testing"
     -message: "✅ BACKEND TESTING COMPLETE - ALL 21 TESTS PASSED (including 6 new tests for 'result_docs' field). Test Group E added: E1-E6 covering result_docs functionality. FIXED BACKEND BUG: Modified _norm_docs and _norm_items functions to accept uid/uname parameters and set created_by for new documents when OWNER adds them. Previously, OWNER's result_docs had created_by=null. All result_docs functionality now working correctly: PIC can add result_docs (created_by set), OWNER can add result_docs (created_by set), PIC can delete only their own result_docs, PIC cannot delete others' result_docs, and regression tests confirm PIC cannot change title or add source documents. All backend tasks verified and working. No issues found."
+    -agent: "main"
+    -message: "Test baru: CEKLIS 2 TAHAP. Kredensial admin: sa@bprbangunarta.co.id / SA@4dm1n. Buat 2 user (OWNER, PIC). Skenario: (1) OWNER POST /api/tasks items:[{title:'I1'}], pic=PIC -> 200; GET: items[0].pic_done==false, done==false, progress==0. (2) OWNER PUT mencoba done=true saat pic_done masih false -> setelah GET: items[0].done HARUS tetap false (owner tidak bisa menyetujui sebelum PIC menandai). (3) PIC PUT items[0].pic_done=true -> 200; GET: pic_done==true, done masih false, pic_done_at terisi, progress masih 0. (4) PIC PUT mencoba done=true (approval) -> GET: done HARUS tetap false (PIC tidak bisa menyetujui). (5) OWNER PUT done=true -> 200; GET: done==true, approved_by terisi nama OWNER, progress==100, status Completed. (6) OWNER PUT mencoba mengubah pic_done=false saat sudah disetujui -> pic_done HARUS tetap true (owner tak bisa ubah pic_done). (7) OWNER PUT done=false (batalkan persetujuan) -> done==false, progress==0. (8) Item baru via OWNER PUT (tambah item) tidak boleh langsung done meski dikirim done=true -> item baru done==false. Jangan test frontend."
+    -agent: "testing"
+    -message: "✅ BACKEND TESTING COMPLETE - ALL 8 TWO-STAGE CHECKLIST TESTS PASSED (F1-F8). Test Group F added covering complete two-stage checklist functionality. F1: Initial state verified (pic_done=false, done=false, progress=0). F2: OWNER cannot approve before PIC marks (done stays false). F3: PIC marks done (pic_done=true, pic_done_at set, progress still 0). F4: PIC cannot approve (done stays false). F5: OWNER approves (done=true, approved_by set, progress=100, status=Completed). F6: OWNER cannot alter pic_done (stays true). F7: OWNER can unapprove (done=false, progress=0). F8: New items cannot be pre-approved/pre-marked (both false). All two-stage checklist rules working correctly. NOTE: Test B4 from old test suite now fails as expected - it tests OLD behavior where PIC directly toggles 'done', but with new two-stage system PIC should toggle 'pic_done' instead. This test needs updating by main agent to align with new two-stage system."

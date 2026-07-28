@@ -39,7 +39,7 @@ export default function Login() {
         <div className="absolute -bottom-24 -right-24 h-96 w-96 rounded-full bg-white/10 blur-2xl" />
         <div className="absolute -top-16 -left-16 h-72 w-72 rounded-full bg-white/5 blur-2xl" />
         <div className="flex items-center gap-3 relative z-10">
-          <div className="h-11 w-11 rounded-2xl bg-white/15 flex items-center justify-center">
+          <div className="h-11 w-11 rounded-lg bg-white/15 flex items-center justify-center">
             <Waves className="h-6 w-6" />
           </div>
           <span className="font-heading font-extrabold text-2xl tracking-tight">FlowDesk</span>

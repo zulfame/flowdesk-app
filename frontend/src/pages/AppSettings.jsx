@@ -47,7 +47,7 @@ export default function AppSettings() {
       </PageHeader>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="app-identity-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="app-identity-card">
           <div className="flex items-center gap-2 mb-5"><SlidersHorizontal className="h-5 w-5 text-primary" /><h2 className="font-semibold">Identitas</h2></div>
           <div className="grid gap-4 sm:grid-cols-2">
             <Field label="Nama Aplikasi"><Input value={g.app_name} onChange={(e) => up("app_name", e.target.value)} data-testid="setting-app-name" /></Field>
@@ -66,7 +66,7 @@ export default function AppSettings() {
           <div className="mt-4"><Field label="Meta Deskripsi" hint="Digunakan untuk SEO / preview tautan."><Textarea value={g.meta_description} onChange={(e) => up("meta_description", e.target.value)} rows={2} data-testid="setting-meta-description" /></Field></div>
         </Card>
 
-        <Card className="p-6 rounded-2xl shadow-soft" data-testid="app-branding-card">
+        <Card className="p-6 rounded-lg shadow-soft" data-testid="app-branding-card">
           <div className="flex items-center gap-2 mb-5"><Palette className="h-5 w-5 text-primary" /><h2 className="font-semibold">Tampilan & Merek</h2></div>
           <div className="space-y-5">
             <Field label="Warna Utama">

@@ -63,11 +63,11 @@ export default function TimeSchedule() {
       {loading ? (
         <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
       ) : items.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={CalendarRange} title="Belum ada jadwal" description="Buat time schedule untuk memetakan kegiatan dari awal hingga hari-H." action={<Button onClick={openNew} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Jadwal</Button>} /></Card>
+        <Card className="rounded-lg shadow-soft"><EmptyState icon={CalendarRange} title="Belum ada jadwal" description="Buat time schedule untuk memetakan kegiatan dari awal hingga hari-H." action={<Button onClick={openNew} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Jadwal</Button>} /></Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((s) => (
-            <Card key={s.id} className="p-5 rounded-2xl shadow-soft flex flex-col gap-3 group hover:shadow-soft-lg transition-all cursor-pointer" onClick={() => navigate(`/time-schedule/${s.id}`)} data-testid={`schedule-${s.id}`}>
+            <Card key={s.id} className="p-5 rounded-lg shadow-soft flex flex-col gap-3 group hover:shadow-soft-lg transition-all cursor-pointer" onClick={() => navigate(`/time-schedule/${s.id}`)} data-testid={`schedule-${s.id}`}>
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
                   <h3 className="font-semibold leading-snug truncate">{s.title}</h3>

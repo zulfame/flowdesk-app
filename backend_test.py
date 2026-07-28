@@ -877,6 +877,222 @@ def run_tests():
         print()
     
     # ========================================================================
+    # TEST GROUP F — Two-stage checklist: pic_done (PIC marks) & done (OWNER approves)
+    # ========================================================================
+    print("=" * 80)
+    print("TEST GROUP F — Two-Stage Checklist (pic_done & done)")
+    print("=" * 80)
+    print()
+    
+    # Create a new task for two-stage checklist testing
+    print("SETUP: Creating new task for two-stage checklist testing...")
+    timestamp_f = datetime.now().strftime("%Y%m%d%H%M%S")
+    
+    # Test F1: OWNER creates task with 1 item, verify pic_done=false, done=false, progress=0
+    print("Test F1: OWNER creates task with 1 item -> pic_done=false, done=false, progress=0")
+    pic_obj_f = {
+        "user_id": pic_user['id'],
+        "name": pic_user['name'],
+        "email": pic_user['email'],
+        "phone": pic_user['phone'],
+        "department": pic_user['department']
+    }
+    response = create_task(owner_token, f"Task Two-Stage Test {timestamp_f}", 
+                          items=[{"title": "I1"}],
+                          pic=pic_obj_f)
+    passed = False
+    if response.status_code == 200:
+        task_f = response.json()
+        task_f_id = task_f['id']
+        item_f = task_f['items'][0]
+        item_f_id = item_f['id']
+        
+        # Verify initial state
+        if (item_f.get('pic_done') == False and 
+            item_f.get('done') == False and 
+            task_f.get('progress') == 0):
+            passed = True
+            details = f"Status: 200, Task ID: {task_f_id}, items[0].pic_done={item_f.get('pic_done')}, items[0].done={item_f.get('done')}, progress={task_f.get('progress')}"
+        else:
+            details = f"Initial state incorrect: pic_done={item_f.get('pic_done')}, done={item_f.get('done')}, progress={task_f.get('progress')}"
+    else:
+        details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+        task_f_id = None
+        item_f_id = None
+    log_test("F", 1, "OWNER creates task -> pic_done=false, done=false, progress=0", passed, details)
+    print()
+    
+    if not task_f_id:
+        print("❌ Cannot continue two-stage checklist tests without a valid task. Skipping F2-F8.")
+    else:
+        # Test F2: OWNER tries done=true while pic_done=false -> done must stay false
+        print("Test F2: OWNER tries done=true while pic_done=false -> done must stay false")
+        updated_items = [{"id": item_f_id, "title": "I1", "done": True}]
+        response = update_task(owner_token, task_f_id, items=updated_items)
+        
+        # Fetch task to verify done stayed false
+        verify_response = get_task(owner_token, task_f_id)
+        passed = False
+        if verify_response.status_code == 200:
+            verified_task = verify_response.json()
+            item = verified_task['items'][0]
+            if item.get('done') == False and verified_task.get('progress') == 0:
+                passed = True
+                details = f"items[0].done={item.get('done')} (stayed false), progress={verified_task.get('progress')} (owner cannot approve before PIC marks done)"
+            else:
+                details = f"FAILED: items[0].done={item.get('done')} (should be false), progress={verified_task.get('progress')}"
+        else:
+            details = f"Could not verify. Status: {verify_response.status_code}"
+        log_test("F", 2, "OWNER tries done=true while pic_done=false -> done stays false", passed, details)
+        print()
+        
+        # Test F3: PIC sets pic_done=true -> verify pic_done=true, done=false, pic_done_at set, progress=0
+        print("Test F3: PIC sets pic_done=true -> pic_done=true, done=false, pic_done_at set, progress=0")
+        updated_items = [{"id": item_f_id, "title": "I1", "pic_done": True}]
+        response = update_task(pic_token, task_f_id, items=updated_items)
+        
+        # Fetch task to verify
+        verify_response = get_task(pic_token, task_f_id)
+        passed = False
+        if verify_response.status_code == 200:
+            verified_task = verify_response.json()
+            item = verified_task['items'][0]
+            if (item.get('pic_done') == True and 
+                item.get('done') == False and 
+                item.get('pic_done_at') is not None and
+                verified_task.get('progress') == 0):
+                passed = True
+                details = f"items[0].pic_done={item.get('pic_done')}, items[0].done={item.get('done')}, pic_done_at={item.get('pic_done_at')[:19] if item.get('pic_done_at') else None}, progress={verified_task.get('progress')}"
+            else:
+                details = f"FAILED: pic_done={item.get('pic_done')}, done={item.get('done')}, pic_done_at={item.get('pic_done_at')}, progress={verified_task.get('progress')}"
+        else:
+            details = f"Could not verify. Status: {verify_response.status_code}"
+        log_test("F", 3, "PIC sets pic_done=true -> verified, progress still 0", passed, details)
+        print()
+        
+        # Test F4: PIC tries done=true (attempt approval) -> done must stay false
+        print("Test F4: PIC tries done=true (attempt approval) -> done must stay false")
+        updated_items = [{"id": item_f_id, "title": "I1", "pic_done": True, "done": True}]
+        response = update_task(pic_token, task_f_id, items=updated_items)
+        
+        # Fetch task to verify done stayed false
+        verify_response = get_task(pic_token, task_f_id)
+        passed = False
+        if verify_response.status_code == 200:
+            verified_task = verify_response.json()
+            item = verified_task['items'][0]
+            if item.get('done') == False:
+                passed = True
+                details = f"items[0].done={item.get('done')} (stayed false, PIC cannot approve)"
+            else:
+                details = f"FAILED: items[0].done={item.get('done')} (should be false)"
+        else:
+            details = f"Could not verify. Status: {verify_response.status_code}"
+        log_test("F", 4, "PIC tries done=true -> done stays false (PIC cannot approve)", passed, details)
+        print()
+        
+        # Test F5: OWNER sets done=true -> verify done=true, approved_by set, progress=100, status=Completed
+        print("Test F5: OWNER sets done=true -> done=true, approved_by set, progress=100, status=Completed")
+        updated_items = [{"id": item_f_id, "title": "I1", "done": True}]
+        response = update_task(owner_token, task_f_id, items=updated_items)
+        
+        # Fetch task to verify
+        verify_response = get_task(owner_token, task_f_id)
+        passed = False
+        if verify_response.status_code == 200:
+            verified_task = verify_response.json()
+            item = verified_task['items'][0]
+            if (item.get('done') == True and 
+                item.get('approved_by') == owner_user['name'] and
+                verified_task.get('progress') == 100 and
+                verified_task.get('status') == 'Completed'):
+                passed = True
+                details = f"items[0].done={item.get('done')}, approved_by='{item.get('approved_by')}', progress={verified_task.get('progress')}, status='{verified_task.get('status')}'"
+            else:
+                details = f"FAILED: done={item.get('done')}, approved_by='{item.get('approved_by')}', progress={verified_task.get('progress')}, status='{verified_task.get('status')}'"
+        else:
+            details = f"Could not verify. Status: {verify_response.status_code}"
+        log_test("F", 5, "OWNER sets done=true -> approved, progress=100, status=Completed", passed, details)
+        print()
+        
+        # Test F6: OWNER tries pic_done=false while approved -> pic_done must stay true
+        print("Test F6: OWNER tries pic_done=false while approved -> pic_done must stay true")
+        updated_items = [{"id": item_f_id, "title": "I1", "pic_done": False, "done": True}]
+        response = update_task(owner_token, task_f_id, items=updated_items)
+        
+        # Fetch task to verify pic_done stayed true
+        verify_response = get_task(owner_token, task_f_id)
+        passed = False
+        if verify_response.status_code == 200:
+            verified_task = verify_response.json()
+            item = verified_task['items'][0]
+            if item.get('pic_done') == True:
+                passed = True
+                details = f"items[0].pic_done={item.get('pic_done')} (stayed true, owner cannot alter pic_done)"
+            else:
+                details = f"FAILED: items[0].pic_done={item.get('pic_done')} (should be true)"
+        else:
+            details = f"Could not verify. Status: {verify_response.status_code}"
+        log_test("F", 6, "OWNER tries pic_done=false while approved -> pic_done stays true", passed, details)
+        print()
+        
+        # Test F7: OWNER sets done=false (unapprove) -> verify done=false, progress=0
+        print("Test F7: OWNER sets done=false (unapprove) -> done=false, progress=0")
+        updated_items = [{"id": item_f_id, "title": "I1", "done": False}]
+        response = update_task(owner_token, task_f_id, items=updated_items)
+        
+        # Fetch task to verify
+        verify_response = get_task(owner_token, task_f_id)
+        passed = False
+        if verify_response.status_code == 200:
+            verified_task = verify_response.json()
+            item = verified_task['items'][0]
+            if item.get('done') == False and verified_task.get('progress') == 0:
+                passed = True
+                details = f"items[0].done={item.get('done')}, progress={verified_task.get('progress')} (unapproved successfully)"
+            else:
+                details = f"FAILED: done={item.get('done')}, progress={verified_task.get('progress')}"
+        else:
+            details = f"Could not verify. Status: {verify_response.status_code}"
+        log_test("F", 7, "OWNER sets done=false (unapprove) -> done=false, progress=0", passed, details)
+        print()
+        
+        # Test F8: OWNER adds new item with done=true, pic_done=true -> new item must have both false
+        print("Test F8: OWNER adds new item with done=true, pic_done=true -> new item must have both false")
+        # Get current task to include existing item
+        fetch_response = get_task(owner_token, task_f_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("F", 8, "OWNER adds new item (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            existing_item = current_task['items'][0]
+            
+            # Add a new item with done=true and pic_done=true (should be rejected)
+            new_item = {"title": "I2", "done": True, "pic_done": True}
+            updated_items = [existing_item, new_item]
+            response = update_task(owner_token, task_f_id, items=updated_items)
+            
+            # Fetch task to verify new item has done=false and pic_done=false
+            verify_response = get_task(owner_token, task_f_id)
+            passed = False
+            if verify_response.status_code == 200:
+                verified_task = verify_response.json()
+                if len(verified_task['items']) == 2:
+                    new_item_result = verified_task['items'][1]
+                    if new_item_result.get('done') == False and new_item_result.get('pic_done') == False:
+                        passed = True
+                        details = f"New item I2: done={new_item_result.get('done')}, pic_done={new_item_result.get('pic_done')} (new items cannot be pre-approved/pre-marked)"
+                    else:
+                        details = f"FAILED: New item I2: done={new_item_result.get('done')}, pic_done={new_item_result.get('pic_done')} (should both be false)"
+                else:
+                    details = f"FAILED: Item count={len(verified_task['items'])} (expected 2)"
+            else:
+                details = f"Could not verify. Status: {verify_response.status_code}"
+            log_test("F", 8, "OWNER adds new item with done=true, pic_done=true -> both false", passed, details)
+        print()
+    
+    # ========================================================================
     # SUMMARY
     # ========================================================================
     print("=" * 80)

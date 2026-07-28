@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History, Copy, LayoutTemplate, Printer, PenLine } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History, Copy, LayoutTemplate, Printer, PenLine, CheckCircle2, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -53,8 +53,20 @@ export default function TaskDetail() {
 
   const items = task?.items || [];
 
-  const toggleItem = (itemId) => {
-    const next = items.map((it) => it.id === itemId ? { ...it, done: !it.done, done_at: !it.done ? new Date().toISOString() : null } : it);
+  const togglePicDone = (itemId) => {
+    const next = items.map((it) => {
+      if (it.id !== itemId) return it;
+      const cur = !!it.pic_done;
+      return { ...it, pic_done: !cur, pic_done_at: !cur ? new Date().toISOString() : null };
+    });
+    patch({ items: next }, { items: next });
+  };
+  const toggleApprove = (itemId) => {
+    const next = items.map((it) => {
+      if (it.id !== itemId) return it;
+      const cur = !!it.done;
+      return { ...it, done: !cur, done_at: !cur ? new Date().toISOString() : null };
+    });
     patch({ items: next }, { items: next });
   };
   const setItemDate = (itemId, dateStr) => {
@@ -190,11 +202,24 @@ export default function TaskDetail() {
             <div className="space-y-3">
               {items.map((item) => (
                 <Collapsible key={item.id} className={cn("rounded-xl border", itemOverdue(item) ? "border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-900/10" : "border-border")} data-testid={`item-${item.id}`}>
-                  <div className="flex items-center gap-3 p-3">
-                    <input type="checkbox" checked={!!item.done} disabled={!canProgress} onChange={() => toggleItem(item.id)} className="h-4 w-4 rounded accent-indigo-600 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed" data-testid={`item-check-${item.id}`} />
+                  <div className="flex items-start gap-3 p-3">
+                    <input
+                      type="checkbox"
+                      checked={!!(item.pic_done || item.done)}
+                      disabled={!(isPic && !item.done)}
+                      onChange={() => togglePicDone(item.id)}
+                      title={item.done ? "Sudah disetujui pemberi tugas" : "Tandai sudah dikerjakan (PIC)"}
+                      className="mt-0.5 h-4 w-4 rounded accent-indigo-600 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                      data-testid={`item-check-${item.id}`}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <p className={`text-sm ${item.done ? "line-through text-muted-foreground" : ""}`}>{item.title}</p>
+                        {item.done ? (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 inline-flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Disetujui</span>
+                        ) : (item.pic_done ? (
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 inline-flex items-center gap-1"><Clock className="h-3 w-3" /> Menunggu persetujuan</span>
+                        ) : null)}
                         {itemOverdue(item) && <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300">TERLAMBAT</span>}
                       </div>
                       <div className="flex items-center gap-4 mt-1.5 flex-wrap">
@@ -206,7 +231,7 @@ export default function TaskDetail() {
                             </div>
                             {item.done && (
                               <div className="flex items-center gap-1.5">
-                                <span className="text-xs text-muted-foreground">Selesai:</span>
+                                <span className="text-xs text-muted-foreground">Disetujui:</span>
                                 <Input type="date" value={item.done_at ? item.done_at.slice(0, 10) : ""} onChange={(e) => setItemDate(item.id, e.target.value)} className="h-7 w-36 text-xs" data-testid={`item-date-${item.id}`} />
                               </div>
                             )}
@@ -214,14 +239,27 @@ export default function TaskDetail() {
                         ) : (
                           <>
                             {item.due_date && <span className="text-xs text-muted-foreground">Tenggat: {new Date(item.due_date).toLocaleDateString("id-ID")}</span>}
-                            {item.done && item.done_at && <span className="text-xs text-muted-foreground">Selesai: {new Date(item.done_at).toLocaleDateString("id-ID")}</span>}
+                            {item.done && item.done_at && <span className="text-xs text-muted-foreground">Disetujui: {new Date(item.done_at).toLocaleDateString("id-ID")}</span>}
                           </>
                         )}
+                        {item.pic_done && !item.done && item.pic_done_at && <span className="text-xs text-muted-foreground">Dikerjakan: {new Date(item.pic_done_at).toLocaleDateString("id-ID")}</span>}
+                        {item.done && item.approved_by && <span className="text-xs text-muted-foreground">disetujui oleh {item.approved_by}</span>}
                       </div>
+                      {isOwner && (
+                        <div className="mt-2">
+                          {!(item.pic_done || item.done) ? (
+                            <span className="text-xs text-muted-foreground italic">Menunggu PIC menandai item ini selesai…</span>
+                          ) : !item.done ? (
+                            <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => toggleApprove(item.id)} data-testid={`item-approve-${item.id}`}><CheckCircle2 className="h-3.5 w-3.5 mr-1" /> Setujui hasil</Button>
+                          ) : (
+                            <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => toggleApprove(item.id)} data-testid={`item-unapprove-${item.id}`}>Batalkan persetujuan</Button>
+                          )}
+                        </div>
+                      )}
                     </div>
                     <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`item-docs-toggle-${item.id}`}>{item.result ? <PenLine className="h-3.5 w-3.5 mr-1 text-primary" /> : null}<FileText className="h-3.5 w-3.5 mr-1" /> {(item.documents || []).length + (item.result_docs || []).length} <ChevronDown className="h-3.5 w-3.5 ml-1" /></Button></CollapsibleTrigger>
                     {canEditStructure && (
-                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-4 w-4" /></button>
+                      <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0 mt-1"><X className="h-4 w-4" /></button>
                     )}
                   </div>
                   <CollapsibleContent>

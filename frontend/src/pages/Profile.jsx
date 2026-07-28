@@ -55,7 +55,7 @@ export default function Profile() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft" data-testid="profile-info-card">
+          <Card className="p-6 rounded-lg shadow-soft" data-testid="profile-info-card">
             <div className="flex items-center gap-2 mb-5"><UserCircle className="h-5 w-5 text-primary" /><h2 className="font-semibold">Informasi Diri</h2></div>
             <div className="mb-5">
               <Label className="mb-2 block">Foto Profil</Label>
@@ -74,7 +74,7 @@ export default function Profile() {
             <div className="mt-5"><Button onClick={saveProfile} disabled={saving} className="rounded-xl" data-testid="btn-save-profile">{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan Perubahan</Button></div>
           </Card>
 
-          <Card className="p-6 rounded-2xl shadow-soft" data-testid="profile-password-card">
+          <Card className="p-6 rounded-lg shadow-soft" data-testid="profile-password-card">
             <div className="flex items-center gap-2 mb-5"><KeyRound className="h-5 w-5 text-primary" /><h2 className="font-semibold">Ubah Kata Sandi</h2></div>
             <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Kata Sandi Saat Ini"><Input type="password" value={pwd.current_password} onChange={(e) => setPwd({ ...pwd, current_password: e.target.value })} data-testid="pwd-current" /></Field>
@@ -85,7 +85,7 @@ export default function Profile() {
           </Card>
         </div>
 
-        <Card className="p-6 rounded-2xl shadow-soft h-fit" data-testid="profile-summary-card">
+        <Card className="p-6 rounded-lg shadow-soft h-fit" data-testid="profile-summary-card">
           <div className="flex flex-col items-center text-center">
             <div className="h-24 w-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-3xl font-bold overflow-hidden mb-4">
               {form.avatar ? <img src={form.avatar} alt="" className="h-full w-full object-cover" /> : (user?.name?.[0] || "?").toUpperCase()}

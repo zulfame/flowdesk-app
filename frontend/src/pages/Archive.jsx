@@ -71,7 +71,7 @@ export default function ArchivePage() {
         </Select>
       </div>
 
-      <Card className="rounded-2xl shadow-soft overflow-hidden">
+      <Card className="rounded-lg shadow-soft overflow-hidden">
         {loading ? (
           <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
         ) : data.items.length === 0 ? (

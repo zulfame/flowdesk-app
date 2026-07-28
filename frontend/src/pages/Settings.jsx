@@ -62,7 +62,7 @@ export default function Settings() {
 
         <fieldset disabled={!isAdmin}>
           <TabsContent value="general">
-            <Card className="p-6 rounded-2xl shadow-soft grid gap-4 sm:grid-cols-2">
+            <Card className="p-6 rounded-lg shadow-soft grid gap-4 sm:grid-cols-2">
               <Field label="Nama Aplikasi"><Input value={settings.general.app_name} onChange={(e) => update("general", "app_name", e.target.value)} data-testid="setting-app-name" /></Field>
               <Field label="Perusahaan"><Input value={settings.general.company} onChange={(e) => update("general", "company", e.target.value)} data-testid="setting-company" /></Field>
               <Field label="Zona Waktu"><Input value={settings.general.timezone} onChange={(e) => update("general", "timezone", e.target.value)} data-testid="setting-timezone" /></Field>
@@ -71,7 +71,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="email">
-            <Card className="p-6 rounded-2xl shadow-soft grid gap-4 sm:grid-cols-2">
+            <Card className="p-6 rounded-lg shadow-soft grid gap-4 sm:grid-cols-2">
               <Field label="SMTP Host"><Input value={settings.email.smtp_host} onChange={(e) => update("email", "smtp_host", e.target.value)} placeholder="smtp.gmail.com" data-testid="setting-smtp-host" /></Field>
               <Field label="SMTP Port"><Input type="number" value={settings.email.smtp_port} onChange={(e) => update("email", "smtp_port", parseInt(e.target.value) || 587)} data-testid="setting-smtp-port" /></Field>
               <Field label="SMTP User"><Input value={settings.email.smtp_user} onChange={(e) => update("email", "smtp_user", e.target.value)} placeholder="you@gmail.com" data-testid="setting-smtp-user" /></Field>
@@ -83,7 +83,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="telegram">
-            <Card className="p-6 rounded-2xl shadow-soft grid gap-4">
+            <Card className="p-6 rounded-lg shadow-soft grid gap-4">
               <Field label="Bot Token"><Input value={settings.telegram.bot_token} onChange={(e) => update("telegram", "bot_token", e.target.value)} placeholder="123456:ABC-DEF..." data-testid="setting-bot-token" /></Field>
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field label="Chat ID / Group ID"><Input value={settings.telegram.chat_id} onChange={(e) => update("telegram", "chat_id", e.target.value)} placeholder="-1001234567890" data-testid="setting-chat-id" /></Field>
@@ -95,7 +95,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="notification">
-            <Card className="p-6 rounded-2xl shadow-soft space-y-4">
+            <Card className="p-6 rounded-lg shadow-soft space-y-4">
               {[
                 { key: "telegram_enabled", label: "Notifikasi Telegram", desc: "Kirim notifikasi ke bot/grup Telegram" },
                 { key: "email_enabled", label: "Notifikasi Email", desc: "Kirim notifikasi via SMTP email" },
@@ -110,7 +110,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="storage">
-            <Card className="p-6 rounded-2xl shadow-soft grid gap-4 sm:grid-cols-2">
+            <Card className="p-6 rounded-lg shadow-soft grid gap-4 sm:grid-cols-2">
               <Field label="Ukuran File Maks (MB)"><Input type="number" value={settings.storage.max_file_mb} onChange={(e) => update("storage", "max_file_mb", parseInt(e.target.value) || 50)} data-testid="setting-max-file" /></Field>
               <Field label="Tipe Diizinkan"><Input value={settings.storage.allowed_types} onChange={(e) => update("storage", "allowed_types", e.target.value)} data-testid="setting-allowed-types" /></Field>
               <p className="sm:col-span-2 text-xs text-muted-foreground">File disimpan aman di object storage. Menghapus data induk akan menghapus lampiran terkait secara otomatis.</p>
@@ -118,7 +118,7 @@ export default function Settings() {
           </TabsContent>
 
           <TabsContent value="application">
-            <Card className="p-6 rounded-2xl shadow-soft grid gap-4 sm:grid-cols-2">
+            <Card className="p-6 rounded-lg shadow-soft grid gap-4 sm:grid-cols-2">
               <Field label="Warna Utama"><Input value={settings.application.primary_color} onChange={(e) => update("application", "primary_color", e.target.value)} data-testid="setting-primary-color" /></Field>
               <Field label="Format Tanggal"><Input value={settings.application.date_format} onChange={(e) => update("application", "date_format", e.target.value)} data-testid="setting-date-format" /></Field>
             </Card>

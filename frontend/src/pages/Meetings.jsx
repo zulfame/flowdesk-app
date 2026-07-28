@@ -54,16 +54,16 @@ export default function Meetings() {
       </div>
 
       {loading ? (
-        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{[...Array(6)].map((_, i) => <div key={i} className="h-44 rounded-2xl bg-secondary/50 animate-pulse" />)}</div>
+        <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">{[...Array(6)].map((_, i) => <div key={i} className="h-44 rounded-lg bg-secondary/50 animate-pulse" />)}</div>
       ) : filtered.length === 0 ? (
-        <Card className="rounded-2xl shadow-soft"><EmptyState icon={Video} title="Belum ada rapat" description="Buat rapat untuk mencatat agenda, keputusan, dan action item." action={<Button onClick={() => navigate("/meetings/new")}><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>} /></Card>
+        <Card className="rounded-lg shadow-soft"><EmptyState icon={Video} title="Belum ada rapat" description="Buat rapat untuk mencatat agenda, keputusan, dan action item." action={<Button onClick={() => navigate("/meetings/new")}><Plus className="h-4 w-4 mr-1.5" /> Rapat Baru</Button>} /></Card>
       ) : (
         <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
           {filtered.map((m) => {
             const total = (m.action_items || []).length;
             const done = (m.action_items || []).filter((a) => a.done).length;
             return (
-              <Card key={m.id} onClick={() => navigate(`/meetings/${m.id}`)} className="relative rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all overflow-hidden group" data-testid={`meeting-card-${m.id}`}>
+              <Card key={m.id} onClick={() => navigate(`/meetings/${m.id}`)} className="relative rounded-lg shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all overflow-hidden group" data-testid={`meeting-card-${m.id}`}>
                 <div className={`absolute top-0 left-0 h-full w-1.5 ${TYPE_STYLES[m.meeting_type] || "bg-slate-400"}`} />
                 <div className="p-5 pl-6">
                   <div className="flex items-center justify-between mb-3">
