@@ -174,14 +174,33 @@ frontend:
         -agent: "testing"
         -comment: "✅ ALL TESTS PASSED (4/4). Test D1: OWNER creates task with items[0].result='hasil awal' -> 200, GET returns items[0].result=='hasil awal'. Test D2: OWNER PUT updates items[0].result to 'hasil diperbarui owner' -> 200, GET confirms update. Test D3: PIC PUT updates items[0].result to 'hasil dari pic' -> 200, result updated (PIC allowed to update result field). Test D4: PIC PUT sends items[0].title='TITLE HACK' AND items[0].result='hasil pic 2' -> 200, title remains 'I1' (unchanged), result updated to 'hasil pic 2'. All 'result' field functionality working correctly."
 
+  - task: "Item result_docs (Lampiran Catatan) - PIC bisa unggah lampiran hasil"
+    implemented: true
+    working: true
+    file: "backend/routers/tasks.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "TaskItem punya field baru 'result_docs' (list dokumen). Owner & PIC boleh menambah lampiran; masing-masing hanya boleh menghapus lampiran miliknya sendiri (created_by). PIC merge: _pic_merge_attachments. Perlu test dengan 2 akun (OWNER + PIC)."
+        -working: false
+        -agent: "testing"
+        -comment: "Initial tests FAILED (3/6). E3: OWNER's result_doc created_by was null (not set to OWNER id). E4-E5: Related failures due to created_by not being set. Root cause: _norm_docs function did not set created_by for new documents when OWNER adds them."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (6/6) after fix. Fixed _norm_docs and _norm_items to accept uid/uname parameters and set created_by for new documents. Test E1: OWNER creates task with 1 item, PIC assigned -> 200. Test E2: PIC adds result_doc -> created_by == PIC user id. Test E3: OWNER adds result_doc -> 2 result_docs with correct created_by (both PIC and OWNER). Test E4: PIC tries to delete OWNER's result_doc -> OWNER's doc remains (PIC cannot delete others' docs). Test E5: PIC deletes their own result_doc -> removed, OWNER's doc remains. Test E6: Regression - PIC cannot change title or add source documents. All result_docs functionality working correctly with proper ownership tracking."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 2
+  test_sequence: 3
   run_ui: false
 
 test_plan:
-  current_focus: []
+  current_focus:
+    - "Item result_docs (Lampiran Catatan) - PIC bisa unggah lampiran hasil"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
@@ -193,3 +212,7 @@ agent_communication:
     -message: "✅ BACKEND TESTING COMPLETE - ALL 11 TESTS PASSED. Created comprehensive test suite covering all 3 test groups (A: Item validation, B: PIC safe-merge permissions, C: Owner full control). All validations and permission restrictions working correctly. Both backend tasks are now fully verified and working. No issues found."
     -agent: "testing"
     -message: "✅ BACKEND TESTING COMPLETE - ALL 15 TESTS PASSED (including 4 new tests for 'result' field). Test Group D added: D1-D4 covering OWNER create with result, OWNER update result, PIC update result (allowed), and PIC cannot change title but can update result. All 'result' field functionality working correctly. All backend tasks verified and working. No issues found."
+    -agent: "main"
+    -message: "Test baru: field 'result_docs' (Lampiran Catatan) pada item tugas. Kredensial admin: sa@bprbangunarta.co.id / SA@4dm1n. Buat 2 user (OWNER, PIC). Test: (1) OWNER POST /api/tasks dengan items:[{title:'I1'}], pic=PIC -> 200. (2) PIC PUT items dengan items[0].result_docs=[{kind:url,url:http://pic-doc,label:Hasil PIC,responses:[]}] -> 200, GET -> items[0].result_docs[0].created_by==PIC id. (3) OWNER PUT menambah result_doc -> 2 result_docs, created_by berbeda. (4) PIC coba hapus result_doc OWNER -> result_doc OWNER tetap ada. (5) PIC hapus result_doc miliknya -> berhasil, result_doc OWNER tetap. (6) Regression: PIC tidak bisa ubah title atau tambah documents (source). Jangan test frontend."
+    -agent: "testing"
+    -message: "✅ BACKEND TESTING COMPLETE - ALL 21 TESTS PASSED (including 6 new tests for 'result_docs' field). Test Group E added: E1-E6 covering result_docs functionality. FIXED BACKEND BUG: Modified _norm_docs and _norm_items functions to accept uid/uname parameters and set created_by for new documents when OWNER adds them. Previously, OWNER's result_docs had created_by=null. All result_docs functionality now working correctly: PIC can add result_docs (created_by set), OWNER can add result_docs (created_by set), PIC can delete only their own result_docs, PIC cannot delete others' result_docs, and regression tests confirm PIC cannot change title or add source documents. All backend tasks verified and working. No issues found."

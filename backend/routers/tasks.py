@@ -48,6 +48,8 @@ class SourceDoc(BaseModel):
     label: Optional[str] = None
     responses: List[DocResponse] = []
     created_at: Optional[str] = None
+    created_by: Optional[str] = None
+    created_by_name: Optional[str] = None
 
 
 class TaskItem(BaseModel):
@@ -56,8 +58,9 @@ class TaskItem(BaseModel):
     done: bool = False
     done_at: Optional[str] = None
     due_date: Optional[str] = None
-    result: Optional[str] = ""      # hasil / catatan pengerjaan item
-    documents: List[SourceDoc] = []
+    result: Optional[str] = ""      # catatan tugas / hasil pengerjaan item
+    documents: List[SourceDoc] = []       # dokumen dari pemberi tugas (source)
+    result_docs: List[SourceDoc] = []     # lampiran catatan / hasil kerja PIC
 
 
 class TaskCreate(BaseModel):
@@ -128,12 +131,16 @@ def compute(task: dict) -> dict:
     return task
 
 
-def _norm_docs(docs) -> list:
+def _norm_docs(docs, uid=None, uname=None) -> list:
     out = []
     for doc in docs or []:
         d = doc.model_dump() if hasattr(doc, "model_dump") else dict(doc)
         if not d.get("id"):
             d["id"] = new_id()
+            # Set created_by for new documents
+            if uid:
+                d["created_by"] = uid
+                d["created_by_name"] = uname
         if not d.get("created_at"):
             d["created_at"] = now_iso()
         responses = []
@@ -141,6 +148,10 @@ def _norm_docs(docs) -> list:
             rd = r.model_dump() if hasattr(r, "model_dump") else dict(r)
             if not rd.get("id"):
                 rd["id"] = new_id()
+                # Set created_by for new responses
+                if uid:
+                    rd["created_by"] = uid
+                    rd["created_by_name"] = uname
             if not rd.get("created_at"):
                 rd["created_at"] = now_iso()
             responses.append(rd)
@@ -149,19 +160,42 @@ def _norm_docs(docs) -> list:
     return out
 
 
-def _norm_items(items) -> list:
+def _norm_items(items, uid=None, uname=None) -> list:
     out = []
     for it in items or []:
         d = it.model_dump() if hasattr(it, "model_dump") else dict(it)
         if not d.get("id"):
             d["id"] = new_id()
-        d["documents"] = _norm_docs(d.get("documents", []))
+        d["documents"] = _norm_docs(d.get("documents", []), uid, uname)
+        d["result_docs"] = _norm_docs(d.get("result_docs", []), uid, uname)
         if d.get("done"):
             if not d.get("done_at"):
                 d["done_at"] = now_iso()
         else:
             d["done_at"] = None
         out.append(d)
+    return out
+
+
+def _pic_merge_attachments(existing_docs, incoming_docs, uid, uname) -> list:
+    """Untuk Lampiran Catatan (result_docs): PIC boleh MENAMBAH lampiran & MENGHAPUS lampiran
+    miliknya sendiri. Lampiran milik orang lain tidak boleh dihapus PIC."""
+    inc_by_id = {d.get("id"): d for d in (incoming_docs or []) if d.get("id")}
+    ex_ids = {d.get("id") for d in (existing_docs or []) if d.get("id")}
+    out = []
+    for ex in existing_docs or []:
+        if ex.get("id") in inc_by_id:
+            out.append(ex)  # tetap ada
+        elif ex.get("created_by") == uid:
+            continue  # PIC menghapus lampiran miliknya sendiri
+        else:
+            out.append(ex)  # lampiran milik orang lain -> pertahankan
+    for inc in incoming_docs or []:
+        if inc.get("id") not in ex_ids:
+            nd = dict(inc)
+            nd["created_by"] = uid
+            nd["created_by_name"] = uname
+            out.append(nd)
     return out
 
 
@@ -218,6 +252,7 @@ def _pic_safe_update(existing: dict, body: "TaskUpdate", uid: str, uname: str) -
                 new_it["done_at"] = (inc.get("done_at") or now_iso()) if done else None
                 new_it["result"] = inc.get("result", ex.get("result", ""))
                 new_it["documents"] = _pic_merge_docs(ex.get("documents", []), inc.get("documents", []), uid, uname)
+                new_it["result_docs"] = _pic_merge_attachments(ex.get("result_docs", []), inc.get("result_docs", []), uid, uname)
             merged_items.append(new_it)
         changed["items"] = merged_items
     if body.documents is not None:
@@ -356,8 +391,8 @@ async def create_task(body: TaskCreate, user: dict = Depends(get_current_user)):
     doc.pop("id", None)
     doc["requester"] = (body.requester.model_dump() if body.requester else dict(EMPTY_PERSON))
     doc["pic"] = (body.pic.model_dump() if body.pic else dict(EMPTY_PERSON))
-    doc["items"] = _norm_items(body.items)
-    doc["documents"] = _norm_docs(body.documents)
+    doc["items"] = _norm_items(body.items, user["id"], user["name"])
+    doc["documents"] = _norm_docs(body.documents, user["id"], user["name"])
     doc.update({
         "id": tid,
         "comments": [],
@@ -392,9 +427,9 @@ async def update_task(task_id: str, body: TaskUpdate, user: dict = Depends(get_c
     else:
         update = {k: v for k, v in body.model_dump().items() if v is not None}
         if "items" in update:
-            update["items"] = _norm_items(body.items)
+            update["items"] = _norm_items(body.items, user["id"], user["name"])
         if "documents" in update:
-            update["documents"] = _norm_docs(body.documents)
+            update["documents"] = _norm_docs(body.documents, user["id"], user["name"])
         if body.requester is not None:
             update["requester"] = body.requester.model_dump()
         if body.pic is not None:

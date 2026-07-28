@@ -87,6 +87,10 @@ export default function TaskDetail() {
     const next = items.map((it) => it.id === itemId ? { ...it, result: text } : it);
     patch({ items: next }, { items: next });
   };
+  const setItemResultDocs = (itemId, docs) => {
+    const next = items.map((it) => it.id === itemId ? { ...it, result_docs: docs } : it);
+    patch({ items: next }, { items: next });
+  };
   const setTaskDocs = (docs) => patch({ documents: docs }, { documents: docs });
 
   const addComment = async () => {
@@ -204,7 +208,7 @@ export default function TaskDetail() {
                         )}
                       </div>
                     </div>
-                    <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`item-docs-toggle-${item.id}`}><FileText className="h-3.5 w-3.5 mr-1" /> {(item.documents || []).length} <ChevronDown className="h-3.5 w-3.5 ml-1" /></Button></CollapsibleTrigger>
+                    <CollapsibleTrigger asChild><Button variant="ghost" size="sm" className="h-8 text-xs" data-testid={`item-docs-toggle-${item.id}`}>{item.result ? <PenLine className="h-3.5 w-3.5 mr-1 text-primary" /> : null}<FileText className="h-3.5 w-3.5 mr-1" /> {(item.documents || []).length + (item.result_docs || []).length} <ChevronDown className="h-3.5 w-3.5 ml-1" /></Button></CollapsibleTrigger>
                     {canEditStructure && (
                       <button onClick={() => removeItem(item.id)} className="text-muted-foreground hover:text-destructive shrink-0"><X className="h-4 w-4" /></button>
                     )}
@@ -212,10 +216,40 @@ export default function TaskDetail() {
                   <CollapsibleContent>
                     <div className="px-3 pb-3 pt-3 border-t border-border space-y-4">
                       <div className="space-y-1.5">
-                        <h4 className="text-sm font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-primary" /> Hasil / Catatan Pengerjaan</h4>
+                        <h4 className="text-sm font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-primary" /> Catatan Tugas</h4>
                         <ItemResult value={item.result} editable={canProgress} onSave={(text) => setItemResult(item.id, text)} testid={`item-result-${item.id}`} />
                       </div>
-                      <DocumentManager taskId={id} documents={item.documents || []} onChange={(docs) => setItemDocs(item.id, docs)} label="Dokumen Item" idPrefix={`item-${item.id}`} canManage={canEditStructure} canRespond={canProgress} currentUserId={user?.id} />
+
+                      {/* Lampiran Catatan (hasil kerja) - owner & PIC bisa unggah */}
+                      {(canProgress || (item.result_docs || []).length > 0) && (
+                        <DocumentManager
+                          taskId={id}
+                          documents={item.result_docs || []}
+                          onChange={(docs) => setItemResultDocs(item.id, docs)}
+                          label="Lampiran Catatan"
+                          idPrefix={`result-${item.id}`}
+                          canManage={canEditStructure}
+                          canAddDoc={canProgress}
+                          canRespond={false}
+                          currentUserId={user?.id}
+                          emptyText="Belum ada lampiran"
+                        />
+                      )}
+
+                      {/* Dokumen Item dari pemberi tugas - hanya tampil bila owner atau ada dokumennya */}
+                      {(canEditStructure || (item.documents || []).length > 0) && (
+                        <DocumentManager
+                          taskId={id}
+                          documents={item.documents || []}
+                          onChange={(docs) => setItemDocs(item.id, docs)}
+                          label="Dokumen Item (dari pemberi tugas)"
+                          idPrefix={`item-${item.id}`}
+                          canManage={canEditStructure}
+                          canRespond={canProgress}
+                          currentUserId={user?.id}
+                          emptyText="Belum ada dokumen item"
+                        />
+                      )}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>

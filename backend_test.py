@@ -631,6 +631,252 @@ def run_tests():
         print()
     
     # ========================================================================
+    # TEST GROUP E — 'result_docs' field (Lampiran Catatan) per item tugas
+    # ========================================================================
+    print("=" * 80)
+    print("TEST GROUP E — 'result_docs' Field (Lampiran Catatan) per Item Tugas")
+    print("=" * 80)
+    print()
+    
+    # Create a new task for result_docs testing
+    print("SETUP: Creating new task for result_docs testing...")
+    timestamp_e = datetime.now().strftime("%Y%m%d%H%M%S")
+    
+    # Test E1: OWNER creates task with 1 item, PIC assigned
+    print("Test E1: OWNER creates task with 1 item, PIC assigned")
+    pic_obj_e = {
+        "user_id": pic_user['id'],
+        "name": pic_user['name'],
+        "email": pic_user['email'],
+        "phone": pic_user['phone'],
+        "department": pic_user['department']
+    }
+    response = create_task(owner_token, f"Task Result Docs Test {timestamp_e}", 
+                          items=[{"title": "I1"}],
+                          pic=pic_obj_e)
+    passed = False
+    if response.status_code == 200:
+        task_e = response.json()
+        task_e_id = task_e['id']
+        item_e_id = task_e['items'][0]['id']
+        passed = True
+        details = f"Status: {response.status_code}, Task ID: {task_e_id}, Item ID: {item_e_id}"
+    else:
+        details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+        task_e_id = None
+        item_e_id = None
+    log_test("E", 1, "OWNER creates task with 1 item, PIC assigned -> 200", passed, details)
+    print()
+    
+    if not task_e_id:
+        print("❌ Cannot continue result_docs tests without a valid task. Skipping E2-E6.")
+    else:
+        # Test E2: PIC adds result_doc, verify created_by == PIC id
+        print("Test E2: PIC adds result_doc to items[0].result_docs")
+        # Get current task state
+        fetch_response = get_task(pic_token, task_e_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("E", 2, "PIC adds result_doc (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            pic_result_doc = {
+                "kind": "url",
+                "url": "http://pic-doc",
+                "label": "Hasil PIC",
+                "responses": []
+            }
+            updated_items = [{
+                "id": item_e_id,
+                "title": "I1",
+                "result_docs": [pic_result_doc]
+            }]
+            response = update_task(pic_token, task_e_id, items=updated_items)
+            passed = False
+            if response.status_code == 200:
+                # Verify result_doc was added with correct created_by
+                verify_response = get_task(pic_token, task_e_id)
+                if verify_response.status_code == 200:
+                    verified_task = verify_response.json()
+                    result_docs = verified_task['items'][0].get('result_docs', [])
+                    if len(result_docs) == 1:
+                        doc = result_docs[0]
+                        if doc.get('created_by') == pic_user['id']:
+                            passed = True
+                            details = f"Status: {response.status_code}, result_docs count: 1, created_by: {doc.get('created_by')} (PIC user id: {pic_user['id']})"
+                        else:
+                            details = f"result_doc added but created_by={doc.get('created_by')} != PIC user id {pic_user['id']}"
+                    else:
+                        details = f"result_docs count: {len(result_docs)} (expected 1)"
+                else:
+                    details = f"Could not verify. Status: {verify_response.status_code}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+            log_test("E", 2, "PIC adds result_doc -> created_by == PIC user id", passed, details)
+        print()
+        
+        # Test E3: OWNER adds another result_doc, verify both exist with correct created_by
+        print("Test E3: OWNER adds another result_doc (2 result_docs total)")
+        fetch_response = get_task(owner_token, task_e_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("E", 3, "OWNER adds result_doc (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            existing_result_docs = current_task['items'][0].get('result_docs', [])
+            owner_result_doc = {
+                "kind": "url",
+                "url": "http://owner-doc",
+                "label": "Ref Owner",
+                "responses": []
+            }
+            # Include existing PIC doc with its id and created_by
+            updated_items = [{
+                "id": item_e_id,
+                "title": "I1",
+                "result_docs": existing_result_docs + [owner_result_doc]
+            }]
+            response = update_task(owner_token, task_e_id, items=updated_items)
+            passed = False
+            if response.status_code == 200:
+                # Verify both result_docs exist
+                verify_response = get_task(owner_token, task_e_id)
+                if verify_response.status_code == 200:
+                    verified_task = verify_response.json()
+                    result_docs = verified_task['items'][0].get('result_docs', [])
+                    if len(result_docs) == 2:
+                        # Find PIC and OWNER docs
+                        pic_doc = next((d for d in result_docs if d.get('created_by') == pic_user['id']), None)
+                        owner_doc = next((d for d in result_docs if d.get('created_by') == owner_user['id']), None)
+                        if pic_doc and owner_doc:
+                            passed = True
+                            details = f"Status: {response.status_code}, result_docs count: 2, PIC doc created_by: {pic_doc.get('created_by')}, OWNER doc created_by: {owner_doc.get('created_by')}"
+                        else:
+                            details = f"result_docs count: 2, but created_by not set correctly. PIC doc: {pic_doc is not None}, OWNER doc: {owner_doc is not None}"
+                    else:
+                        details = f"result_docs count: {len(result_docs)} (expected 2)"
+                else:
+                    details = f"Could not verify. Status: {verify_response.status_code}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+            log_test("E", 3, "OWNER adds result_doc -> 2 result_docs with correct created_by", passed, details)
+        print()
+        
+        # Test E4: PIC tries to DELETE OWNER's result_doc -> should fail (owner doc remains)
+        print("Test E4: PIC tries to DELETE OWNER's result_doc (should fail)")
+        fetch_response = get_task(pic_token, task_e_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("E", 4, "PIC tries to delete OWNER's result_doc (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            result_docs = current_task['items'][0].get('result_docs', [])
+            # Find PIC's doc only (exclude OWNER's doc)
+            pic_docs_only = [d for d in result_docs if d.get('created_by') == pic_user['id']]
+            owner_doc_id = next((d.get('id') for d in result_docs if d.get('created_by') == owner_user['id']), None)
+            
+            # PIC sends only their own doc (trying to delete OWNER's doc)
+            updated_items = [{
+                "id": item_e_id,
+                "title": "I1",
+                "result_docs": pic_docs_only
+            }]
+            response = update_task(pic_token, task_e_id, items=updated_items)
+            
+            # Verify OWNER's doc still exists
+            verify_response = get_task(pic_token, task_e_id)
+            passed = False
+            if verify_response.status_code == 200:
+                verified_task = verify_response.json()
+                result_docs_after = verified_task['items'][0].get('result_docs', [])
+                owner_doc_still_exists = any(d.get('id') == owner_doc_id for d in result_docs_after)
+                if owner_doc_still_exists and len(result_docs_after) >= 2:
+                    passed = True
+                    details = f"OWNER's result_doc still exists (id: {owner_doc_id}), result_docs count: {len(result_docs_after)} (PIC cannot delete others' docs)"
+                else:
+                    details = f"OWNER's result_doc deleted! result_docs count: {len(result_docs_after)}, owner_doc_exists: {owner_doc_still_exists}"
+            else:
+                details = f"Could not verify. Status: {verify_response.status_code}"
+            log_test("E", 4, "PIC tries to delete OWNER's result_doc -> MUST remain", passed, details)
+        print()
+        
+        # Test E5: PIC DELETES their OWN result_doc -> should succeed
+        print("Test E5: PIC DELETES their OWN result_doc (should succeed)")
+        fetch_response = get_task(pic_token, task_e_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("E", 5, "PIC deletes their OWN result_doc (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            result_docs = current_task['items'][0].get('result_docs', [])
+            # Find OWNER's doc only (exclude PIC's doc)
+            owner_docs_only = [d for d in result_docs if d.get('created_by') == owner_user['id']]
+            pic_doc_id = next((d.get('id') for d in result_docs if d.get('created_by') == pic_user['id']), None)
+            
+            # PIC sends only OWNER's doc (excluding their own doc = deleting their own)
+            updated_items = [{
+                "id": item_e_id,
+                "title": "I1",
+                "result_docs": owner_docs_only
+            }]
+            response = update_task(pic_token, task_e_id, items=updated_items)
+            
+            # Verify PIC's doc is removed, OWNER's doc remains
+            verify_response = get_task(pic_token, task_e_id)
+            passed = False
+            if verify_response.status_code == 200:
+                verified_task = verify_response.json()
+                result_docs_after = verified_task['items'][0].get('result_docs', [])
+                pic_doc_removed = not any(d.get('id') == pic_doc_id for d in result_docs_after)
+                owner_doc_remains = any(d.get('created_by') == owner_user['id'] for d in result_docs_after)
+                if pic_doc_removed and owner_doc_remains and len(result_docs_after) == 1:
+                    passed = True
+                    details = f"PIC's result_doc removed (id: {pic_doc_id}), OWNER's doc remains, result_docs count: {len(result_docs_after)}"
+                else:
+                    details = f"PIC doc removed: {pic_doc_removed}, OWNER doc remains: {owner_doc_remains}, result_docs count: {len(result_docs_after)}"
+            else:
+                details = f"Could not verify. Status: {verify_response.status_code}"
+            log_test("E", 5, "PIC deletes their OWN result_doc -> removed, OWNER's remains", passed, details)
+        print()
+        
+        # Test E6: Regression - PIC cannot change title or add documents (source)
+        print("Test E6: Regression - PIC cannot change title or add documents (source)")
+        fetch_response = get_task(pic_token, task_e_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("E", 6, "Regression test (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            original_title_e = current_task['items'][0]['title']
+            original_docs_count = len(current_task['items'][0].get('documents', []))
+            
+            # PIC tries to change title AND add source document
+            updated_items = [{
+                "id": item_e_id,
+                "title": "HACK",
+                "documents": [{"kind": "url", "url": "http://hack-doc", "label": "Hack Doc", "responses": []}]
+            }]
+            response = update_task(pic_token, task_e_id, items=updated_items)
+            
+            # Verify title unchanged and documents not added
+            verify_response = get_task(pic_token, task_e_id)
+            passed = False
+            if verify_response.status_code == 200:
+                verified_task = verify_response.json()
+                final_title = verified_task['items'][0]['title']
+                final_docs_count = len(verified_task['items'][0].get('documents', []))
+                
+                if final_title == original_title_e and final_title != "HACK" and final_docs_count == original_docs_count:
+                    passed = True
+                    details = f"Title unchanged: '{final_title}' (original: '{original_title_e}'), documents count unchanged: {final_docs_count}"
+                else:
+                    details = f"Title: '{final_title}' (expected: '{original_title_e}'), documents count: {final_docs_count} (expected: {original_docs_count})"
+            else:
+                details = f"Could not verify. Status: {verify_response.status_code}"
+            log_test("E", 6, "Regression: PIC cannot change title or add source documents", passed, details)
+        print()
+    
+    # ========================================================================
     # SUMMARY
     # ========================================================================
     print("=" * 80)

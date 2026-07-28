@@ -45,7 +45,8 @@ function DocLink({ doc }) {
   );
 }
 
-export default function DocumentManager({ taskId, documents = [], onChange, label = "Dokumen Sumber", idPrefix = "task", canManage = true, canRespond = true, currentUserId = null }) {
+export default function DocumentManager({ taskId, documents = [], onChange, label = "Dokumen Sumber", idPrefix = "task", canManage = true, canRespond = true, currentUserId = null, canAddDoc = null, emptyText = "Belum ada dokumen sumber" }) {
+  const allowAdd = canAddDoc == null ? canManage : canAddDoc;
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [urlOpen, setUrlOpen] = useState(false);
@@ -116,7 +117,7 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> {label} ({(documents || []).length})</h3>
-        {canManage && (
+        {allowAdd && (
           <div className="flex gap-1.5">
             <input ref={fileRef} type="file" className="hidden" onChange={addFileDoc} data-testid={`${idPrefix}-doc-file-input`} />
             <Button size="sm" variant="secondary" onClick={() => setUrlOpen(true)} data-testid={`${idPrefix}-doc-add-url`}><Link2 className="h-4 w-4 mr-1" /> URL</Button>
@@ -128,7 +129,7 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
       </div>
 
       {(documents || []).length === 0 ? (
-        <p className="text-xs text-muted-foreground py-3 text-center border border-dashed rounded-xl">Belum ada dokumen sumber</p>
+        <p className="text-xs text-muted-foreground py-3 text-center border border-dashed rounded-xl">{emptyText}</p>
       ) : (
         <div className="space-y-2">
           {documents.map((doc, didx) => (
@@ -142,7 +143,7 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
                 {doc.kind === "url"
                   ? <a href={doc.url} target="_blank" rel="noreferrer"><Button size="icon" variant="ghost" className="h-7 w-7"><ExternalLink className="h-3.5 w-3.5" /></Button></a>
                   : <a href={fileDownloadUrl(doc.file_id)} target="_blank" rel="noreferrer" download><Button size="icon" variant="ghost" className="h-7 w-7"><Download className="h-3.5 w-3.5" /></Button></a>}
-                {canManage && (
+                {(canManage || (currentUserId && doc.created_by === currentUserId)) && (
                   <Button size="icon" variant="ghost" className="h-7 w-7 text-destructive" onClick={() => removeDoc(doc.id)} data-testid={`${idPrefix}-doc-del-${doc.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
                 )}
               </div>
