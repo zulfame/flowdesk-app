@@ -159,10 +159,25 @@ frontend:
         -agent: "main"
         -comment: "Belum ditest via agent (menunggu izin user untuk frontend testing)."
 
+  - task: "Field 'result' (Hasil/Catatan Pengerjaan) per item tugas"
+    implemented: true
+    working: true
+    file: "backend/routers/tasks.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "TaskItem punya field baru 'result' (string). Owner bisa set saat create/update. PIC juga boleh update 'result' item (via safe-merge, selain done & responses). Perlu test: (1) create task item dengan result -> tersimpan & terbaca; (2) owner update result -> tersimpan; (3) PIC update result item -> tersimpan (diizinkan); (4) PIC tetap tidak bisa ubah title item."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (4/4). Test D1: OWNER creates task with items[0].result='hasil awal' -> 200, GET returns items[0].result=='hasil awal'. Test D2: OWNER PUT updates items[0].result to 'hasil diperbarui owner' -> 200, GET confirms update. Test D3: PIC PUT updates items[0].result to 'hasil dari pic' -> 200, result updated (PIC allowed to update result field). Test D4: PIC PUT sends items[0].title='TITLE HACK' AND items[0].result='hasil pic 2' -> 200, title remains 'I1' (unchanged), result updated to 'hasil pic 2'. All 'result' field functionality working correctly."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: false
 
 test_plan:
@@ -173,6 +188,8 @@ test_plan:
 
 agent_communication:
     -agent: "main"
-    -message: "Tolong test 2 endpoint backend Tugas. Kredensial admin/superadmin: sa@bprbangunarta.co.id / SA@4dm1n (role admin). Untuk skenario PIC, buat 2 user via POST /api/users (butuh admin): satu sebagai pembuat/owner, satu sebagai PIC. Buat tugas oleh owner dengan PIC = user PIC, lalu login sebagai PIC untuk menguji batasan. Fokus: (1) validasi minimal 1 item; (2) safe-merge PIC (tidak bisa ubah struktur/hapus dokumen/item, hanya progres & balasan, boleh hapus balasan sendiri). Jangan test frontend."
+    -message: "Test baru: field 'result' pada item tugas. Kredensial admin: sa@bprbangunarta.co.id / SA@4dm1n. Buat 2 user (OWNER, PIC). (1) OWNER POST /api/tasks dengan items:[{title:'I1', result:'hasil awal'}] -> 200, GET task -> items[0].result=='hasil awal'. (2) OWNER PUT items dengan result diubah -> tersimpan. (3) Login PIC (task pic=PIC), PIC PUT items dengan items[0].result='hasil dari pic' (kirim seluruh item, ubah result) -> 200 dan result tersimpan 'hasil dari pic'. (4) Pastikan PIC mengirim items dengan title diubah TIDAK mengubah title (title tetap 'I1') tapi result tetap ter-update. Jangan test frontend."
     -agent: "testing"
     -message: "✅ BACKEND TESTING COMPLETE - ALL 11 TESTS PASSED. Created comprehensive test suite covering all 3 test groups (A: Item validation, B: PIC safe-merge permissions, C: Owner full control). All validations and permission restrictions working correctly. Both backend tasks are now fully verified and working. No issues found."
+    -agent: "testing"
+    -message: "✅ BACKEND TESTING COMPLETE - ALL 15 TESTS PASSED (including 4 new tests for 'result' field). Test Group D added: D1-D4 covering OWNER create with result, OWNER update result, PIC update result (allowed), and PIC cannot change title but can update result. All 'result' field functionality working correctly. All backend tasks verified and working. No issues found."

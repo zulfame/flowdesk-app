@@ -56,6 +56,7 @@ class TaskItem(BaseModel):
     done: bool = False
     done_at: Optional[str] = None
     due_date: Optional[str] = None
+    result: Optional[str] = ""      # hasil / catatan pengerjaan item
     documents: List[SourceDoc] = []
 
 
@@ -215,6 +216,7 @@ def _pic_safe_update(existing: dict, body: "TaskUpdate", uid: str, uname: str) -
                 done = bool(inc.get("done"))
                 new_it["done"] = done
                 new_it["done_at"] = (inc.get("done_at") or now_iso()) if done else None
+                new_it["result"] = inc.get("result", ex.get("result", ""))
                 new_it["documents"] = _pic_merge_docs(ex.get("documents", []), inc.get("documents", []), uid, uname)
             merged_items.append(new_it)
         changed["items"] = merged_items

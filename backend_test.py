@@ -505,6 +505,132 @@ def run_tests():
     print()
     
     # ========================================================================
+    # TEST GROUP D — 'result' field on task items
+    # ========================================================================
+    print("=" * 80)
+    print("TEST GROUP D — 'result' Field on Task Items")
+    print("=" * 80)
+    print()
+    
+    # Create a new task for result field testing
+    print("SETUP: Creating new task for result field testing...")
+    timestamp_d = datetime.now().strftime("%Y%m%d%H%M%S")
+    
+    # Test D1: OWNER creates task with items containing result field
+    print("Test D1: OWNER creates task with items containing result field")
+    pic_obj_d = {
+        "user_id": pic_user['id'],
+        "name": pic_user['name'],
+        "email": pic_user['email'],
+        "phone": pic_user['phone'],
+        "department": pic_user['department']
+    }
+    response = create_task(owner_token, f"Task Result Test {timestamp_d}", 
+                          items=[{"title": "I1", "result": "hasil awal"}],
+                          pic=pic_obj_d)
+    passed = False
+    if response.status_code == 200:
+        task_d = response.json()
+        task_d_id = task_d['id']
+        # Verify result field is saved
+        if task_d['items'][0].get('result') == "hasil awal":
+            passed = True
+            details = f"Status: {response.status_code}, Task ID: {task_d_id}, items[0].result = '{task_d['items'][0].get('result')}'"
+        else:
+            details = f"Status: {response.status_code}, but result field not saved correctly. items[0].result = '{task_d['items'][0].get('result')}'"
+    else:
+        details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+        task_d_id = None
+    log_test("D", 1, "OWNER creates task with result field -> saved and readable", passed, details)
+    print()
+    
+    if not task_d_id:
+        print("❌ Cannot continue result field tests without a valid task. Skipping D2-D4.")
+    else:
+        # Get the item id for subsequent tests
+        item_d_id = task_d['items'][0]['id']
+        
+        # Test D2: OWNER updates result field
+        print("Test D2: OWNER updates result field")
+        updated_items = [{"id": item_d_id, "title": "I1", "result": "hasil diperbarui owner"}]
+        response = update_task(owner_token, task_d_id, items=updated_items)
+        passed = False
+        if response.status_code == 200:
+            # Verify result was updated
+            verify_response = get_task(owner_token, task_d_id)
+            if verify_response.status_code == 200:
+                verified_task = verify_response.json()
+                if verified_task['items'][0].get('result') == "hasil diperbarui owner":
+                    passed = True
+                    details = f"Status: {response.status_code}, items[0].result = '{verified_task['items'][0].get('result')}'"
+                else:
+                    details = f"Result not updated correctly. items[0].result = '{verified_task['items'][0].get('result')}'"
+            else:
+                details = f"Could not verify. Status: {verify_response.status_code}"
+        else:
+            details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+        log_test("D", 2, "OWNER updates result field -> saved", passed, details)
+        print()
+        
+        # Test D3: PIC updates result field (should be allowed)
+        print("Test D3: PIC updates result field (should be allowed)")
+        updated_items = [{"id": item_d_id, "title": "I1", "result": "hasil dari pic"}]
+        response = update_task(pic_token, task_d_id, items=updated_items)
+        passed = False
+        if response.status_code == 200:
+            # Verify result was updated by PIC
+            verify_response = get_task(pic_token, task_d_id)
+            if verify_response.status_code == 200:
+                verified_task = verify_response.json()
+                if verified_task['items'][0].get('result') == "hasil dari pic":
+                    passed = True
+                    details = f"Status: {response.status_code}, items[0].result = '{verified_task['items'][0].get('result')}' (PIC allowed to update)"
+                else:
+                    details = f"Result not updated correctly. items[0].result = '{verified_task['items'][0].get('result')}'"
+            else:
+                details = f"Could not verify. Status: {verify_response.status_code}"
+        else:
+            details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+        log_test("D", 3, "PIC updates result field -> saved (PIC allowed)", passed, details)
+        print()
+        
+        # Test D4: PIC tries to change title AND result (title should remain, result should update)
+        print("Test D4: PIC tries to change title AND result (title must remain I1, result should update)")
+        # Get current state
+        fetch_response = get_task(pic_token, task_d_id)
+        if fetch_response.status_code != 200:
+            print(f"  ❌ Cannot fetch task: {fetch_response.status_code}")
+            log_test("D", 4, "PIC tries to change title AND result (cannot fetch task)", False, "Cannot fetch task")
+        else:
+            current_task = fetch_response.json()
+            original_title_d = current_task['items'][0]['title']
+            
+            # PIC sends items with BOTH title changed and result changed
+            updated_items = [{"id": item_d_id, "title": "TITLE HACK", "result": "hasil pic 2"}]
+            response = update_task(pic_token, task_d_id, items=updated_items)
+            passed = False
+            if response.status_code == 200:
+                # Verify title remains unchanged but result is updated
+                verify_response = get_task(pic_token, task_d_id)
+                if verify_response.status_code == 200:
+                    verified_task = verify_response.json()
+                    final_title = verified_task['items'][0]['title']
+                    final_result = verified_task['items'][0].get('result')
+                    
+                    # Title must remain "I1", result should be "hasil pic 2"
+                    if final_title == original_title_d and final_title != "TITLE HACK" and final_result == "hasil pic 2":
+                        passed = True
+                        details = f"Status: {response.status_code}, title unchanged: '{final_title}' (original: '{original_title_d}'), result updated: '{final_result}'"
+                    else:
+                        details = f"Title: '{final_title}' (expected: '{original_title_d}'), result: '{final_result}' (expected: 'hasil pic 2')"
+                else:
+                    details = f"Could not verify. Status: {verify_response.status_code}"
+            else:
+                details = f"Status: {response.status_code}, Response: {response.text[:200]}"
+            log_test("D", 4, "PIC tries to change title AND result -> title unchanged, result updated", passed, details)
+        print()
+    
+    # ========================================================================
     # SUMMARY
     # ========================================================================
     print("=" * 80)

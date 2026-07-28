@@ -8,9 +8,10 @@ import DocumentManager from "@/components/DocumentManager";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History, Copy, LayoutTemplate, Printer } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Send, Video, Loader2, Plus, X, User, Phone, Mail, Building2, Megaphone, ChevronDown, FileText, ListChecks, MessageSquare, Info, History, Copy, LayoutTemplate, Printer, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -80,6 +81,10 @@ export default function TaskDetail() {
   };
   const setItemDocs = (itemId, docs) => {
     const next = items.map((it) => it.id === itemId ? { ...it, documents: docs } : it);
+    patch({ items: next }, { items: next });
+  };
+  const setItemResult = (itemId, text) => {
+    const next = items.map((it) => it.id === itemId ? { ...it, result: text } : it);
     patch({ items: next }, { items: next });
   };
   const setTaskDocs = (docs) => patch({ documents: docs }, { documents: docs });
@@ -205,7 +210,11 @@ export default function TaskDetail() {
                     )}
                   </div>
                   <CollapsibleContent>
-                    <div className="px-3 pb-3 pt-1 border-t border-border">
+                    <div className="px-3 pb-3 pt-3 border-t border-border space-y-4">
+                      <div className="space-y-1.5">
+                        <h4 className="text-sm font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-primary" /> Hasil / Catatan Pengerjaan</h4>
+                        <ItemResult value={item.result} editable={canProgress} onSave={(text) => setItemResult(item.id, text)} testid={`item-result-${item.id}`} />
+                      </div>
                       <DocumentManager taskId={id} documents={item.documents || []} onChange={(docs) => setItemDocs(item.id, docs)} label="Dokumen Item" idPrefix={`item-${item.id}`} canManage={canEditStructure} canRespond={canProgress} currentUserId={user?.id} />
                     </div>
                   </CollapsibleContent>
@@ -283,3 +292,26 @@ export default function TaskDetail() {
     </div>
   );
 }
+
+function ItemResult({ value, editable, onSave, testid }) {
+  const [text, setText] = useState(value || "");
+  useEffect(() => { setText(value || ""); }, [value]);
+  if (!editable) {
+    return (
+      <p className="text-sm text-muted-foreground whitespace-pre-wrap" data-testid={testid}>
+        {value ? value : "Belum ada catatan hasil."}
+      </p>
+    );
+  }
+  return (
+    <Textarea
+      value={text}
+      onChange={(e) => setText(e.target.value)}
+      onBlur={() => { if ((text || "") !== (value || "")) onSave(text); }}
+      placeholder="Jabarkan hasil pengerjaan item ini (mis. ringkasan hasil, kendala, atau kesimpulan)..."
+      rows={3}
+      data-testid={testid}
+    />
+  );
+}
+
