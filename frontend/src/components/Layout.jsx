@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, CheckSquare, CalendarDays, Bell, FileText, Video, ScrollText,
   Search, Sun, Moon, LogOut, Menu, X, Waves, ChevronDown, PanelLeftClose, PanelLeft,
-  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive, CalendarRange,
+  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive, CalendarRange, LifeBuoy,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -32,6 +32,7 @@ const NAV_GROUPS = [
       { to: "/calendar", label: "Kalender", icon: CalendarDays, badge: "calendar_month_tasks" },
       { to: "/tasks", label: "Kelola Tugas", icon: CheckSquare, badge: "my_tasks" },
       { to: "/meetings", label: "Kelola Rapat", icon: Video },
+      { to: "/help-tickets", label: "Tiket Bantuan", icon: LifeBuoy },
       { to: "/time-schedule", label: "Time Schedule", icon: CalendarRange, perm: "time_schedule" },
       { to: "/notes", label: "Kelola Catatan", icon: FileText },
       { to: "/reminders", label: "Ingatkan Saya", icon: Bell },

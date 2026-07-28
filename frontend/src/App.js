@@ -17,6 +17,7 @@ import TaskForm from "@/pages/TaskForm";
 import Meetings from "@/pages/Meetings";
 import MeetingDetail from "@/pages/MeetingDetail";
 import MeetingForm from "@/pages/MeetingForm";
+import HelpTickets from "@/pages/HelpTickets";
 import Calendar from "@/pages/Calendar";
 import Reminders from "@/pages/Reminders";
 import TimeSchedule from "@/pages/TimeSchedule";
@@ -42,6 +43,7 @@ const PAGES = [
   { path: "/meetings/new", element: <MeetingForm /> },
   { path: "/meetings/:id", element: <MeetingDetail /> },
   { path: "/meetings/:id/edit", element: <MeetingForm /> },
+  { path: "/help-tickets", element: <HelpTickets /> },
   { path: "/calendar", element: <Calendar /> },
   { path: "/reminders", element: <Reminders /> },
   { path: "/time-schedule", element: <TimeSchedule /> },
