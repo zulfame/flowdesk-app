@@ -35,6 +35,7 @@ export default function TaskDetail() {
   const [comment, setComment] = useState("");
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
+  const [showDocsFor, setShowDocsFor] = useState({});
 
   const load = useCallback(async () => {
     try { const { data } = await api.get(`/tasks/${id}`); setTask(data); }
@@ -215,6 +216,30 @@ export default function TaskDetail() {
                   </div>
                   <CollapsibleContent>
                     <div className="px-3 pb-3 pt-3 border-t border-border space-y-4">
+                      {/* Dokumen Item dari pemberi tugas - tampil bila ada dokumen atau owner memilih menambah */}
+                      {((item.documents || []).length > 0 || showDocsFor[item.id]) ? (
+                        <DocumentManager
+                          taskId={id}
+                          documents={item.documents || []}
+                          onChange={(docs) => setItemDocs(item.id, docs)}
+                          label="Dokumen Item"
+                          idPrefix={`item-${item.id}`}
+                          canManage={canEditStructure}
+                          canRespond={canProgress}
+                          currentUserId={user?.id}
+                          emptyText="Belum ada dokumen item"
+                        />
+                      ) : (canEditStructure && (
+                        <button
+                          onClick={() => setShowDocsFor((s) => ({ ...s, [item.id]: true }))}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                          data-testid={`btn-add-item-doc-${item.id}`}
+                        >
+                          <Plus className="h-3.5 w-3.5" /> Tambah Dokumen Item
+                        </button>
+                      ))}
+
+                      {/* Catatan Tugas */}
                       <div className="space-y-1.5">
                         <h4 className="text-sm font-semibold flex items-center gap-2"><PenLine className="h-4 w-4 text-primary" /> Catatan Tugas</h4>
                         <ItemResult value={item.result} editable={canProgress} onSave={(text) => setItemResult(item.id, text)} testid={`item-result-${item.id}`} />
@@ -233,21 +258,6 @@ export default function TaskDetail() {
                           canRespond={false}
                           currentUserId={user?.id}
                           emptyText="Belum ada lampiran"
-                        />
-                      )}
-
-                      {/* Dokumen Item dari pemberi tugas - hanya tampil bila owner atau ada dokumennya */}
-                      {(canEditStructure || (item.documents || []).length > 0) && (
-                        <DocumentManager
-                          taskId={id}
-                          documents={item.documents || []}
-                          onChange={(docs) => setItemDocs(item.id, docs)}
-                          label="Dokumen Item (dari pemberi tugas)"
-                          idPrefix={`item-${item.id}`}
-                          canManage={canEditStructure}
-                          canRespond={canProgress}
-                          currentUserId={user?.id}
-                          emptyText="Belum ada dokumen item"
                         />
                       )}
                     </div>
