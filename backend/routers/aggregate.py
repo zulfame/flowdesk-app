@@ -101,9 +101,11 @@ async def nav_badges(user: dict = Depends(get_current_user)):
 # ---------- Calendar ----------
 @router.get("/calendar")
 async def calendar(user: dict = Depends(get_current_user)):
+    """Tampilan kalender perusahaan: SEMUA rapat, tenggat tugas, dan pengingat
+    dari seluruh pengguna (bukan hanya pengguna yang login)."""
     events = []
 
-    meetings = await db.meetings.find({**meeting_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    meetings = await db.meetings.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(2000)
     for m in meetings:
         if m.get("date"):
             events.append({
@@ -112,7 +114,7 @@ async def calendar(user: dict = Depends(get_current_user)):
                 "link": f"/meetings/{m['id']}",
             })
 
-    tasks = await db.tasks.find({"deadline": {"$ne": None}, **task_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    tasks = await db.tasks.find({"deadline": {"$ne": None}, "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(2000)
     for t in tasks:
         if t.get("deadline"):
             events.append({
@@ -120,20 +122,13 @@ async def calendar(user: dict = Depends(get_current_user)):
                 "type": "task", "color": "#F59E0B", "link": f"/tasks/{t['id']}",
             })
 
-    reminders = await db.reminders.find({"created_by": user["id"], "is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
+    reminders = await db.reminders.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(2000)
     for r in reminders:
         if r.get("date"):
             events.append({
                 "id": r["id"], "title": r["title"], "date": r["date"][:10],
                 "type": "reminder", "color": "#10B981", "link": "/reminders",
             })
-
-    custom = await db.events.find({"is_deleted": {"$ne": True}}, {"_id": 0}).to_list(1000)
-    for e in custom:
-        events.append({
-            "id": e["id"], "title": e["title"], "date": e["date"][:10],
-            "type": "event", "color": e.get("color", "#8B5CF6"), "link": "/calendar",
-        })
 
     return events
 

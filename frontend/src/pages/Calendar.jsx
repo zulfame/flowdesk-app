@@ -1,24 +1,18 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, apiError } from "@/lib/api";
+import { api } from "@/lib/api";
 import { PageHeader } from "@/components/common";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
-import { toast } from "sonner";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const MONTHS = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
 const DAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
-const TYPE_LABELS = { meeting: "Rapat", task: "Tenggat Tugas", reminder: "Pengingat", event: "Acara" };
+const TYPE_LABELS = { meeting: "Rapat", task: "Tenggat Tugas", reminder: "Pengingat" };
 
 export default function Calendar() {
   const [current, setCurrent] = useState(new Date());
   const [events, setEvents] = useState([]);
-  const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ title: "", date: "", description: "" });
   const navigate = useNavigate();
 
   const load = () => api.get("/calendar").then(({ data }) => setEvents(data)).catch(() => {});
@@ -39,25 +33,13 @@ export default function Calendar() {
 
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const saveEvent = async () => {
-    if (!form.title.trim() || !form.date) { toast.error("Judul dan tanggal wajib diisi"); return; }
-    try {
-      await api.post("/events", { ...form, date: form.date });
-      toast.success("Acara ditambahkan");
-      setOpen(false); setForm({ title: "", date: "", description: "" });
-      load();
-    } catch (e) { toast.error(apiError(e)); }
-  };
-
   return (
     <div>
-      <PageHeader title="Kalender" subtitle="Rapat, tenggat tugas, pengingat, dan acara dalam satu tampilan.">
-        <Button onClick={() => setOpen(true)} className="rounded-xl" data-testid="btn-add-event"><Plus className="h-4 w-4 mr-1.5" /> Acara</Button>
-      </PageHeader>
+      <PageHeader title="Kalender" subtitle="Seluruh rapat, tenggat tugas, dan pengingat perusahaan dalam satu tampilan." />
 
       <div className="flex flex-wrap items-center gap-4 mb-4">
         {Object.entries(TYPE_LABELS).map(([k, v]) => {
-          const colors = { meeting: "#4F46E5", task: "#F59E0B", reminder: "#10B981", event: "#8B5CF6" };
+          const colors = { meeting: "#4F46E5", task: "#F59E0B", reminder: "#10B981" };
           return <div key={k} className="flex items-center gap-1.5 text-sm text-muted-foreground"><span className="h-2.5 w-2.5 rounded-full" style={{ background: colors[k] }} /> {v}</div>;
         })}
       </div>
@@ -95,18 +77,6 @@ export default function Calendar() {
           })}
         </div>
       </Card>
-
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent>
-          <DialogHeader><DialogTitle>Tambah Acara</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5"><Label>Judul</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} data-testid="event-title-input" /></div>
-            <div className="space-y-1.5"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="event-date-input" /></div>
-            <div className="space-y-1.5"><Label>Deskripsi</Label><Input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} data-testid="event-desc-input" /></div>
-          </div>
-          <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Batal</Button><Button onClick={saveEvent} data-testid="btn-save-event">Simpan</Button></DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
