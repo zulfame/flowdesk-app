@@ -45,7 +45,7 @@ function DocLink({ doc }) {
   );
 }
 
-export default function DocumentManager({ taskId, documents = [], onChange, label = "Dokumen Sumber", idPrefix = "task", canManage = true, canRespond = true, currentUserId = null, canAddDoc = null, emptyText = "Belum ada dokumen sumber" }) {
+export default function DocumentManager({ taskId, documents = [], onChange, label = "Dokumen Sumber", idPrefix = "task", canManage = true, canRespond = true, currentUserId = null, canAddDoc = null, emptyText = "Belum ada dokumen sumber", hideHeaderTitle = false }) {
   const allowAdd = canAddDoc == null ? canManage : canAddDoc;
   const fileRef = useRef(null);
   const [uploading, setUploading] = useState(false);
@@ -115,8 +115,9 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> {label} ({(documents || []).length})</h3>
+      {(!hideHeaderTitle || allowAdd) && (
+      <div className={`flex items-center gap-2 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}>
+        {!hideHeaderTitle && <h3 className="text-sm font-semibold flex items-center gap-2"><FileText className="h-4 w-4" /> {label} ({(documents || []).length})</h3>}
         {allowAdd && (
           <div className="flex gap-1.5">
             <input ref={fileRef} type="file" className="hidden" onChange={addFileDoc} data-testid={`${idPrefix}-doc-file-input`} />
@@ -127,6 +128,7 @@ export default function DocumentManager({ taskId, documents = [], onChange, labe
           </div>
         )}
       </div>
+      )}
 
       {(documents || []).length === 0 ? (
         <p className="text-xs text-muted-foreground py-3 text-center border border-dashed rounded-xl">{emptyText}</p>

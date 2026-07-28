@@ -63,6 +63,29 @@ export function ProgressBar({ value = 0, className }) {
   );
 }
 
+export function SectionCard({ icon: Icon, title, headerRight, header, footer, footerClassName, children, className, bodyClassName, headerClassName }) {
+  const hasHeader = header || title || headerRight;
+  return (
+    <div className={cn("rounded-2xl border border-border bg-card shadow-soft overflow-hidden", className)}>
+      {hasHeader && (
+        <div className={cn("flex items-center justify-between gap-3 px-5 py-4 border-b border-border", headerClassName)}>
+          {header ? header : (
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              {Icon && <Icon className="h-4 w-4 text-primary" />}
+              {title}
+            </h3>
+          )}
+          {headerRight && <div className="flex items-center gap-2 shrink-0">{headerRight}</div>}
+        </div>
+      )}
+      <div className={cn("p-5", bodyClassName)}>{children}</div>
+      {footer && (
+        <div className={cn("px-5 py-3.5 border-t border-border bg-secondary/40", footerClassName)}>{footer}</div>
+      )}
+    </div>
+  );
+}
+
 export function PageHeader({ title, subtitle, children }) {
   return (
     <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Modal } from "@/components/Modal";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Plus, CheckSquare, Video, Search, LayoutList, Columns3, LayoutTemplate, Trash2, Copy } from "lucide-react";
 import { toast } from "sonner";
@@ -100,23 +100,25 @@ export default function Tasks() {
       draggable={draggable}
       onDragStart={draggable ? (e) => e.dataTransfer.setData("text/task", t.id) : undefined}
       onClick={() => navigate(`/tasks/${t.id}`)}
-      className="p-4 rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all"
+      className="rounded-2xl shadow-soft cursor-pointer hover:shadow-soft-lg hover:-translate-y-0.5 transition-all overflow-hidden"
       data-testid={`task-card-${t.id}`}
     >
-      <div className="flex items-start justify-between gap-3 mb-2">
+      <div className="flex items-start justify-between gap-3 px-4 py-3 border-b border-border">
         <h3 className="font-semibold text-sm truncate">{t.title}</h3>
         <PriorityBadge priority={t.priority} />
       </div>
-      <div className="flex items-center gap-2 flex-wrap mb-3">
-        {!draggable && <StatusBadge status={t.status} />}
-        {t.deadline && <DeadlineBadge deadline={t.deadline} done={t.status === "Completed"} />}
-        {t.meeting_id && <span className="inline-flex items-center gap-1 text-xs text-primary"><Video className="h-3 w-3" /> Rapat</span>}
+      <div className="p-4 space-y-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          {!draggable && <StatusBadge status={t.status} />}
+          {t.deadline && <DeadlineBadge deadline={t.deadline} done={t.status === "Completed"} />}
+          {t.meeting_id && <span className="inline-flex items-center gap-1 text-xs text-primary"><Video className="h-3 w-3" /> Rapat</span>}
+          {personName(t.pic) && <span className="text-xs text-muted-foreground truncate">PIC: {personName(t.pic)}</span>}
+        </div>
+        <div className="flex items-center gap-2">
+          <ProgressBar value={t.progress} className="flex-1" />
+          <span className="text-xs text-muted-foreground font-medium w-9 text-right">{t.progress}%</span>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <ProgressBar value={t.progress} className="flex-1" />
-        <span className="text-xs text-muted-foreground font-medium w-9 text-right">{t.progress}%</span>
-      </div>
-      {personName(t.pic) && <p className="text-xs text-muted-foreground mt-2 truncate">PIC: {personName(t.pic)}</p>}
     </Card>
   );
 
@@ -209,28 +211,36 @@ function TemplateDialog({ open, onOpenChange, templates, onUse, onDelete, onRelo
     } catch (e) { toast.error(apiError(e)); }
   };
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader><DialogTitle>Template Tugas</DialogTitle></DialogHeader>
-        <div className="space-y-4 py-2">
-          <div className="space-y-2 max-h-56 overflow-y-auto">
-            {templates.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Belum ada template.</p>}
-            {templates.map((tpl) => (
-              <div key={tpl.id} className="flex items-center gap-2 p-3 rounded-xl border border-border" data-testid={`template-${tpl.id}`}>
-                <div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{tpl.name}</p><p className="text-xs text-muted-foreground">{(tpl.items || []).length} item · {tpl.priority}</p></div>
-                <Button size="sm" onClick={() => onUse(tpl.id)} data-testid={`use-template-${tpl.id}`}>Gunakan</Button>
-                <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => onDelete(tpl.id)}><Trash2 className="h-4 w-4" /></Button>
-              </div>
-            ))}
-          </div>
-          <div className="border-t border-border pt-4 space-y-3">
-            <p className="text-sm font-semibold">Buat Template Baru</p>
-            <div className="space-y-1.5"><Label>Nama</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="mis. Onboarding Klien" data-testid="template-name-input" /></div>
-            <div className="space-y-1.5"><Label>Item (satu per baris)</Label><textarea value={items} onChange={(e) => setItems(e.target.value)} rows={3} className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" placeholder={"Kirim kontrak\nJadwalkan kickoff"} data-testid="template-items-input" /></div>
-          </div>
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Template Tugas"
+      description="Gunakan template yang tersimpan atau buat template baru."
+      size="lg"
+      footer={(
+        <>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Tutup</Button>
+          <Button onClick={create} data-testid="btn-save-template">Simpan Template</Button>
+        </>
+      )}
+    >
+      <div className="space-y-4">
+        <div className="space-y-2">
+          {templates.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Belum ada template.</p>}
+          {templates.map((tpl) => (
+            <div key={tpl.id} className="flex items-center gap-2 p-3 rounded-xl border border-border" data-testid={`template-${tpl.id}`}>
+              <div className="min-w-0 flex-1"><p className="text-sm font-medium truncate">{tpl.name}</p><p className="text-xs text-muted-foreground">{(tpl.items || []).length} item · {tpl.priority}</p></div>
+              <Button size="sm" onClick={() => onUse(tpl.id)} data-testid={`use-template-${tpl.id}`}>Gunakan</Button>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-destructive" onClick={() => onDelete(tpl.id)}><Trash2 className="h-4 w-4" /></Button>
+            </div>
+          ))}
         </div>
-        <DialogFooter><Button variant="ghost" onClick={() => onOpenChange(false)}>Tutup</Button><Button onClick={create} data-testid="btn-save-template">Simpan Template</Button></DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="border-t border-border pt-4 space-y-3">
+          <p className="text-sm font-semibold">Buat Template Baru</p>
+          <div className="space-y-1.5"><Label>Nama</Label><Input value={name} onChange={(e) => setName(e.target.value)} placeholder="mis. Onboarding Klien" data-testid="template-name-input" /></div>
+          <div className="space-y-1.5"><Label>Item (satu per baris)</Label><textarea value={items} onChange={(e) => setItems(e.target.value)} rows={3} className="w-full rounded-xl border border-input bg-background px-3 py-2 text-sm" placeholder={"Kirim kontrak\nJadwalkan kickoff"} data-testid="template-items-input" /></div>
+        </div>
+      </div>
+    </Modal>
   );
 }

@@ -3,9 +3,8 @@ import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { canManage, isTaskPic } from "@/lib/perms";
-import { StatusBadge, PriorityBadge, ProgressBar, SectionTitle } from "@/components/common";
+import { StatusBadge, PriorityBadge, ProgressBar, SectionCard } from "@/components/common";
 import DocumentManager from "@/components/DocumentManager";
-import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -144,12 +143,15 @@ export default function TaskDetail() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <div className="flex items-start justify-between gap-4 mb-4">
+          <SectionCard
+            headerClassName="items-start"
+            header={(
               <div className="min-w-0">
                 <div className="flex items-center gap-2 mb-2 flex-wrap"><StatusBadge status={task.status} /><PriorityBadge priority={task.priority} /></div>
                 <h1 className="text-2xl font-bold tracking-tight">{task.title}</h1>
               </div>
+            )}
+            headerRight={(
               <div className="flex gap-2 shrink-0 no-print">
                 <Button variant="secondary" size="icon" onClick={duplicate} title="Duplikat" data-testid="btn-duplicate-task"><Copy className="h-4 w-4" /></Button>
                 <Button variant="secondary" size="icon" onClick={saveTemplate} title="Simpan sebagai template" data-testid="btn-save-template"><LayoutTemplate className="h-4 w-4" /></Button>
@@ -165,18 +167,26 @@ export default function TaskDetail() {
                 </AlertDialog>
                 </>}
               </div>
-            </div>
-
+            )}
+          >
             {task.description && <p className="text-muted-foreground mb-5 whitespace-pre-wrap">{task.description}</p>}
             {task.meeting_id && <button onClick={() => navigate(`/meetings/${task.meeting_id}`)} className="flex items-center gap-2 text-sm text-primary mb-5 hover:underline" data-testid="link-parent-meeting"><Video className="h-4 w-4" /> Dari rapat: {task.meeting_title || "Lihat rapat"}</button>}
-
             <div className="flex items-center gap-3 mb-2"><ProgressBar value={task.progress} className="flex-1" /><span className="text-sm font-semibold w-12 text-right">{task.progress}%</span></div>
             <p className="text-xs text-muted-foreground">Rasio pengerjaan: {doneCount} dari {items.length} item selesai</p>
-          </Card>
+          </SectionCard>
 
           {/* Item Tugas */}
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={ListChecks}>Item Tugas ({doneCount}/{items.length})</SectionTitle>
+          <SectionCard
+            icon={ListChecks}
+            title={`Item Tugas (${doneCount}/${items.length})`}
+            footer={canEditStructure ? (
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="Tambah item tugas..." className="flex-1 bg-card" data-testid="detail-item-input" />
+                <Input type="date" value={newItemDue} onChange={(e) => setNewItemDue(e.target.value)} className="sm:w-40 bg-card" title="Tenggat item (opsional)" data-testid="detail-item-due-input" />
+                <Button variant="secondary" onClick={addItem} data-testid="btn-detail-add-item"><Plus className="h-4 w-4" /></Button>
+              </div>
+            ) : null}
+          >
             <div className="space-y-3">
               {items.map((item) => (
                 <Collapsible key={item.id} className={cn("rounded-xl border", itemOverdue(item) ? "border-rose-300 dark:border-rose-800 bg-rose-50/40 dark:bg-rose-900/10" : "border-border")} data-testid={`item-${item.id}`}>
@@ -265,20 +275,21 @@ export default function TaskDetail() {
                 </Collapsible>
               ))}
               {items.length === 0 && <p className="text-sm text-muted-foreground text-center py-3">Belum ada item tugas.</p>}
-              {canEditStructure && (
-                <div className="flex flex-col sm:flex-row gap-2 pt-1">
-                  <Input value={newItem} onChange={(e) => setNewItem(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addItem()} placeholder="Tambah item tugas..." className="flex-1" data-testid="detail-item-input" />
-                  <Input type="date" value={newItemDue} onChange={(e) => setNewItemDue(e.target.value)} className="sm:w-40" title="Tenggat item (opsional)" data-testid="detail-item-due-input" />
-                  <Button variant="secondary" onClick={addItem} data-testid="btn-detail-add-item"><Plus className="h-4 w-4" /></Button>
-                </div>
-              )}
             </div>
-          </Card>
+          </SectionCard>
 
           {/* Komentar */}
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={MessageSquare}>Komentar ({(task.comments || []).length})</SectionTitle>
-            <div className="space-y-4 mb-4">
+          <SectionCard
+            icon={MessageSquare}
+            title={`Komentar (${(task.comments || []).length})`}
+            footer={(
+              <div className="flex gap-2">
+                <Input value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()} placeholder="Tulis komentar... gunakan @nama untuk menyebut" className="bg-card" data-testid="comment-input" />
+                <Button onClick={addComment} data-testid="btn-add-comment"><Send className="h-4 w-4" /></Button>
+              </div>
+            )}
+          >
+            <div className="space-y-4">
               {(task.comments || []).map((c) => (
                 <div key={c.id} className="flex gap-3">
                   <div className="h-8 w-8 rounded-lg bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">{c.by?.[0]?.toUpperCase()}</div>
@@ -287,50 +298,53 @@ export default function TaskDetail() {
               ))}
               {(task.comments || []).length === 0 && <p className="text-sm text-muted-foreground">Belum ada komentar.</p>}
             </div>
-            <div className="flex gap-2"><Input value={comment} onChange={(e) => setComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && addComment()} placeholder="Tulis komentar... gunakan @nama untuk menyebut" data-testid="comment-input" /><Button onClick={addComment} data-testid="btn-add-comment"><Send className="h-4 w-4" /></Button></div>
-          </Card>
+          </SectionCard>
         </div>
 
         <div className="space-y-6">
           {/* Pemberi Tugas */}
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={User}>Pemberi Tugas</SectionTitle>
+          <SectionCard
+            icon={User}
+            title="Pemberi Tugas"
+            footer={(
+              <div className="w-full space-y-2">
+                <Button className="w-full rounded-xl" variant="secondary" onClick={broadcast} disabled={!req.phone && !req.email} data-testid="btn-broadcast"><Megaphone className="h-4 w-4 mr-1.5" /> Kirim Pemberitahuan</Button>
+                <p className="text-xs text-muted-foreground">Broadcast via Email & WhatsApp ke pemberi tugas.</p>
+              </div>
+            )}
+          >
             <dl className="space-y-2.5 text-sm">
               <div className="flex items-center gap-2"><User className="h-4 w-4 text-muted-foreground shrink-0" /><span className="font-medium">{req.name || "-"}</span></div>
               <div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-muted-foreground shrink-0" /><span>{req.department || "-"}</span></div>
               <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground shrink-0" /><span>{req.phone || "-"}</span></div>
               <div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground shrink-0" /><span className="truncate">{req.email || "-"}</span></div>
             </dl>
-            <Button className="w-full mt-4 rounded-xl" variant="secondary" onClick={broadcast} disabled={!req.phone && !req.email} data-testid="btn-broadcast"><Megaphone className="h-4 w-4 mr-1.5" /> Kirim Pemberitahuan</Button>
-            <p className="text-xs text-muted-foreground mt-2">Broadcast via Email & WhatsApp ke pemberi tugas.</p>
-          </Card>
+          </SectionCard>
 
           {/* Detail */}
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={Info}>Detail</SectionTitle>
+          <SectionCard icon={Info} title="Detail">
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between"><dt className="text-muted-foreground">PIC</dt><dd className="font-medium">{(typeof task.pic === "string" ? task.pic : task.pic?.name) || "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Prioritas</dt><dd><PriorityBadge priority={task.priority} /></dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Tenggat</dt><dd className="font-medium">{task.deadline ? new Date(task.deadline).toLocaleDateString("id-ID") : "-"}</dd></div>
               <div className="flex justify-between"><dt className="text-muted-foreground">Dibuat oleh</dt><dd className="font-medium">{task.created_by_name}</dd></div>
             </dl>
-          </Card>
+          </SectionCard>
 
           {/* Dokumen Sumber (task-level) */}
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <DocumentManager taskId={id} documents={task.documents || []} onChange={setTaskDocs} label="Dokumen Sumber" idPrefix="task" canManage={canEditStructure} canRespond={canProgress} currentUserId={user?.id} />
-          </Card>
+          <SectionCard icon={FileText} title="Dokumen Sumber">
+            <DocumentManager taskId={id} documents={task.documents || []} onChange={setTaskDocs} idPrefix="task" canManage={canEditStructure} canRespond={canProgress} currentUserId={user?.id} hideHeaderTitle />
+          </SectionCard>
 
           {/* Riwayat */}
-          <Card className="p-6 rounded-2xl shadow-soft">
-            <SectionTitle icon={History} right={<span className="text-xs text-muted-foreground">{(task.history || []).length}</span>}>Riwayat</SectionTitle>
-            <div className="space-y-3 max-h-72 overflow-y-auto pr-2 thin-scroll">
+          <SectionCard icon={History} title="Riwayat" headerRight={<span className="text-xs text-muted-foreground">{(task.history || []).length}</span>}>
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-2 -mr-1 thin-scroll">
               {(task.history || []).slice().reverse().map((h, i) => (
                 <div key={i} className="flex items-start gap-2.5 text-sm"><div className="h-1.5 w-1.5 rounded-full bg-primary mt-1.5 shrink-0" /><div><p className={h.detail ? "" : "capitalize"}>{h.detail || h.action.replace(/_/g, " ")}</p><p className="text-xs text-muted-foreground">{h.by} · {timeAgo(h.at)}</p></div></div>
               ))}
               {(task.history || []).length === 0 && <p className="text-sm text-muted-foreground text-center py-2">Belum ada riwayat.</p>}
             </div>
-          </Card>
+          </SectionCard>
         </div>
       </div>
     </div>
