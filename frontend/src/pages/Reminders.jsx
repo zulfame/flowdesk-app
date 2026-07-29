@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { api, apiError } from "@/lib/api";
-import { PageHeader, EmptyState } from "@/components/common";
+import { cn } from "@/lib/utils";
+import { PageHeader, EmptyState, SectionCard } from "@/components/common";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Bell, Plus, Trash2, Repeat, Clock, CalendarClock, Mail, MessageCircle, 
 import { toast } from "sonner";
 
 const TYPE_LABELS = { today: "Hari Ini", tomorrow: "Besok", custom: "Tanggal Khusus", recurring: "Berulang" };
+const TYPE_ACCENT = { today: "border-l-rose-500", tomorrow: "border-l-amber-500", custom: "border-l-indigo-500", recurring: "border-l-emerald-500" };
 const RECUR_LABELS = { daily: "Harian", weekly: "Mingguan", monthly: "Bulanan" };
 const emptyForm = { title: "", description: "", remind_type: "custom", date: "", time: "09:00", recurrence: "daily", broadcast: false, channels: [], broadcast_offset: "10m", broadcast_custom_date: "", broadcast_custom_time: "09:00" };
 const OFFSET_LABELS = { "10m": "10 menit sebelum (default)", "1h": "1 jam sebelum", "1d": "1 hari sebelum", "custom": "Waktu khusus" };
@@ -80,32 +82,42 @@ export default function Reminders() {
       {reminders.length === 0 ? (
         <Card className="rounded-lg shadow-soft"><EmptyState icon={Bell} title="Belum ada pengingat" description="Buat pengingat agar tidak melewatkan hal penting." action={<Button onClick={() => setOpen(true)} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Pengingat</Button>} /></Card>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {reminders.map((r) => (
-            <Card key={r.id} className={`p-5 rounded-lg shadow-soft flex flex-col gap-3 group hover:shadow-soft-lg transition-all ${r.done ? "opacity-70" : ""}`} data-testid={`reminder-${r.id}`}>
-              <div className="flex items-start gap-3">
-                <button onClick={() => toggleDone(r)} className="shrink-0 mt-0.5" data-testid={`reminder-toggle-${r.id}`}>
-                  {r.done ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />}
-                </button>
-                <div className="min-w-0 flex-1">
-                  <p className={`font-semibold leading-snug ${r.done ? "line-through text-muted-foreground" : ""}`}>{r.title}</p>
-                  {r.description && <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{r.description}</p>}
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {reminders.map((r) => {
+            const hasFooter = r.date || r.time || r.recurrence || (r.broadcast && (r.channels || []).length);
+            return (
+              <SectionCard
+                key={r.id}
+                data-testid={`reminder-${r.id}`}
+                className={cn("group border-l-4 hover:shadow-soft-lg transition-all", TYPE_ACCENT[r.remind_type] || "border-l-slate-400", r.done && "opacity-70")}
+                headerClassName="py-3"
+                header={<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground"><CalendarClock className="h-3 w-3" /> {TYPE_LABELS[r.remind_type]}</span>}
+                headerRight={<button onClick={() => setDelId(r.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" data-testid={`btn-delete-reminder-${r.id}`}><Trash2 className="h-4 w-4" /></button>}
+                footer={hasFooter ? (
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    {r.date && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground">{fmtDate(r.date)}</span>}
+                    {r.time && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Clock className="h-3 w-3" /> {r.time}</span>}
+                    {r.recurrence && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Repeat className="h-3 w-3" /> {RECUR_LABELS[r.recurrence]}</span>}
+                    {r.broadcast && (r.channels || []).map((c) => (
+                      <span key={c} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
+                        {c === "email" ? <Mail className="h-3 w-3" /> : <MessageCircle className="h-3 w-3" />} {c === "email" ? "Email" : "WhatsApp"}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              >
+                <div className="flex items-start gap-3">
+                  <button onClick={() => toggleDone(r)} className="shrink-0 mt-0.5" data-testid={`reminder-toggle-${r.id}`}>
+                    {r.done ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />}
+                  </button>
+                  <div className="min-w-0 flex-1">
+                    <p className={cn("font-semibold leading-snug", r.done && "line-through text-muted-foreground")}>{r.title}</p>
+                    {r.description && <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{r.description}</p>}
+                  </div>
                 </div>
-                <button onClick={() => setDelId(r.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0" data-testid={`btn-delete-reminder-${r.id}`}><Trash2 className="h-4 w-4" /></button>
-              </div>
-              <div className="flex flex-wrap items-center gap-2 text-xs">
-                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-accent text-accent-foreground font-medium"><CalendarClock className="h-3 w-3" /> {TYPE_LABELS[r.remind_type]}</span>
-                {r.date && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground">{fmtDate(r.date)}</span>}
-                {r.time && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Clock className="h-3 w-3" /> {r.time}</span>}
-                {r.recurrence && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Repeat className="h-3 w-3" /> {RECUR_LABELS[r.recurrence]}</span>}
-                {r.broadcast && (r.channels || []).map((c) => (
-                  <span key={c} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                    {c === "email" ? <Mail className="h-3 w-3" /> : <MessageCircle className="h-3 w-3" />} {c === "email" ? "Email" : "WhatsApp"}
-                  </span>
-                ))}
-              </div>
-            </Card>
-          ))}
+              </SectionCard>
+            );
+          })}
         </div>
       )}
 

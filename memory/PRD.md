@@ -116,4 +116,12 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - ✅ **Kelola Catatan: ketat pribadi**: `notes.py` list/get/update/delete kini difilter `created_by=user.id` (Admin pun hanya lihat miliknya). Verified via curl.
 - ✅ **Konsistensi cascade delete lampiran**: `time_schedule.py` delete kini lewat service layer `services.delete_time_schedule` (cascade file + masuk Arsip). `time_schedule` ditambahkan ke `archive.py` TYPES (bisa restore/purge). Purge permanen menghapus berkas fisik via `purge_files(prefix=True)`. Verified: buat→hapus→Arsip→purge→download 404.
 - Catatan: Preview menampilkan placeholder "Preview Unavailable" (inactivity platform), bukan error app; backend & frontend RUNNING, compile sukses.
-- **Next**: Redesign UI SectionCard (header/body/footer) untuk index Time Schedule, Kelola Catatan, Ingatkan Saya (disetujui user, ditunda karena preview inactive — verifikasi visual saat preview aktif). Notifikasi ditunda atas permintaan user.
+- **Next**: Redesign UI SectionCard (header/body/footer) untuk index Time Schedule, Kelola Catatan, Ingatkan Saya — SELESAI (lihat update di bawah). Notifikasi ditunda atas permintaan user.
+
+## Update (2026-07-29b) — Redesign UI SectionCard halaman index
+- ✅ **Kelola Catatan, Ingatkan Saya, Time Schedule** kini memakai pola `SectionCard` (header/body/footer, border kiri beraksen, hover lift) — konsisten dengan Kelola Rapat.
+  - Catatan: aksen warna kiri sesuai warna catatan; header=judul+pin, footer=tag + tanggal diperbarui.
+  - Ingatkan Saya: aksen kiri per jenis (Hari Ini/Besok/Khusus/Berulang); body=toggle selesai+judul, footer=tanggal/jam/pengulangan/kanal broadcast.
+  - Time Schedule: aksen indigo; header=seksi, body=judul+event+deskripsi+"Buka linimasa", footer=rentang tanggal + jumlah kegiatan.
+- Semua data-testid dipertahankan; frontend compile sukses.
+- Catatan: verifikasi visual oleh user (preview sempat menampilkan placeholder inaktivitas platform saat sesi ini; bukan error app — backend & frontend RUNNING, compile OK, bundle app tersaji di localhost:3000).

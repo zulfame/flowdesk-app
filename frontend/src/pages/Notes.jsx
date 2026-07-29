@@ -2,17 +2,21 @@ import React, { useEffect, useState, useCallback } from "react";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { canManage } from "@/lib/perms";
-import { PageHeader, EmptyState } from "@/components/common";
+import { cn } from "@/lib/utils";
+import { PageHeader, EmptyState, SectionCard } from "@/components/common";
 import RichTextEditor from "@/components/RichTextEditor";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { FileText, Plus, Trash2, Pin, PinOff } from "lucide-react";
+import { FileText, Plus, Trash2, Pin, PinOff, Clock } from "lucide-react";
 import { toast } from "sonner";
 
 const COLORS = { default: "bg-card", yellow: "bg-amber-50 dark:bg-amber-900/20", green: "bg-emerald-50 dark:bg-emerald-900/20", blue: "bg-blue-50 dark:bg-blue-900/20", pink: "bg-pink-50 dark:bg-pink-900/20" };
+const ACCENTS = { default: "border-l-slate-300 dark:border-l-slate-600", yellow: "border-l-amber-400", green: "border-l-emerald-400", blue: "border-l-blue-400", pink: "border-l-pink-400" };
+
+function fmtDate(d) { return d ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : null; }
 
 export default function Notes() {
   const { user } = useAuth();
@@ -46,27 +50,44 @@ export default function Notes() {
 
   return (
     <div>
-      <PageHeader title="Kelola Catatan" subtitle="Simpan ide, catatan cepat, dan referensi penting.">
+      <PageHeader title="Kelola Catatan" subtitle="Catatan pribadi Anda — simpan ide, catatan cepat, dan referensi penting.">
         <Button onClick={openNew} className="rounded-xl" data-testid="btn-add-note"><Plus className="h-4 w-4 mr-1.5" /> Catatan</Button>
       </PageHeader>
 
       {notes.length === 0 ? (
         <Card className="rounded-lg shadow-soft"><EmptyState icon={FileText} title="Belum ada catatan" description="Buat catatan pertama untuk menyimpan pemikiran Anda." action={<Button onClick={openNew}><Plus className="h-4 w-4 mr-1.5" /> Catatan</Button>} /></Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {notes.map((n) => (
-            <Card key={n.id} className={`p-5 rounded-lg shadow-soft cursor-pointer hover:shadow-soft-lg transition-all group ${COLORS[n.color] || COLORS.default}`} onClick={() => openEdit(n)} data-testid={`note-card-${n.id}`}>
-              <div className="flex items-start justify-between gap-2 mb-2">
-                <h3 className="font-semibold truncate flex items-center gap-1.5">{n.pinned && <Pin className="h-3.5 w-3.5 text-primary shrink-0" />}{n.title}</h3>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <button onClick={() => togglePin(n)} className="text-muted-foreground hover:text-primary" data-testid={`btn-pin-${n.id}`}>{n.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}</button>
-                  {canManage(user, n) && <button onClick={() => remove(n.id)} className="text-muted-foreground hover:text-destructive" data-testid={`btn-delete-note-${n.id}`}><Trash2 className="h-4 w-4" /></button>}
-                </div>
-              </div>
-              <div className="text-sm text-muted-foreground line-clamp-4 rte-content" dangerouslySetInnerHTML={{ __html: n.content || "<em>Tanpa isi</em>" }} />
-              {(n.tags || []).length > 0 && <div className="flex flex-wrap gap-1.5 mt-3">{n.tags.map((t, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-secondary">{t}</span>)}</div>}
-            </Card>
-          ))}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+          {notes.map((n) => {
+            const updated = fmtDate(n.updated_at);
+            return (
+              <SectionCard
+                key={n.id}
+                onClick={() => openEdit(n)}
+                data-testid={`note-card-${n.id}`}
+                className={cn("group cursor-pointer border-l-4 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all", ACCENTS[n.color] || ACCENTS.default, COLORS[n.color] || COLORS.default)}
+                headerClassName="py-3"
+                header={<h3 className="font-semibold truncate flex items-center gap-1.5 min-w-0 flex-1 group-hover:text-primary transition-colors">{n.pinned && <Pin className="h-3.5 w-3.5 text-primary shrink-0" />}{n.title}</h3>}
+                headerRight={(
+                  <div className="flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                    <button onClick={() => togglePin(n)} className="text-muted-foreground hover:text-primary" data-testid={`btn-pin-${n.id}`}>{n.pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}</button>
+                    <button onClick={() => remove(n.id)} className="text-muted-foreground hover:text-destructive" data-testid={`btn-delete-note-${n.id}`}><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                )}
+                bodyClassName="bg-card/40"
+                footer={(
+                  <div className="flex items-center justify-between gap-3">
+                    {(n.tags || []).length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5 min-w-0">{n.tags.slice(0, 3).map((t, i) => <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-secondary truncate">{t}</span>)}{n.tags.length > 3 && <span className="text-xs text-muted-foreground">+{n.tags.length - 3}</span>}</div>
+                    ) : <span className="text-xs text-muted-foreground">Tanpa tag</span>}
+                    {updated && <span className="text-xs text-muted-foreground inline-flex items-center gap-1 shrink-0"><Clock className="h-3 w-3" /> {updated}</span>}
+                  </div>
+                )}
+              >
+                <div className="text-sm text-muted-foreground line-clamp-4 rte-content" dangerouslySetInnerHTML={{ __html: n.content || "<em>Tanpa isi</em>" }} />
+              </SectionCard>
+            );
+          })}
         </div>
       )}
 

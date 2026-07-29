@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { canManage } from "@/lib/perms";
-import { PageHeader, EmptyState } from "@/components/common";
+import { cn } from "@/lib/utils";
+import { PageHeader, EmptyState, SectionCard } from "@/components/common";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { CalendarRange, Plus, Pencil, Trash2, ListChecks, CalendarClock, Loader2 } from "lucide-react";
+import { CalendarRange, Plus, Pencil, Trash2, ListChecks, CalendarClock, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 
 const empty = { title: "", event_name: "", section: "", description: "", start_date: "", end_date: "" };
@@ -61,31 +62,39 @@ export default function TimeSchedule() {
       </PageHeader>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[...Array(6)].map((_, i) => <div key={i} className="h-44 rounded-lg bg-secondary/50 animate-pulse" />)}</div>
       ) : items.length === 0 ? (
         <Card className="rounded-lg shadow-soft"><EmptyState icon={CalendarRange} title="Belum ada jadwal" description="Buat time schedule untuk memetakan kegiatan dari awal hingga hari-H." action={<Button onClick={openNew} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Jadwal</Button>} /></Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {items.map((s) => (
-            <Card key={s.id} className="p-5 rounded-lg shadow-soft flex flex-col gap-3 group hover:shadow-soft-lg transition-all cursor-pointer" onClick={() => navigate(`/time-schedule/${s.id}`)} data-testid={`schedule-${s.id}`}>
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="font-semibold leading-snug truncate">{s.title}</h3>
-                  {s.event_name && <p className="text-sm text-muted-foreground truncate">{s.event_name}</p>}
+            <SectionCard
+              key={s.id}
+              onClick={() => navigate(`/time-schedule/${s.id}`)}
+              data-testid={`schedule-${s.id}`}
+              className="group cursor-pointer border-l-4 border-l-indigo-500 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all"
+              headerClassName="py-3"
+              header={s.section
+                ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 truncate max-w-[70%]">{s.section}</span>
+                : <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" /> Jadwal</span>}
+              headerRight={canManage(user, s) && (
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => openEdit(s, e)} data-testid={`btn-edit-schedule-${s.id}`}><Pencil className="h-3.5 w-3.5" /></Button>
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); setDelId(s.id); }} data-testid={`btn-delete-schedule-${s.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
                 </div>
-                {canManage(user, s) && (
-                  <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => openEdit(s, e)} data-testid={`btn-edit-schedule-${s.id}`}><Pencil className="h-4 w-4" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={(e) => { e.stopPropagation(); setDelId(s.id); }} data-testid={`btn-delete-schedule-${s.id}`}><Trash2 className="h-4 w-4" /></Button>
-                  </div>
-                )}
-              </div>
-              {s.section && <span className="text-xs px-2 py-1 rounded-full bg-accent text-accent-foreground font-medium w-fit">{s.section}</span>}
-              <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground mt-auto">
-                <span className="inline-flex items-center gap-1"><CalendarClock className="h-3.5 w-3.5" /> {fmt(s.start_date)} – {fmt(s.end_date)}</span>
-                <span className="inline-flex items-center gap-1"><ListChecks className="h-3.5 w-3.5" /> {(s.activities || []).length} kegiatan</span>
-              </div>
-            </Card>
+              )}
+              footer={(
+                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+                  <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> {fmt(s.start_date)} – {fmt(s.end_date)}</span>
+                  <span className="inline-flex items-center gap-1.5 shrink-0"><ListChecks className="h-3.5 w-3.5" /> {(s.activities || []).length} kegiatan</span>
+                </div>
+              )}
+            >
+              <h3 className="font-semibold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">{s.title}</h3>
+              {s.event_name && <p className="text-sm text-muted-foreground mt-1 truncate">{s.event_name}</p>}
+              {s.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.description}</p>}
+              <span className="mt-3 text-xs font-medium text-primary inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Buka linimasa <ArrowRight className="h-3.5 w-3.5" /></span>
+            </SectionCard>
           ))}
         </div>
       )}
@@ -109,7 +118,7 @@ export default function TimeSchedule() {
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog open={!!delId} onOpenChange={(v) => !v && setDelId(null)} title="Hapus jadwal?" description="Jadwal beserta seluruh kegiatannya akan dihapus." onConfirm={remove} />
+      <ConfirmDialog open={!!delId} onOpenChange={(v) => !v && setDelId(null)} title="Hapus jadwal?" description="Jadwal beserta seluruh kegiatannya akan dipindahkan ke Arsip." onConfirm={remove} />
     </div>
   );
 }
