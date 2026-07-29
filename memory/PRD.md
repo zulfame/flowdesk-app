@@ -110,3 +110,10 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - ✅ **Backup upgrades**: scheduled auto-backup (settings.backup: auto_enabled/frequency/time/weekday/destination) via `scheduled_backup_loop`; restore-from-upload (`POST /api/database/restore-upload`); Database page cards for both.
 - ✅ Global: header now solid white (`bg-card`); all inputs/textarea `autoComplete="off"`.
 - ✅ Tested (iteration_6): backend 74/74; all frontend flows pass; fixed a minor React key warning.
+
+## Update (2026-07-29) — Isolasi data & konsistensi cascade lampiran
+- ✅ **Rapat: lampiran privat per-peserta**: `MeetingDetail.jsx` mengunggah lampiran dengan `parent_id="{meetingId}:{userId}"` (sebelumnya hanya `meetingId`), sinkron dengan backend `get_meeting` yang membaca lampiran & catatan pribadi per pengguna. Setiap peserta kini punya catatan/keputusan/lampiran sendiri (shell rapat tetap bersama).
+- ✅ **Kelola Catatan: ketat pribadi**: `notes.py` list/get/update/delete kini difilter `created_by=user.id` (Admin pun hanya lihat miliknya). Verified via curl.
+- ✅ **Konsistensi cascade delete lampiran**: `time_schedule.py` delete kini lewat service layer `services.delete_time_schedule` (cascade file + masuk Arsip). `time_schedule` ditambahkan ke `archive.py` TYPES (bisa restore/purge). Purge permanen menghapus berkas fisik via `purge_files(prefix=True)`. Verified: buat→hapus→Arsip→purge→download 404.
+- Catatan: Preview menampilkan placeholder "Preview Unavailable" (inactivity platform), bukan error app; backend & frontend RUNNING, compile sukses.
+- **Next**: Redesign UI SectionCard (header/body/footer) untuk index Time Schedule, Kelola Catatan, Ingatkan Saya (disetujui user, ditunda karena preview inactive — verifikasi visual saat preview aktif). Notifikasi ditunda atas permintaan user.

@@ -15,6 +15,7 @@ import { toast } from "sonner";
 export default function MeetingDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [meeting, setMeeting] = useState(null);
   const [notes, setNotes] = useState("");
   const [decisions, setDecisions] = useState("");
@@ -127,7 +128,8 @@ export default function MeetingDetail() {
             title="Lampiran"
             headerRight={<Button size="sm" variant="secondary" onClick={() => attachRef.current?.open()} data-testid="btn-upload-attachment"><Upload className="h-4 w-4 mr-1.5" /> Unggah</Button>}
           >
-            <AttachmentPanel ref={attachRef} module="meeting" parentId={id} hideHeader />
+            <AttachmentPanel ref={attachRef} module="meeting" parentId={user ? `${id}:${user.id}` : null} hideHeader />
+            <p className="text-xs text-muted-foreground mt-3">Lampiran & catatan bersifat pribadi — hanya Anda yang dapat melihatnya.</p>
           </SectionCard>
 
           {/* Peserta */}

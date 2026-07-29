@@ -95,3 +95,11 @@ async def delete_event(event_id: str, user: dict):
         return False
     await _soft_delete("events", event_id, user, "event", ev.get("title", ""))
     return True
+
+
+async def delete_time_schedule(sid: str, user: dict):
+    s = await db.time_schedules.find_one({"id": sid}, {"_id": 0})
+    if not s:
+        return False
+    await _soft_delete("time_schedules", sid, user, "time_schedule", s.get("title", ""))
+    return True

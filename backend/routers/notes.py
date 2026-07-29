@@ -29,14 +29,14 @@ class NoteUpdate(BaseModel):
 
 @router.get("")
 async def list_notes(user: dict = Depends(get_current_user)):
-    notes = await db.notes.find({"is_deleted": {"$ne": True}}, {"_id": 0}).sort("updated_at", -1).to_list(1000)
+    notes = await db.notes.find({"created_by": user["id"], "is_deleted": {"$ne": True}}, {"_id": 0}).sort("updated_at", -1).to_list(1000)
     notes.sort(key=lambda n: (not n.get("pinned", False)))
     return notes
 
 
 @router.get("/{note_id}")
 async def get_note(note_id: str, user: dict = Depends(get_current_user)):
-    note = await db.notes.find_one({"id": note_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    note = await db.notes.find_one({"id": note_id, "created_by": user["id"], "is_deleted": {"$ne": True}}, {"_id": 0})
     if not note:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
     note["attachments"] = await db.files.find({"parent_id": note_id, "is_deleted": False}, {"_id": 0}).to_list(200)
@@ -61,11 +61,9 @@ async def create_note(body: NoteCreate, user: dict = Depends(get_current_user)):
 
 @router.put("/{note_id}")
 async def update_note(note_id: str, body: NoteUpdate, user: dict = Depends(get_current_user)):
-    existing = await db.notes.find_one({"id": note_id}, {"_id": 0})
+    existing = await db.notes.find_one({"id": note_id, "created_by": user["id"]}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
-    if not _can_manage(user, existing):
-        raise HTTPException(status_code=403, detail="Hanya pembuat catatan atau Admin yang dapat mengubah")
     update = {k: v for k, v in body.model_dump().items() if v is not None}
     update["updated_at"] = now_iso()
     await db.notes.update_one({"id": note_id}, {"$set": update})
@@ -75,10 +73,8 @@ async def update_note(note_id: str, body: NoteUpdate, user: dict = Depends(get_c
 
 @router.delete("/{note_id}")
 async def remove_note(note_id: str, user: dict = Depends(get_current_user)):
-    existing = await db.notes.find_one({"id": note_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    existing = await db.notes.find_one({"id": note_id, "created_by": user["id"], "is_deleted": {"$ne": True}}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Catatan tidak ditemukan")
-    if not _can_manage(user, existing):
-        raise HTTPException(status_code=403, detail="Hanya pembuat catatan atau Admin yang dapat menghapus")
     await delete_note(note_id, user)
     return {"message": "Catatan dihapus"}

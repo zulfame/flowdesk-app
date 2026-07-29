@@ -9,6 +9,7 @@ from typing import Optional, List
 from db import db
 from helpers import new_id, now_iso, log_activity, is_privileged, can_manage
 from security import get_current_user
+from services import delete_time_schedule
 
 router = APIRouter(prefix="/time-schedules", tags=["time-schedules"])
 
@@ -148,10 +149,7 @@ async def delete_schedule(sid: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
     if not can_manage(user, existing):
         raise HTTPException(status_code=403, detail="Hanya pembuat jadwal atau Admin yang dapat menghapus")
-    await db.time_schedules.update_one({"id": sid}, {"$set": {
-        "is_deleted": True, "deleted_at": now_iso(), "deleted_by_name": user["name"],
-    }})
-    await log_activity(db, user, "delete", "time_schedule", sid, f"Menghapus jadwal '{existing['title']}'")
+    await delete_time_schedule(sid, user)
     return {"message": "Jadwal dihapus"}
 
 

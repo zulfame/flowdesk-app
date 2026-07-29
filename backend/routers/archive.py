@@ -13,6 +13,7 @@ TYPES = {
     "note": ("notes", "title"),
     "reminder": ("reminders", "title"),
     "event": ("events", "title"),
+    "time_schedule": ("time_schedules", "title"),
 }
 
 
