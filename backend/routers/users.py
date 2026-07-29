@@ -193,6 +193,14 @@ async def delete_user(user_id: str, admin: dict = Depends(require_admin)):
     if not existing:
         raise HTTPException(status_code=404, detail="Pengguna tidak ditemukan")
     await db.users.delete_one({"id": user_id})
+    # Cascade: keluarkan dari rapat & hapus data rapat pribadinya (entry + lampiran)
+    uname = existing.get("name")
+    async for m in db.meetings.find({"member_ids": user_id}, {"_id": 0, "id": 1, "participants": 1}):
+        await db.meetings.update_one(
+            {"id": m["id"]},
+            {"$pull": {"member_ids": user_id, "participants": uname}, "$unset": {f"entries.{user_id}": ""}},
+        )
+        await db.files.delete_many({"parent_id": f"{m['id']}:{user_id}"})
     await log_activity(db, admin, "delete", "user", user_id, f"Menghapus pengguna {existing['email']}")
     return {"message": "Pengguna dihapus"}
 

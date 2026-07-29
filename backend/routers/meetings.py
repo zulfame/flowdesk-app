@@ -15,11 +15,27 @@ router = APIRouter(prefix="/meetings", tags=["meetings"])
 def _meeting_visibility(user: dict) -> dict:
     if is_privileged(user):
         return {}
-    return {"$or": [{"created_by": user["id"]}, {"participants": user.get("name")}]}
+    return {"$or": [{"created_by": user["id"]}, {"member_ids": user["id"]}]}
 
 
 def _can_see_meeting(user: dict, m: dict) -> bool:
-    return is_privileged(user) or m.get("created_by") == user["id"] or user.get("name") in (m.get("participants") or [])
+    return is_privileged(user) or m.get("created_by") == user["id"] or user["id"] in (m.get("member_ids") or [])
+
+
+async def _resolve_member_ids(participants: list, creator_id: str) -> list:
+    names = [p for p in (participants or []) if p]
+    ids = {creator_id}
+    if names:
+        us = await db.users.find({"name": {"$in": names}}, {"_id": 0, "id": 1}).to_list(500)
+        for u in us:
+            ids.add(u["id"])
+    return list(ids)
+
+
+async def _purge_member_data(meeting_id: str, user_id: str):
+    """Cascade: hapus permanen data pribadi peserta (entry + lampiran)."""
+    await db.meetings.update_one({"id": meeting_id}, {"$unset": {f"entries.{user_id}": ""}})
+    await db.files.delete_many({"parent_id": f"{meeting_id}:{user_id}"})
 
 
 class ActionItemBody(BaseModel):
@@ -70,7 +86,7 @@ def _norm_items(items) -> list:
 
 @router.get("")
 async def list_meetings(user: dict = Depends(get_current_user)):
-    meetings = await db.meetings.find({**_meeting_visibility(user), "is_deleted": {"$ne": True}}, {"_id": 0}).sort("date", -1).to_list(1000)
+    meetings = await db.meetings.find({**_meeting_visibility(user), "is_deleted": {"$ne": True}}, {"_id": 0, "entries": 0}).sort("date", -1).to_list(1000)
     return meetings
 
 
@@ -81,8 +97,13 @@ async def get_meeting(meeting_id: str, user: dict = Depends(get_current_user)):
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
     if not _can_see_meeting(user, m):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
+    # Konten pribadi milik pengguna yang login
+    entry = (m.get("entries") or {}).get(user["id"], {})
+    m["notes"] = entry.get("notes", "")
+    m["decisions"] = entry.get("decisions", "")
+    m.pop("entries", None)
     m["attachments"] = await db.files.find(
-        {"parent_id": meeting_id, "is_deleted": False}, {"_id": 0}
+        {"parent_id": f"{meeting_id}:{user['id']}", "is_deleted": False}, {"_id": 0}
     ).to_list(200)
     m["generated_tasks"] = await db.tasks.find(
         {"meeting_id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0, "id": 1, "title": 1, "status": 1, "progress": 1}
@@ -94,8 +115,17 @@ async def get_meeting(meeting_id: str, user: dict = Depends(get_current_user)):
 async def create_meeting(body: MeetingCreate, user: dict = Depends(get_current_user)):
     doc = body.model_dump()
     doc["action_items"] = _norm_items(body.action_items)
+    mid = new_id()
+    member_ids = await _resolve_member_ids(body.participants, user["id"])
+    # Konten (catatan/keputusan) bersifat pribadi per anggota; pembuat mendapat konten awal
+    entries = {uid: {"notes": "", "decisions": ""} for uid in member_ids}
+    entries[user["id"]] = {"notes": body.notes or "", "decisions": body.decisions or ""}
+    doc.pop("notes", None)
+    doc.pop("decisions", None)
     doc.update({
-        "id": new_id(),
+        "id": mid,
+        "member_ids": member_ids,
+        "entries": entries,
         "history": [{"action": "created", "by": user["name"], "at": now_iso()}],
         "created_by": user["id"],
         "created_by_name": user["name"],
@@ -104,7 +134,10 @@ async def create_meeting(body: MeetingCreate, user: dict = Depends(get_current_u
     })
     await db.meetings.insert_one(dict(doc))
     doc.pop("_id", None)
-    await log_activity(db, user, "create", "meeting", doc["id"], f"Membuat rapat '{doc['title']}'")
+    doc.pop("entries", None)
+    doc["notes"] = body.notes or ""
+    doc["decisions"] = body.decisions or ""
+    await log_activity(db, user, "create", "meeting", mid, f"Membuat rapat '{doc['title']}'")
     return doc
 
 
@@ -113,18 +146,46 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate, user: dict = Depe
     existing = await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
-    if not can_manage(user, existing):
-        raise HTTPException(status_code=403, detail="Hanya pembuat rapat atau Admin yang dapat mengubah")
-    update = {k: v for k, v in body.model_dump().items() if v is not None}
-    if "action_items" in update:
-        update["action_items"] = _norm_items(body.action_items)
-    update["updated_at"] = now_iso()
+    if not _can_see_meeting(user, existing):
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
+
+    is_owner = can_manage(user, existing)
+    payload = {k: v for k, v in body.model_dump().items() if v is not None}
+    set_ops = {"updated_at": now_iso()}
+
+    # Konten pribadi: setiap anggota boleh menyunting catatan & keputusan MILIKNYA
+    if "notes" in payload:
+        set_ops[f"entries.{user['id']}.notes"] = payload["notes"]
+    if "decisions" in payload:
+        set_ops[f"entries.{user['id']}.decisions"] = payload["decisions"]
+
+    # Field bersama (shell) hanya boleh diubah pembuat/admin
+    shell_keys = ["title", "date", "start_time", "end_time", "location", "meeting_type", "agenda", "action_items"]
+    if any(k in payload for k in shell_keys) or "participants" in payload:
+        if not is_owner:
+            raise HTTPException(status_code=403, detail="Hanya pembuat rapat atau Admin yang dapat mengubah data rapat")
+        for k in shell_keys:
+            if k in payload:
+                set_ops[k] = _norm_items(body.action_items) if k == "action_items" else payload[k]
+        if "participants" in payload:
+            set_ops["participants"] = payload["participants"]
+            new_members = await _resolve_member_ids(payload["participants"], existing["created_by"])
+            set_ops["member_ids"] = new_members
+            removed = [uid for uid in (existing.get("member_ids") or []) if uid not in new_members]
+            for uid in removed:
+                await _purge_member_data(meeting_id, uid)  # cascade delete
+            # pastikan anggota baru punya entry kosong
+            entries = existing.get("entries") or {}
+            for uid in new_members:
+                if uid not in entries:
+                    set_ops[f"entries.{uid}"] = {"notes": "", "decisions": ""}
+
     history = existing.get("history", [])
     history.append({"action": "updated", "by": user["name"], "at": now_iso()})
-    update["history"] = history
-    await db.meetings.update_one({"id": meeting_id}, {"$set": update})
+    set_ops["history"] = history
+    await db.meetings.update_one({"id": meeting_id}, {"$set": set_ops})
     await log_activity(db, user, "update", "meeting", meeting_id, f"Memperbarui rapat '{existing['title']}'")
-    return await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
+    return await get_meeting(meeting_id, user)
 
 
 class ConvertBody(BaseModel):

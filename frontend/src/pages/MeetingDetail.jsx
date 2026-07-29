@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { api, apiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 import RichTextEditor from "@/components/RichTextEditor";
 import AttachmentPanel from "@/components/AttachmentPanel";
 import { StatusBadge, SectionCard } from "@/components/common";
