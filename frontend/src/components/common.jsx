@@ -63,10 +63,10 @@ export function ProgressBar({ value = 0, className }) {
   );
 }
 
-export function SectionCard({ icon: Icon, title, headerRight, header, footer, footerClassName, children, className, bodyClassName, headerClassName }) {
+export function SectionCard({ icon: Icon, title, headerRight, header, footer, footerClassName, children, className, bodyClassName, headerClassName, ...rest }) {
   const hasHeader = header || title || headerRight;
   return (
-    <div className={cn("rounded-lg border border-border bg-card shadow-soft overflow-hidden", className)}>
+    <div className={cn("rounded-lg border border-border bg-card shadow-soft overflow-hidden", className)} {...rest}>
       {hasHeader && (
         <div className={cn("flex items-center justify-between gap-3 px-5 py-4 border-b border-border", headerClassName)}>
           {header ? header : (

@@ -10,7 +10,7 @@ function humanSize(bytes) {
   return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`;
 }
 
-export default function AttachmentPanel({ module, parentId }) {
+export default React.forwardRef(function AttachmentPanel({ module, parentId, hideHeader = false }, ref) {
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const inputRef = useRef(null);
@@ -24,6 +24,8 @@ export default function AttachmentPanel({ module, parentId }) {
   };
 
   useEffect(() => { load(); }, [parentId]);
+
+  React.useImperativeHandle(ref, () => ({ open: () => inputRef.current?.click(), uploading }), [uploading]);
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -57,16 +59,18 @@ export default function AttachmentPanel({ module, parentId }) {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold flex items-center gap-2">
-          <Paperclip className="h-4 w-4" /> Lampiran ({files.length})
-        </h3>
-        <input ref={inputRef} type="file" className="hidden" onChange={handleUpload} data-testid="attachment-input" />
-        <Button size="sm" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()} data-testid="btn-upload-attachment">
-          {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-          <span className="ml-1.5">Unggah</span>
-        </Button>
-      </div>
+      <input ref={inputRef} type="file" className="hidden" onChange={handleUpload} data-testid="attachment-input" />
+      {!hideHeader && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Paperclip className="h-4 w-4" /> Lampiran ({files.length})
+          </h3>
+          <Button size="sm" variant="secondary" disabled={uploading} onClick={() => inputRef.current?.click()} data-testid="btn-upload-attachment">
+            {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            <span className="ml-1.5">Unggah</span>
+          </Button>
+        </div>
+      )}
       {files.length === 0 ? (
         <p className="text-xs text-muted-foreground py-4 text-center border border-dashed rounded-xl">Belum ada lampiran</p>
       ) : (
@@ -92,4 +96,4 @@ export default function AttachmentPanel({ module, parentId }) {
       )}
     </div>
   );
-}
+});
