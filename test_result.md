@@ -207,10 +207,25 @@ frontend:
         -agent: "testing"
         -comment: "✅ ALL TESTS PASSED (8/8). Test F1: OWNER creates task with 1 item -> pic_done=false, done=false, progress=0 ✓. Test F2: OWNER tries done=true while pic_done=false -> done stays false (owner cannot approve before PIC marks) ✓. Test F3: PIC sets pic_done=true -> pic_done=true, done=false, pic_done_at set, progress=0 ✓. Test F4: PIC tries done=true -> done stays false (PIC cannot approve) ✓. Test F5: OWNER sets done=true -> done=true, approved_by='Test Owner', progress=100, status=Completed ✓. Test F6: OWNER tries pic_done=false while approved -> pic_done stays true (owner cannot alter pic_done) ✓. Test F7: OWNER sets done=false (unapprove) -> done=false, progress=0 ✓. Test F8: OWNER adds new item with done=true, pic_done=true -> both false (new items cannot be pre-approved/pre-marked) ✓. All two-stage checklist rules working correctly."
 
+  - task: "Broadcast pemberitahuan rapat mengikuti pengaturan Kelola Notifikasi"
+    implemented: true
+    working: true
+    file: "backend/routers/meetings.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        -working: "NA"
+        -agent: "main"
+        -comment: "POST /api/meetings/{id}/broadcast mengirim pemberitahuan rapat ke peserta sesuai pengaturan kanal notifikasi. Endpoint resolve participants (list nama) ke users untuk dapat email/phone/id. Mengikuti settings dari GET/PUT /api/settings notification block: email_enabled, telegram_enabled, browser_enabled. email_sent increment per participant-with-email HANYA jika email_enabled true. push_sent increment per participant-with-id HANYA jika browser_enabled true. telegram_sent true HANYA jika telegram_enabled true. wa_urls: array {name,url} untuk setiap participant yang punya phone (SELALU, terlepas dari settings). Returns: {email_sent, push_sent, telegram_sent, wa_urls, participant_count, resolved, channels:{email,telegram,browser}}."
+        -working: true
+        -agent: "testing"
+        -comment: "✅ ALL TESTS PASSED (3/3). Created 2 test users (Broadcast Alpha, Broadcast Beta) with emails and phones. Created meeting with 3 participants (2 real + 1 ghost 'Ghost User'). SCENARIO 1 (email=false, telegram=false, browser=true): email_sent=0 ✓, telegram_sent=false ✓, push_sent=2 ✓, wa_urls.length=2 ✓, resolved=2 ✓, participant_count=3 ✓, channels correct ✓. SCENARIO 2 (email=true, telegram=true, browser=false): email_sent=2 ✓, telegram_sent=true ✓, push_sent=0 ✓, wa_urls.length=2 ✓, resolved=2 ✓, participant_count=3 ✓, channels correct ✓. SCENARIO 3: Non-existent meeting returns 404 ✓. Original settings restored ✓. All requirements verified: participant name resolution working, notification channel settings respected, counts accurate per channel, wa_urls always generated for users with phones regardless of settings, proper response structure with all fields."
+
 metadata:
   created_by: "main_agent"
   version: "1.0"
-  test_sequence: 5
+  test_sequence: 6
   run_ui: false
 
 test_plan:
@@ -234,3 +249,5 @@ agent_communication:
     -message: "Test baru: CEKLIS 2 TAHAP. Kredensial admin: sa@bprbangunarta.co.id / SA@4dm1n. Buat 2 user (OWNER, PIC). Skenario: (1) OWNER POST /api/tasks items:[{title:'I1'}], pic=PIC -> 200; GET: items[0].pic_done==false, done==false, progress==0. (2) OWNER PUT mencoba done=true saat pic_done masih false -> setelah GET: items[0].done HARUS tetap false (owner tidak bisa menyetujui sebelum PIC menandai). (3) PIC PUT items[0].pic_done=true -> 200; GET: pic_done==true, done masih false, pic_done_at terisi, progress masih 0. (4) PIC PUT mencoba done=true (approval) -> GET: done HARUS tetap false (PIC tidak bisa menyetujui). (5) OWNER PUT done=true -> 200; GET: done==true, approved_by terisi nama OWNER, progress==100, status Completed. (6) OWNER PUT mencoba mengubah pic_done=false saat sudah disetujui -> pic_done HARUS tetap true (owner tak bisa ubah pic_done). (7) OWNER PUT done=false (batalkan persetujuan) -> done==false, progress==0. (8) Item baru via OWNER PUT (tambah item) tidak boleh langsung done meski dikirim done=true -> item baru done==false. Jangan test frontend."
     -agent: "testing"
     -message: "✅ BACKEND TESTING COMPLETE - ALL 8 TWO-STAGE CHECKLIST TESTS PASSED (F1-F8). Test Group F added covering complete two-stage checklist functionality. F1: Initial state verified (pic_done=false, done=false, progress=0). F2: OWNER cannot approve before PIC marks (done stays false). F3: PIC marks done (pic_done=true, pic_done_at set, progress still 0). F4: PIC cannot approve (done stays false). F5: OWNER approves (done=true, approved_by set, progress=100, status=Completed). F6: OWNER cannot alter pic_done (stays true). F7: OWNER can unapprove (done=false, progress=0). F8: New items cannot be pre-approved/pre-marked (both false). All two-stage checklist rules working correctly. NOTE: Test B4 from old test suite now fails as expected - it tests OLD behavior where PIC directly toggles 'done', but with new two-stage system PIC should toggle 'pic_done' instead. This test needs updating by main agent to align with new two-stage system."
+    -agent: "testing"
+    -message: "✅ BROADCAST ENDPOINT TESTING COMPLETE - ALL 3 SCENARIOS PASSED. Test: POST /api/meetings/{id}/broadcast with notification channel settings. Created 2 test users (Broadcast Alpha, Broadcast Beta) with emails and phones. Created meeting with 3 participants (2 real names + 1 ghost 'Ghost User'). SCENARIO 1 (email=false, telegram=false, browser=true): Verified email_sent=0, telegram_sent=false, push_sent=2, wa_urls.length=2, resolved=2, participant_count=3, all channels correct. SCENARIO 2 (email=true, telegram=true, browser=false): Verified email_sent=2, telegram_sent=true, push_sent=0, wa_urls.length=2, resolved=2, participant_count=3, all channels correct. SCENARIO 3: Non-existent meeting correctly returns 404. Original settings restored. All requirements verified: participant name resolution working, notification channel settings respected, counts accurate per channel, wa_urls always generated for users with phones regardless of settings, proper response structure. No issues found."

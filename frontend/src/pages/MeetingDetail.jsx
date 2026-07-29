@@ -7,7 +7,8 @@ import { StatusBadge, SectionCard } from "@/components/common";
 import { ConfirmDialog } from "@/components/ConfirmDialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { ArrowLeft, Trash2, Save, CalendarDays, Clock, MapPin, Users2, Loader2, Pencil, Paperclip, Upload, ListTodo } from "lucide-react";
+import { Modal } from "@/components/Modal";
+import { ArrowLeft, Trash2, Save, CalendarDays, Clock, MapPin, Users2, Loader2, Pencil, Paperclip, Upload, ListTodo, Megaphone, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export default function MeetingDetail() {
@@ -19,6 +20,9 @@ export default function MeetingDetail() {
   const [tab, setTab] = useState("notes");
   const [saving, setSaving] = useState(false);
   const [delOpen, setDelOpen] = useState(false);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [waOpen, setWaOpen] = useState(false);
+  const [waLinks, setWaLinks] = useState([]);
   const attachRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -42,6 +46,22 @@ export default function MeetingDetail() {
   const remove = async () => {
     try { await api.delete(`/meetings/${id}`); toast.success("Rapat dihapus"); navigate("/meetings"); }
     catch (e) { toast.error(apiError(e)); }
+  };
+
+  const broadcast = async () => {
+    setBroadcasting(true);
+    try {
+      const { data } = await api.post(`/meetings/${id}/broadcast`, {});
+      const parts = [];
+      if (data.email_sent) parts.push(`Email ke ${data.email_sent} peserta`);
+      if (data.push_sent) parts.push(`Notifikasi browser ke ${data.push_sent} peserta`);
+      if (data.telegram_sent) parts.push("Telegram grup");
+      if ((data.wa_urls || []).length) parts.push(`${data.wa_urls.length} tautan WhatsApp`);
+      if (parts.length) toast.success("Pemberitahuan terkirim: " + parts.join(", "));
+      else toast.info("Tidak ada kanal aktif / kontak peserta. Atur di menu Kelola Notifikasi.");
+      if ((data.wa_urls || []).length) { setWaLinks(data.wa_urls); setWaOpen(true); }
+    } catch (e) { toast.error(apiError(e)); }
+    finally { setBroadcasting(false); }
   };
 
   if (!meeting) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -110,7 +130,18 @@ export default function MeetingDetail() {
           </SectionCard>
 
           {/* Peserta */}
-          <SectionCard icon={Users2} title="Peserta">
+          <SectionCard
+            icon={Users2}
+            title="Peserta"
+            footer={(
+              <div className="w-full space-y-2">
+                <Button className="w-full rounded-xl" variant="secondary" onClick={broadcast} disabled={broadcasting || (meeting.participants || []).length === 0} data-testid="btn-broadcast-meeting">
+                  {broadcasting ? <Loader2 className="h-4 w-4 mr-1.5 animate-spin" /> : <Megaphone className="h-4 w-4 mr-1.5" />} Kirim Pemberitahuan
+                </Button>
+                <p className="text-xs text-muted-foreground">Broadcast via Email & WhatsApp ke seluruh peserta rapat.</p>
+              </div>
+            )}
+          >
             <div className="flex flex-wrap gap-2">
               {(meeting.participants || []).map((p, i) => <span key={i} className="px-2.5 py-1 rounded-full bg-secondary text-xs font-medium">{p}</span>)}
               {(meeting.participants || []).length === 0 && <p className="text-xs text-muted-foreground">Belum ada peserta.</p>}
@@ -134,6 +165,27 @@ export default function MeetingDetail() {
       </div>
 
       <ConfirmDialog open={delOpen} onOpenChange={setDelOpen} title="Hapus rapat ini?" description="Rapat akan dipindahkan ke Arsip dan dapat dipulihkan. Tugas turunan tetap ada." onConfirm={remove} />
+
+      <Modal
+        open={waOpen}
+        onOpenChange={setWaOpen}
+        title="Kirim WhatsApp ke Peserta"
+        description="WhatsApp bersifat manual — klik untuk membuka chat berisi pesan pemberitahuan."
+        size="md"
+        footer={<Button variant="ghost" onClick={() => setWaOpen(false)}>Tutup</Button>}
+      >
+        <div className="space-y-2">
+          {waLinks.map((w, i) => (
+            <div key={i} className="flex items-center justify-between gap-3 p-2.5 rounded-lg border border-border">
+              <span className="text-sm font-medium truncate">{w.name}</span>
+              <a href={w.url} target="_blank" rel="noreferrer">
+                <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" data-testid={`wa-link-${i}`}><MessageCircle className="h-4 w-4 mr-1.5" /> Buka WhatsApp</Button>
+              </a>
+            </div>
+          ))}
+          {waLinks.length === 0 && <p className="text-sm text-muted-foreground">Tidak ada peserta dengan nomor telepon.</p>}
+        </div>
+      </Modal>
     </div>
   );
 }

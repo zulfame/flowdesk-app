@@ -6,7 +6,7 @@ from db import db
 from helpers import new_id, now_iso, log_activity
 from security import get_current_user
 from services import delete_meeting
-from notifications import create_notification
+from notifications import create_notification, whatsapp_url, get_settings, _send_email, _send_telegram
 from helpers import is_privileged, can_manage
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
@@ -186,6 +186,83 @@ async def convert_action_item(meeting_id: str, item_id: str, body: ConvertBody =
     await log_activity(db, user, "create", "task", task["id"], f"Mengonversi action item menjadi tugas '{task['title']}'")
     await create_notification(task["pic"].get("user_id"), "Action Item Dikonversi", f"'{task['title']}' kini menjadi tugas", "task", f"/tasks/{task['id']}")
     return task
+
+
+class MeetingBroadcastBody(BaseModel):
+    message: Optional[str] = None
+
+
+@router.post("/{meeting_id}/broadcast")
+async def broadcast_meeting(meeting_id: str, body: MeetingBroadcastBody, user: dict = Depends(get_current_user)):
+    m = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
+    if not m:
+        raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
+    if not _can_see_meeting(user, m):
+        raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
+
+    # Ikuti pengaturan kanal dari "Kelola Notifikasi"
+    settings = await get_settings()
+    ncfg = settings.get("notification", {}) or {}
+    email_on = bool(ncfg.get("email_enabled"))
+    telegram_on = bool(ncfg.get("telegram_enabled"))
+    browser_on = bool(ncfg.get("browser_enabled", True))
+
+    participants = m.get("participants") or []
+    users = await db.users.find(
+        {"name": {"$in": participants}}, {"_id": 0, "id": 1, "name": 1, "email": 1, "phone": 1}
+    ).to_list(500)
+    by_name = {u["name"]: u for u in users}
+
+    when = m.get("date") or ""
+    time = m.get("start_time") or ""
+    loc = m.get("location") or ""
+    default_msg = (
+        f"Pemberitahuan rapat '{m['title']}'"
+        + (f" pada {when}" if when else "")
+        + (f" pukul {time}" if time else "")
+        + (f" di {loc}" if loc else "")
+        + "."
+    )
+    message = body.message or default_msg
+    title = f"Pemberitahuan Rapat: {m['title']}"
+
+    wa_urls = []       # WhatsApp = tautan manual (click-to-chat), selalu tersedia
+    email_sent = 0
+    push_sent = 0
+    for name in participants:
+        u = by_name.get(name)
+        if not u:
+            continue
+        if u.get("phone"):
+            wa_urls.append({"name": name, "url": whatsapp_url(u["phone"], message)})
+        if email_on and u.get("email"):
+            _send_email(settings.get("email", {}), title, message, to_override=u["email"])
+            email_sent += 1
+        if browser_on and u.get("id"):
+            await create_notification(u["id"], title, message, "meeting", f"/meetings/{meeting_id}", dispatch=False)
+            try:
+                from webpush import send_push
+                await send_push(u["id"], title, message, f"/meetings/{meeting_id}")
+                push_sent += 1
+            except Exception:
+                pass
+
+    # Telegram = ringkasan ke grup sistem (bila kanal aktif)
+    telegram_sent = False
+    if telegram_on:
+        _send_telegram(settings.get("telegram", {}), title, f"{message}\nPeserta: {', '.join(participants) or '-'}")
+        telegram_sent = True
+
+    await log_activity(db, user, "update", "meeting", meeting_id, f"Mengirim broadcast pemberitahuan rapat '{m['title']}'")
+    return {
+        "email_sent": email_sent,
+        "push_sent": push_sent,
+        "telegram_sent": telegram_sent,
+        "wa_urls": wa_urls,
+        "participant_count": len(participants),
+        "resolved": len(users),
+        "channels": {"email": email_on, "telegram": telegram_on, "browser": browser_on},
+    }
 
 
 @router.delete("/{meeting_id}")
