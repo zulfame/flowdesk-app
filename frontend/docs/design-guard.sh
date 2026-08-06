@@ -91,6 +91,14 @@ report "TabsList tanpa 'overflow-x-auto' (wajib scroll-x di mobile; dilarang wra
 report "Teks oversized (text-xl/2xl/3xl/4xl...) di halaman fitur — R45; judul cukup 'text-base'" \
   "$(scan_pages 'text-(xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
 
+# 15) FD5 — Card actions belong in <CardFooter>, not a hand-rolled save bar.
+report "Save bar manual 'flex justify-end border-t pt-4' (FD5: tombol aksi Card WAJIB di <CardFooter className=\"justify-end gap-2\">)" \
+  "$(scan 'justify-end border-t pt-4')"
+
+# 16) FD5 — Inconsistent button copy for the `save` intent.
+report "Teks tombol tidak konsisten (FD5: pakai ACTION dari src/constants/labels.js \u2014 mis. 'Simpan', bukan 'Simpan Perubahan')" \
+  "$(scan 'Simpan (Perubahan|Data)|Perbarui Kata Sandi|Tambah Baru|Hapus Data')"
+
 # 14) FD1 — Compact is the ONLY density: no toggle/provider/data-density anywhere.
 m=$(grep -rnE 'DensityToggle|density-provider|density-toggle|data-density' "$SRC" --include=*.jsx --include=*.js --include=*.css 2>/dev/null | grep -vE '//\s*guard-allow')
 report "Mekanisme density ditemukan (FD1: compact WAJIB & satu-satunya \u2014 tanpa toggle/provider/data-density)" "$m"

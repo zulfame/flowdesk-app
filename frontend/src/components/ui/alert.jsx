@@ -3,14 +3,23 @@ import { cva } from "class-variance-authority";
 
 import { cn } from "@/lib/utils"
 
+/**
+ * Alert — grid layout so the icon and the FIRST text row are always optically
+ * aligned, with or without an <AlertTitle>.
+ *
+ * The upstream shadcn version positions the icon `absolute left-4 top-4` and
+ * nudges sibling text with `[&>svg+div]:translate-y-[-3px]`; that hack is tuned
+ * for title + description and visibly misaligns description-only alerts.
+ * Grid columns (`icon | content`) remove the guesswork — see FLOWDESK_EXCEPTIONS E6.
+ */
 const alertVariants = cva(
-  "relative w-full rounded-lg border px-4 py-3 text-sm [&>svg+div]:translate-y-[-3px] [&>svg]:absolute [&>svg]:left-4 [&>svg]:top-4 [&>svg]:text-foreground [&>svg~*]:pl-7",
+  "relative grid w-full grid-cols-[0_1fr] items-start gap-y-1 rounded-lg border px-4 py-3 text-sm has-[>svg]:grid-cols-[1rem_1fr] has-[>svg]:gap-x-3 [&>svg]:size-4 [&>svg]:translate-y-[2px] [&>svg]:text-current",
   {
     variants: {
       variant: {
         default: "bg-background text-foreground",
         destructive:
-          "border-destructive/50 text-destructive dark:border-destructive [&>svg]:text-destructive",
+          "border-destructive/50 text-destructive dark:border-destructive",
       },
     },
     defaultVariants: {
@@ -31,7 +40,7 @@ Alert.displayName = "Alert"
 const AlertTitle = React.forwardRef(({ className, ...props }, ref) => (
   <h5
     ref={ref}
-    className={cn("mb-1 font-medium leading-none tracking-tight", className)}
+    className={cn("col-start-2 font-medium leading-5 tracking-tight", className)}
     {...props} />
 ))
 AlertTitle.displayName = "AlertTitle"
@@ -39,7 +48,7 @@ AlertTitle.displayName = "AlertTitle"
 const AlertDescription = React.forwardRef(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("text-sm [&_p]:leading-relaxed", className)}
+    className={cn("col-start-2 text-sm leading-5 [&_p]:leading-relaxed", className)}
     {...props} />
 ))
 AlertDescription.displayName = "AlertDescription"
