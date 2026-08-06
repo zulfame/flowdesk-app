@@ -97,6 +97,22 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         completed = sum(1 for t in tasks if t.get("status") == "Completed" and t.get("updated_at") and start.isoformat() <= t["updated_at"] < end.isoformat())
         trend.append({"label": start.strftime("%d/%m"), "created": created, "completed": completed})
 
+    # Tiket Bantuan terkait pengguna
+    from routers.help_tickets import OPEN_STATUSES, _visibility as ticket_visibility
+
+    open_tickets = await db.help_tickets.count_documents({
+        "is_deleted": {"$ne": True}, "status": {"$in": OPEN_STATUSES},
+        **(await ticket_visibility(user)),
+    })
+    my_tickets = await db.help_tickets.find(
+        {"is_deleted": {"$ne": True}, "status": {"$in": OPEN_STATUSES},
+         "assignee.user_id": user["id"]},
+        {"_id": 0, "id": 1, "number": 1, "title": 1, "status": 1, "priority": 1,
+         "category": 1, "created_by_name": 1, "created_at": 1},
+    ).sort("created_at", -1).to_list(50)
+    PR_ORDER = {"Urgent": 0, "High": 1, "Medium": 2, "Low": 3}
+    my_tickets.sort(key=lambda t: (PR_ORDER.get(t.get("priority"), 9), t.get("created_at") or ""))
+
     return {
         "total_tasks": len(tasks),
         "tasks_by_status": by_status,
@@ -115,6 +131,8 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "recent_activity": activity,
         "workload": workload_list,
         "trend": trend,
+        "open_tickets": open_tickets,
+        "my_tickets": my_tickets,
     }
 
 

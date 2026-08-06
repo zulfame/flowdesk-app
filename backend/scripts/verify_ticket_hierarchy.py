@@ -123,8 +123,25 @@ async def main():
         r = await c.get(f"/help-tickets/{tid}", headers=h(t["uji_staff_jaringan"]))
         print("12. Mantan penerima akses detail:", r.status_code)
 
+        # 13. Notifikasi hanya ke pengguna terkait
+        async def notifs(role):
+            rr = await c.get("/notifications?page_size=50", headers=h(t[role]))
+            return [n["title"] for n in rr.json()["items"]]
+
+        print("13. Notif penerima lama (staff jaringan):", notifs_j := await notifs("uji_staff_jaringan"))
+        print("14. Notif penerima baru (staff helpdesk):", await notifs("uji_staff_helpdesk"))
+        print("15. Notif pelapor (teller):", await notifs("uji_teller"))
+        print("16. Notif atasan penerima (kabag TI, pelaku alih):", await notifs("uji_kabag_ti"))
+        assert any("Dialihkan" in x for x in notifs_j), "penerima lama tidak diberi tahu"
+
+        # 17. Dashboard: KPI tiket terbuka + tiket perlu ditangani
+        for role in ("uji_staff_helpdesk", "uji_kabag_ti", "uji_teller"):
+            rr = await c.get("/dashboard/stats", headers=h(t[role]))
+            d = rr.json()
+            print(f"17. Dashboard {role}: open_tickets={d['open_tickets']} my_tickets={len(d['my_tickets'])}")
+
         await c.delete(f"/help-tickets/{tid}", headers=h(t["uji_teller"]))
-        print("13. Hapus oleh pelapor: ok")
+        print("18. Hapus oleh pelapor: ok")
 
 
 asyncio.run(main())

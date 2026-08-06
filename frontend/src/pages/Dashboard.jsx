@@ -6,6 +6,7 @@ import {
   CalendarClock,
   CheckSquare,
   Clock,
+  LifeBuoy,
   ListChecks,
   MapPin,
   Plus,
@@ -119,8 +120,8 @@ export default function Dashboard() {
   if (loading && !s)
     return (
       <div className="space-y-6" data-testid="dashboard-loading">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          {Array.from({ length: 5 }).map((_, i) => (
             <Skeleton key={i} className="h-[86px] w-full rounded-xl" />
           ))}
         </div>
@@ -132,10 +133,11 @@ export default function Dashboard() {
   const todayMeetings = d.today_meetings || [];
   const upcoming = d.upcoming_meetings || [];
   const dueSoon = d.due_soon || [];
+  const myTickets = d.my_tickets || [];
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <KpiCard
           label="Tugas Aktif"
           value={d.active_tasks ?? 0}
@@ -168,6 +170,14 @@ export default function Dashboard() {
           icon={CheckSquare}
           testid="stat-completed"
           onClick={() => navigate("/tasks")}
+        />
+        <KpiCard
+          label="Tiket Terbuka"
+          value={d.open_tickets ?? 0}
+          hint={`${myTickets.length} perlu Anda tangani`}
+          icon={LifeBuoy}
+          testid="stat-open_tickets"
+          onClick={() => navigate("/help-tickets")}
         />
       </div>
 
@@ -254,6 +264,54 @@ export default function Dashboard() {
         </Card>
 
         <div className="space-y-6">
+          {myTickets.length ? (
+            <Card data-testid="card-my-tickets">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  Tiket Perlu Ditangani
+                  <Badge variant="secondary" className="font-normal tabular-nums">
+                    {myTickets.length}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ListShell empty={false} testid="my-tickets">
+                  {myTickets.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate(`/help-tickets/${t.id}`)}
+                      className="flex w-full items-center gap-3 px-6 py-2 text-left transition-colors hover:bg-muted/40"
+                      data-testid={`dashboard-ticket-${t.id}`}
+                    >
+                      <LifeBuoy className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">{t.title}</span>
+                        <span className="block truncate text-xs text-muted-foreground">
+                          {t.number} · {t.category}
+                          {t.created_by_name ? ` · ${t.created_by_name}` : ""}
+                        </span>
+                      </span>
+                      <span className="shrink-0">
+                        <PriorityBadge priority={t.priority} />
+                      </span>
+                    </button>
+                  ))}
+                </ListShell>
+              </CardContent>
+              <CardFooter className="justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/help-tickets")}
+                  data-testid="link-help-tickets"
+                >
+                  Semua Tiket <ArrowRight className="size-4" />
+                </Button>
+              </CardFooter>
+            </Card>
+          ) : null}
+
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">

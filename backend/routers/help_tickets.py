@@ -205,15 +205,27 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
     await log_activity(db, user, "update", "help_ticket", ticket_id,
                        f"Memperbarui tiket {t.get('number')}")
 
-    if "status" in patch and t.get("created_by") != user.get("id"):
-        await create_notification(t["created_by"], "Status Tiket Diperbarui",
-                                  f"{t.get('number')} → {patch['status']}", "info",
-                                  f"/help-tickets/{ticket_id}")
-    new_assignee = (patch.get("assignee") or {}).get("user_id")
-    if new_assignee and new_assignee != (t.get("assignee") or {}).get("user_id"):
-        await create_notification(new_assignee, "Tiket Bantuan Ditujukan ke Anda",
-                                  f"{t.get('number')} · {t.get('title')}", "info",
-                                  f"/help-tickets/{ticket_id}")
+    link = f"/help-tickets/{ticket_id}"
+    old_assignee = (t.get("assignee") or {}).get("user_id")
+    new_assignee = (patch.get("assignee") or {}).get("user_id") if "assignee" in patch else None
+    me = user.get("id")
+
+    async def notify(uid, title, message):
+        if uid and uid != me:
+            await create_notification(uid, title, message, "info", link)
+
+    if "status" in patch:
+        msg = f"{t.get('number')} → {patch['status']}"
+        await notify(t.get("created_by"), "Status Tiket Diperbarui", msg)
+        await notify(old_assignee, "Status Tiket Diperbarui", msg)
+    if "assignee" in patch and new_assignee != old_assignee:
+        label = (patch.get("assignee") or {}).get("name") or "tidak ditujukan"
+        await notify(new_assignee, "Tiket Bantuan Ditujukan ke Anda",
+                     f"{t.get('number')} · {t.get('title')}")
+        await notify(old_assignee, "Tiket Dialihkan ke Orang Lain",
+                     f"{t.get('number')} kini ditujukan ke {label}")
+        await notify(t.get("created_by"), "Tujuan Tiket Diubah",
+                     f"{t.get('number')} kini ditujukan ke {label}")
     return {
         **updated,
         "can_handle": _is_handler(user, updated),
