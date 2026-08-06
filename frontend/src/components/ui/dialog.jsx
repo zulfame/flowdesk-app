@@ -29,7 +29,7 @@ const DialogContent = React.forwardRef(({ className, children, ...props }, ref) 
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        "fixed left-[50%] top-[50%] z-50 grid max-h-[90vh] w-full max-w-lg translate-x-[-50%] translate-y-[-50%] grid-rows-[auto_minmax(0,1fr)_auto] gap-0 border bg-background p-0 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
         className
       )}
       {...props}>
@@ -49,7 +49,7 @@ const DialogHeader = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col space-y-1.5 text-center sm:text-left", className)}
+    className={cn("flex flex-col space-y-1.5 border-b border-border px-6 py-4 text-center sm:text-left", className)}
     {...props} />
 )
 DialogHeader.displayName = "DialogHeader"
@@ -59,10 +59,21 @@ const DialogFooter = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2", className)}
+    className={cn("flex flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-between", className)}
     {...props} />
 )
 DialogFooter.displayName = "DialogFooter"
+
+// Standard form/content body for dialogs. DialogContent is p-0, so the body
+// MUST provide its own padding — use this instead of a hand-rolled div so
+// header/body/footer stay perfectly aligned (px-6) and vertical rhythm is
+// consistent (space-y field gap, density-aware). See DESIGN_SYSTEM 2B.10.
+const DialogBody = ({ className, ...props }) => (
+  <div
+    className={cn("space-y-[var(--field-gap)] overflow-y-auto px-6 py-4", className)}
+    {...props} />
+)
+DialogBody.displayName = "DialogBody"
 
 const DialogTitle = React.forwardRef(({ className, ...props }, ref) => (
   <DialogPrimitive.Title
@@ -89,6 +100,7 @@ export {
   DialogContent,
   DialogHeader,
   DialogFooter,
+  DialogBody,
   DialogTitle,
   DialogDescription,
 }

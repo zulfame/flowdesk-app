@@ -8,8 +8,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Poppins', 'system-ui', 'sans-serif'],
-        heading: ['Poppins', 'system-ui', 'sans-serif'],
+        sans: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
       },
       borderRadius: {
         lg: 'var(--radius)',
@@ -49,12 +48,24 @@ module.exports = {
         },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))'
-      },
-      boxShadow: {
-        soft: '0 4px 16px -2px rgb(15 23 42 / 0.08), 0 2px 4px -2px rgb(15 23 42 / 0.05)',
-        'soft-lg': '0 12px 32px -6px rgb(15 23 42 / 0.14), 0 4px 8px -4px rgb(15 23 42 / 0.08)',
-        'bar-top': '0 -8px 30px -6px rgb(15 23 42 / 0.12)',
+        ring: 'hsl(var(--ring))',
+        chart: {
+          '1': 'hsl(var(--chart-1))',
+          '2': 'hsl(var(--chart-2))',
+          '3': 'hsl(var(--chart-3))',
+          '4': 'hsl(var(--chart-4))',
+          '5': 'hsl(var(--chart-5))'
+        },
+        sidebar: {
+          DEFAULT: 'hsl(var(--sidebar-background))',
+          foreground: 'hsl(var(--sidebar-foreground))',
+          primary: 'hsl(var(--sidebar-primary))',
+          'primary-foreground': 'hsl(var(--sidebar-primary-foreground))',
+          accent: 'hsl(var(--sidebar-accent))',
+          'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
+          border: 'hsl(var(--sidebar-border))',
+          ring: 'hsl(var(--sidebar-ring))'
+        }
       },
       keyframes: {
         'accordion-down': { from: { height: '0' }, to: { height: 'var(--radix-accordion-content-height)' } },

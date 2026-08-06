@@ -3,12 +3,19 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "sonner";
 
 import { AuthProvider } from "@/context/AuthContext";
-import { ThemeProvider } from "@/context/ThemeContext";
 import { BrandingProvider } from "@/context/BrandingContext";
+import { ThemeProvider } from "@/components/theme-provider";
+import { DensityProvider } from "@/components/density-provider";
+import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import Layout from "@/components/Layout";
+import AppLayout from "@/components/layout/AppLayout";
 
 import Login from "@/pages/Login";
+import DashboardPage from "@/pages/DashboardPage";
+
+// ── Modules pending design-system migration ──
+// Routes stay registered (reachable by direct URL) but are hidden from the
+// sidebar until each one is rebuilt (see config/navigation.js).
 import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
 import Tasks from "@/pages/Tasks";
@@ -33,7 +40,8 @@ import AppSettings from "@/pages/AppSettings";
 import NotificationSettings from "@/pages/NotificationSettings";
 
 const PAGES = [
-  { path: "/", element: <Dashboard /> },
+  { path: "/", element: <DashboardPage /> },
+  { path: "/dashboard-legacy", element: <Dashboard /> },
   { path: "/profile", element: <Profile /> },
   { path: "/tasks", element: <Tasks /> },
   { path: "/tasks/new", element: <TaskForm /> },
@@ -62,27 +70,31 @@ const PAGES = [
 function App() {
   return (
     <ThemeProvider>
-      <BrandingProvider>
-        <AuthProvider>
-          <BrowserRouter>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              {PAGES.map((p) => (
-                <Route
-                  key={p.path}
-                  path={p.path}
-                  element={
-                    <ProtectedRoute>
-                      <Layout>{p.element}</Layout>
-                    </ProtectedRoute>
-                  }
-                />
-              ))}
-            </Routes>
-          </BrowserRouter>
-          <Toaster position="bottom-right" richColors closeButton />
-        </AuthProvider>
-      </BrandingProvider>
+      <DensityProvider>
+        <BrandingProvider>
+          <AuthProvider>
+            <ErrorBoundary>
+              <BrowserRouter>
+                <Routes>
+                  <Route path="/login" element={<Login />} />
+                  {PAGES.map((p) => (
+                    <Route
+                      key={p.path}
+                      path={p.path}
+                      element={
+                        <ProtectedRoute>
+                          <AppLayout>{p.element}</AppLayout>
+                        </ProtectedRoute>
+                      }
+                    />
+                  ))}
+                </Routes>
+              </BrowserRouter>
+            </ErrorBoundary>
+            <Toaster position="bottom-right" closeButton />
+          </AuthProvider>
+        </BrandingProvider>
+      </DensityProvider>
     </ThemeProvider>
   );
 }

@@ -37,12 +37,9 @@ function applyBranding(b) {
     if (!link) { link = document.createElement("link"); link.rel = "icon"; document.head.appendChild(link); }
     link.href = b.favicon;
   }
-  const hsl = hexToHsl(b.primary_color);
-  if (hsl) {
-    const root = document.documentElement;
-    root.style.setProperty("--primary", hsl);
-    root.style.setProperty("--ring", hsl);
-  }
+  // NOTE (exception E3 in docs/FLOWDESK_EXCEPTIONS.md): `primary_color` is kept
+  // in settings but no longer overrides the `--primary` token — the redesigned
+  // shell stays monochrome (token-only, R05).
 }
 
 export function BrandingProvider({ children }) {

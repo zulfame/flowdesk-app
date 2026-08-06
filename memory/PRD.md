@@ -132,3 +132,29 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
 - DB saat ini fresh (hanya user admin; koleksi tasks/meetings/roles kosong). `member@flowdesk.com` belum ada — perlu dibuat manual bila uji RBAC anggota.
 - `memory/test_credentials.md` dibuat ulang (hilang di pod ini).
 - Temuan: halaman **Tiket Bantuan** (`pages/HelpTickets.jsx`, menu `/help-tickets`) masih placeholder "dalam pengembangan" — belum ada backend/router tiket. Kandidat fitur berikutnya.
+
+## Update (2026-08-06) — REDESIGN Fase 0 + Fase 1 (UI Guideline zulfame/ui-guideline)
+Keputusan pemilik produk (terkunci): **bahasa UI Indonesia** (override §6 English-only), **monokrom token-only** dengan pengecualian "warna sebagai data" (warna catatan, warna kegiatan Time Schedule, aset branding), **font Geist**, **alur autentikasi tidak diubah** (dibahas setelah redesign), sidebar **hanya Dashboard (blank)** — modul lain dimigrasi satu per satu, rute lama tetap dapat diakses via URL langsung.
+
+### Fase 0 — Fondasi (selesai)
+- `src/index.css` diganti ke arsitektur token **2-layer** (primitive neutral/red/chart → semantic light+dark), Geist+Inter, var density (`--ctl-h`, `--field-gap`, `--item-gap`, `--tbl-cell-py`), utilitas `.tbl-density` & `.form-dense`. Utilitas lama yang masih dipakai modul legacy dipertahankan (scrollbar, `.thin-scroll`, `.rte-content`, print).
+- `tailwind.config.js`: token `sidebar.*` & `chart.*`, `fontFamily.sans = Geist/Inter`, radius 0.5rem. Poppins & aksen indigo dilepas.
+- Primitive shadcn baru: `sidebar, empty, spinner, kbd, field, item, native-select, button-group, input-group, typography, chart` + penyelarasan `card, dialog (DialogBody), alert-dialog, button, input, select, form, command, input-otp` ke versi SSOT guideline; hook `use-mobile`.
+- Composite baru: `EmptyState, DataTableCard, Combobox, DatePicker, PasswordInput, sortable-table`.
+- Provider: `theme-provider` (Terang/Gelap/Sistem) + `ModeToggle`, `density-provider` (Dense default) + `DensityToggle` (Rapat/Lega), `ErrorBoundary` global. `context/ThemeContext.jsx` lama tidak lagi dipakai.
+- Dependensi: `@tanstack/react-table@8.21.3`. Catatan: `recharts` masih 3.6.0 (guideline pin 2.15.4) — ditangani saat migrasi chart/Dashboard.
+- Governance: 11 dokumen guideline + `design-guard.sh` disalin ke `/app/frontend/docs/`, plus `docs/FLOWDESK_EXCEPTIONS.md` (E1 bahasa ID, E2 warna-sebagai-data, E3 primary_color tidak menimpa `--primary`, E4 konten domain, E5 guard mengecualikan modul legacy + tabel status migrasi). Guard di-scope ke kode yang sudah dimigrasi; daftar LEGACY menyusut tiap fase.
+
+### Fase 1 — Shell + Login (selesai)
+- `config/navigation.js` terpusat (isi: hanya Dashboard) + `getBreadcrumb()` yang juga mengenali rute legacy.
+- `components/layout/AppLayout.jsx` (SidebarProvider `h-svh` + SidebarInset, header `h-[65px]`: SidebarTrigger + Breadcrumb + DensityToggle + ModeToggle, hanya area konten yang scroll) & `AppSidebar.jsx` (collapse-to-icon, brand dinamis dari BrandingContext, footer user dropdown → Keluar). Bell notifikasi & Cmd+K sengaja disembunyikan sampai modulnya dimigrasi.
+- `components/layout/AuthLayout.jsx` (split 2 kolom, panel brand + grid dekoratif token-based, brand dari BrandingContext) + `pages/Login.jsx` & `components/auth/LoginForm.jsx` (react-hook-form + zod pesan Indonesia, `PasswordInput`, `Alert destructive`, tombol berikon `LogIn`, checkbox "Ingat email saya" → simpan email di localStorage). **Tanpa** link Daftar & Lupa sandi.
+- `pages/DashboardPage.jsx` blank (Card + EmptyState). Dashboard lama tetap ada di `/dashboard-legacy`.
+- `App.js`: ThemeProvider → DensityProvider → BrandingProvider → AuthProvider → ErrorBoundary → Router; semua rute lama tetap terdaftar di dalam shell baru.
+- Backend **tidak disentuh** sama sekali; endpoint & alur auth (JWT email+sandi) tetap sama.
+
+### Verifikasi
+`design-guard.sh` exit 0 · eslint bersih untuk file baru (sisa error hanya di modul legacy) · compile bersih · login admin sukses & redirect ke Dashboard · validasi zod Indonesia tampil · Alert "Gagal masuk / Email atau kata sandi salah" tampil · dark mode aktif (`html.dark`) · tanpa overflow horizontal di 375/768/1440 · halaman legacy (`/tasks`) masih terbuka di shell baru.
+
+### Fase berikutnya (belum dikerjakan)
+Fase 2 list/CRUD (R47), Fase 3 detail & form, Fase 4 konfigurasi (R51) + Kalender + Dashboard. Setelah redesign selesai: pembahasan perubahan alur autentikasi.

@@ -1,68 +1,192 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-    --font-body: 'Poppins', system-ui, sans-serif;
-    --font-heading: 'Poppins', system-ui, sans-serif;
-}
-
 body {
     margin: 0;
-    font-family: var(--font-body);
+    /* Primary: Geist · Fallback: Inter, system-ui, sans-serif (R04) */
+    font-family: "Geist", "Inter", system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-.font-heading {
-    font-family: var(--font-heading);
+code {
+    font-family:
+        source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
+/*
+ * ─────────────────────────────────────────────────────────────────────────
+ * 2-LAYER DESIGN TOKEN ARCHITECTURE (R28)
+ * ─────────────────────────────────────────────────────────────────────────
+ * Layer 1 — Primitive tokens: raw, theme-independent HSL triplets
+ *           (monochrome neutral scale + red for destructive + chart hues).
+ *           These NEVER change between light and dark. Do not consume directly.
+ * Layer 2 — Semantic tokens: role-based aliases (background, foreground, …)
+ *           that reference Layer 1. Light/Dark only re-map semantics → primitives.
+ * ─────────────────────────────────────────────────────────────────────────
+ */
 @layer base {
     :root {
-        --background: 240 20% 99%;
-        --foreground: 240 10% 10%;
-        --card: 0 0% 100%;
-        --card-foreground: 240 10% 10%;
-        --popover: 0 0% 100%;
-        --popover-foreground: 240 10% 10%;
-        --primary: 243 75% 59%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 240 5% 96%;
-        --secondary-foreground: 240 6% 20%;
-        --muted: 240 5% 96%;
-        --muted-foreground: 240 4% 46%;
-        --accent: 243 75% 96%;
-        --accent-foreground: 243 75% 40%;
-        --destructive: 0 72% 51%;
-        --destructive-foreground: 0 0% 100%;
-        --border: 240 6% 90%;
-        --input: 240 6% 90%;
-        --ring: 243 75% 59%;
-        --radius: 0.85rem;
+        /* ── Layer 1 · Primitives (raw HSL triplets — do not consume directly) ── */
+        --neutral-0: 0 0% 100%;
+        --neutral-50: 0 0% 98%;
+        --neutral-100: 0 0% 96.1%;
+        --neutral-200: 0 0% 89.8%;
+        --neutral-300: 0 0% 83.1%;
+        --neutral-400: 0 0% 63.9%;
+        --neutral-500: 0 0% 45.1%;
+        --neutral-600: 0 0% 32.2%;
+        --neutral-700: 0 0% 25%;
+        --neutral-800: 0 0% 14.9%;
+        --neutral-900: 0 0% 9%;
+        --neutral-950: 0 0% 3.9%;
+
+        --red-500: 0 84.2% 60.2%;
+        --red-900: 0 62.8% 30.6%;
+
+        --hue-chart-1: 12 76% 61%;
+        --hue-chart-2: 173 58% 39%;
+        --hue-chart-3: 197 37% 24%;
+        --hue-chart-4: 43 74% 66%;
+        --hue-chart-5: 27 87% 67%;
+
+        /* ── Layer 2 · Semantic tokens → reference primitives (LIGHT) ── */
+        --background: var(--neutral-0);
+        --foreground: var(--neutral-950);
+        --card: var(--neutral-0);
+        --card-foreground: var(--neutral-950);
+        --popover: var(--neutral-0);
+        --popover-foreground: var(--neutral-950);
+        --primary: var(--neutral-900);
+        --primary-foreground: var(--neutral-50);
+        --secondary: var(--neutral-100);
+        --secondary-foreground: var(--neutral-900);
+        --muted: var(--neutral-100);
+        --muted-foreground: var(--neutral-500);
+        --accent: var(--neutral-100);
+        --accent-foreground: var(--neutral-900);
+        --destructive: var(--red-500);
+        --destructive-foreground: var(--neutral-50);
+        --border: var(--neutral-200);
+        --input: var(--neutral-200);
+        --ring: var(--neutral-950);
+        --radius: 0.5rem;
+
+        /* ── Density (Dense = default) ── */
+        --ctl-h: 2rem;          /* control height · h-8 */
+        --ctl-h-sm: 1.75rem;    /* small control · h-7 */
+        --ctl-h-lg: 2.25rem;    /* large control · h-9 */
+        --field-gap: 0.75rem;   /* form field-stack · space-y-3 */
+        --item-gap: 0.375rem;   /* label→control · space-y-1.5 */
+        --tbl-cell-py: 0.25rem; /* table row vertical padding · compact */
+
+        --chart-1: var(--hue-chart-1);
+        --chart-2: var(--hue-chart-2);
+        --chart-3: var(--hue-chart-3);
+        --chart-4: var(--hue-chart-4);
+        --chart-5: var(--hue-chart-5);
+
+        /* Sidebar semantics (monochrome-first) */
+        --sidebar-background: var(--neutral-50);
+        --sidebar-foreground: var(--neutral-700);
+        --sidebar-primary: var(--neutral-900);
+        --sidebar-primary-foreground: var(--neutral-50);
+        --sidebar-accent: var(--neutral-100);
+        --sidebar-accent-foreground: var(--neutral-900);
+        --sidebar-border: var(--neutral-200);
+        --sidebar-ring: var(--neutral-950);
     }
+
     .dark {
-        --background: 240 10% 4%;
-        --foreground: 0 0% 98%;
-        --card: 240 8% 10%;
-        --card-foreground: 0 0% 98%;
-        --popover: 240 8% 8%;
-        --popover-foreground: 0 0% 98%;
-        --primary: 243 75% 64%;
-        --primary-foreground: 0 0% 100%;
-        --secondary: 240 5% 16%;
-        --secondary-foreground: 0 0% 98%;
-        --muted: 240 5% 16%;
-        --muted-foreground: 240 5% 65%;
-        --accent: 243 40% 22%;
-        --accent-foreground: 243 75% 85%;
-        --destructive: 0 62% 45%;
-        --destructive-foreground: 0 0% 98%;
-        --border: 240 5% 18%;
-        --input: 240 5% 18%;
-        --ring: 243 75% 64%;
+        /* ── Layer 2 · Semantic tokens → reference primitives (DARK) ── */
+        --background: var(--neutral-950);
+        --foreground: var(--neutral-50);
+        --card: var(--neutral-950);
+        --card-foreground: var(--neutral-50);
+        --popover: var(--neutral-950);
+        --popover-foreground: var(--neutral-50);
+        --primary: var(--neutral-50);
+        --primary-foreground: var(--neutral-900);
+        --secondary: var(--neutral-800);
+        --secondary-foreground: var(--neutral-50);
+        --muted: var(--neutral-800);
+        --muted-foreground: var(--neutral-400);
+        --accent: var(--neutral-800);
+        --accent-foreground: var(--neutral-50);
+        --destructive: var(--red-900);
+        --destructive-foreground: var(--neutral-50);
+        --border: var(--neutral-800);
+        --input: var(--neutral-800);
+        --ring: var(--neutral-300);
+
+        --chart-1: 220 70% 50%;
+        --chart-2: 160 60% 45%;
+        --chart-3: 30 80% 55%;
+        --chart-4: 280 65% 60%;
+        --chart-5: 340 75% 55%;
+
+        /* Sidebar semantics (dark) */
+        --sidebar-background: var(--neutral-900);
+        --sidebar-foreground: var(--neutral-100);
+        --sidebar-primary: var(--neutral-50);
+        --sidebar-primary-foreground: var(--neutral-900);
+        --sidebar-accent: var(--neutral-800);
+        --sidebar-accent-foreground: var(--neutral-100);
+        --sidebar-border: var(--neutral-800);
+        --sidebar-ring: var(--neutral-300);
+    }
+
+    :root[data-density="comfortable"] {
+        --ctl-h: 2.5rem;        /* control height · h-10 */
+        --ctl-h-sm: 2.25rem;    /* small control · h-9 */
+        --ctl-h-lg: 2.75rem;    /* large control · h-11 */
+        --field-gap: 1.25rem;   /* form field-stack · space-y-5 */
+        --item-gap: 0.5rem;     /* label→control · space-y-2 */
+        --tbl-cell-py: 0.75rem; /* table row vertical padding · roomy */
+    }
+}
+
+/* Density-aware table rows (opt-in via `.tbl-density`) — R47.1/R47.8. */
+@layer components {
+    .tbl-density td,
+    .tbl-density th {
+        padding-top: var(--tbl-cell-py);
+        padding-bottom: var(--tbl-cell-py);
+    }
+    .tbl-density td {
+        font-size: 0.8125rem; /* ~13px */
+        line-height: 1.5rem; /* fixed line box so badge rows match plain rows */
+        vertical-align: middle;
+    }
+    .tbl-density td .inline-flex,
+    .tbl-density td [data-slot="badge"] {
+        vertical-align: middle;
+    }
+    .tbl-density th {
+        height: auto;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-size: 0.75rem;
+    }
+    .tbl-density th * {
+        text-transform: uppercase;
+    }
+    .tbl-density thead th {
+        background-color: hsl(var(--muted) / 0.5);
+    }
+
+    /* Compact form density (opt-in via `.form-dense`) — R47.7. */
+    .form-dense {
+        --item-gap: 0.125rem;
+    }
+    .form-dense label,
+    .form-dense input,
+    .form-dense textarea,
+    .form-dense [role="combobox"] {
+        font-size: 13px;
     }
 }
 
@@ -73,23 +197,21 @@ body {
     body {
         @apply bg-background text-foreground;
     }
-    h1, h2, h3, h4 {
-        font-family: var(--font-heading);
-    }
 }
 
+/* ── Utilities retained for not-yet-migrated modules (removed per phase) ── */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: hsl(var(--border)); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 ::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.4); background-clip: content-box; }
 
-/* Scroll area dengan scrollbar yang jelas terlihat (untuk daftar panjang: riwayat, dll) */
 .thin-scroll { scrollbar-width: thin; scrollbar-color: hsl(var(--muted-foreground) / 0.45) transparent; }
 .thin-scroll::-webkit-scrollbar { width: 8px; }
 .thin-scroll::-webkit-scrollbar-track { background: transparent; }
 .thin-scroll::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.45); border-radius: 999px; border: 2px solid transparent; background-clip: content-box; }
 .thin-scroll::-webkit-scrollbar-thumb:hover { background: hsl(var(--muted-foreground) / 0.65); background-clip: content-box; }
 
+/* Rich-text editor content (Catatan & Rapat) */
 .rte-content:empty:before {
     content: attr(data-placeholder);
     color: hsl(var(--muted-foreground));
@@ -100,14 +222,7 @@ body {
 .rte-content td, .rte-content th { border: 1px solid hsl(var(--border)); padding: 0.35rem 0.5rem; }
 .rte-content img { max-width: 100%; border-radius: 0.5rem; margin: 0.5rem 0; }
 
-.fade-in { animation: fadeIn 0.4s ease-out both; }
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
 @media print {
   aside, header, .no-print { display: none !important; }
   main { padding: 0 !important; }
-  .shadow-soft, .shadow-soft-lg { box-shadow: none !important; }
 }
-
-:root { --content-left: 0px; --sidebar-w-lg: 260px; }
-@media (min-width: 1024px) { :root { --content-left: var(--sidebar-w-lg, 260px); } }
