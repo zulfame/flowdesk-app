@@ -3,13 +3,13 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarRange,
-  ClipboardCheck,
   Download,
   ExternalLink,
   Loader2,
   MoreHorizontal,
   Pencil,
   Plus,
+  Save,
   Settings2,
   Trash2,
   X,
@@ -48,7 +48,6 @@ import {
 import UserSelect from "@/components/UserSelect";
 import { DataTableCard, SortableHeader } from "@/components/composite/DataTableCard";
 import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
-import { PRIORITY_META } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { canManage } from "@/lib/perms";
@@ -67,7 +66,6 @@ const CAT = {
   libur: { label: "Hari Libur", bar: "bg-muted-foreground/40" },
 };
 const STATUSES = ["Rencana", "Proses", "Selesai"];
-const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
 const SWATCHES = ["#f59e0b", "#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]; // guard-allow (E2: warna kegiatan = data)
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
 const emptyActivity = {
@@ -112,7 +110,7 @@ function autoProgress(a) {
 }
 
 /** Column factory (module scope — no component defined during render). */
-const buildColumns = ({ editable, onEdit, onDelete, onConvert, onOpenTask }) => [
+const buildColumns = ({ editable, onEdit, onDelete, onOpenTask }) => [
   {
     accessorKey: "name",
     header: ({ column }) => <SortableHeader column={column}>Kegiatan</SortableHeader>,
@@ -208,15 +206,7 @@ const buildColumns = ({ editable, onEdit, onDelete, onConvert, onOpenTask }) => 
                 <DropdownMenuItem onClick={() => onOpenTask(a)} data-testid={`link-activity-task-${a.id}`}>
                   <ExternalLink aria-hidden="true" /> Buka Tugas
                 </DropdownMenuItem>
-              ) : (
-                <DropdownMenuItem
-                  onClick={() => onConvert(a)}
-                  disabled={!editable}
-                  data-testid={`btn-convert-activity-${a.id}`}
-                >
-                  <ClipboardCheck aria-hidden="true" /> Buat Tugas
-                </DropdownMenuItem>
-              )}
+              ) : null}
               {editable ? (
                 <>
                   <DropdownMenuItem onClick={() => onEdit(a)} data-testid={`btn-edit-activity-${a.id}`}>
@@ -252,8 +242,6 @@ export default function TimeScheduleDetail() {
   const [actForm, setActForm] = useState(emptyActivity);
   const [editingAct, setEditingAct] = useState(null);
   const [delAct, setDelAct] = useState(null);
-  const [convert, setConvert] = useState(null);
-  const [convForm, setConvForm] = useState({ pic: null, priority: "Medium", deadline: "" });
   const [metaOpen, setMetaOpen] = useState(false);
   const [meta, setMeta] = useState(null);
 
@@ -343,25 +331,6 @@ export default function TimeScheduleDetail() {
     }
   };
 
-  const doConvert = async () => {
-    if (!convForm.pic?.name) {
-      notify.error("PIC tugas wajib dipilih.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const { data } = await api.post(`/time-schedules/${id}/activities/${convert.id}/convert-task`, convForm);
-      notify.success("Tugas berhasil dibuat dari kegiatan.");
-      setConvert(null);
-      await load();
-      navigate(`/tasks/${data.task_id}`);
-    } catch (err) {
-      notify.error(apiError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const exportXlsx = async () => {
     try {
       const res = await api.get(`/time-schedules/${id}/export`, { responseType: "blob" });
@@ -422,10 +391,6 @@ export default function TimeScheduleDetail() {
         editable,
         onEdit: openEditAct,
         onDelete: setDelAct,
-        onConvert: (a) => {
-          setConvert(a);
-          setConvForm({ pic: a.pic || null, priority: "Medium", deadline: a.end_date || "" });
-        },
         onOpenTask: (a) => navigate(`/tasks/${a.task_id}`),
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -791,65 +756,7 @@ export default function TimeScheduleDetail() {
               <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={saveAct} disabled={busy} data-testid="btn-save-activity">
-              {busy ? ACTION.saving : ACTION.save}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={Boolean(convert)} onOpenChange={(v) => !v && setConvert(null)}>
-        <DialogContent className="sm:max-w-md" data-testid="convert-activity-dialog">
-          <DialogHeader>
-            <DialogTitle>Buat Tugas dari Kegiatan</DialogTitle>
-            <DialogDescription>
-              Kegiatan "{convert?.name}" akan menjadi tugas yang tertaut ke jadwal ini.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody className="form-dense space-y-[var(--field-gap)]">
-            <div className="space-y-[var(--item-gap)]">
-              <Label>PIC Tugas</Label>
-              <UserSelect
-                users={users}
-                value={convForm.pic}
-                onChange={(v) => setConvForm({ ...convForm, pic: v })}
-                placeholder="Pilih PIC..."
-                testid="convert-pic-select"
-              />
-            </div>
-            <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
-              <div className="space-y-[var(--item-gap)]">
-                <Label>Prioritas</Label>
-                <Select value={convForm.priority} onValueChange={(v) => setConvForm({ ...convForm, priority: v })}>
-                  <SelectTrigger data-testid="convert-priority-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITIES.map((k) => (
-                      <SelectItem key={k} value={k}>
-                        {PRIORITY_META[k].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-[var(--item-gap)]">
-                <Label htmlFor="conv-deadline">Tenggat</Label>
-                <Input
-                  id="conv-deadline"
-                  type="date"
-                  value={convForm.deadline}
-                  onChange={(e) => setConvForm({ ...convForm, deadline: e.target.value })}
-                  data-testid="convert-deadline-input"
-                />
-              </div>
-            </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setConvert(null)}>
-              <X className="size-4" /> {ACTION.cancel}
-            </Button>
-            <Button size="sm" onClick={doConvert} disabled={busy} data-testid="btn-confirm-convert">
-              <ClipboardCheck className="size-4" /> Buat Tugas
+              <Save className="size-4" /> {busy ? ACTION.saving : ACTION.save}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -953,7 +860,7 @@ export default function TimeScheduleDetail() {
               <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={saveMeta} disabled={busy} data-testid="btn-save-meta">
-              {busy ? ACTION.saving : ACTION.save}
+              <Save className="size-4" /> {busy ? ACTION.saving : ACTION.save}
             </Button>
           </DialogFooter>
         </DialogContent>

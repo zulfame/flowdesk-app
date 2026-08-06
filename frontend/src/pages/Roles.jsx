@@ -609,7 +609,7 @@ export default function Roles() {
                   ) : (
                     <Save className="size-4" aria-hidden="true" />
                   )}
-                  {ACTION.save}
+                  {form.formState.isSubmitting ? ACTION.saving : ACTION.save}
                 </Button>
               </DialogFooter>
             </form>

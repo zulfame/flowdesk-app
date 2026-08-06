@@ -14,7 +14,9 @@ from services import delete_time_schedule
 router = APIRouter(prefix="/time-schedules", tags=["time-schedules"])
 
 CATEGORIES = {"pelaksanaan", "event", "libur"}
-CAT_FILL = {"pelaksanaan": "FFF176", "event": "81C784", "libur": "E57373"}
+# Selaras dengan kartu Linimasa (monokrom bila kegiatan tidak punya warna sendiri).
+CAT_FILL = {"pelaksanaan": "5B5B5B", "event": "1F1F1F", "libur": "B8B8B8"}
+MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 
 
 class Person(BaseModel):
@@ -245,54 +247,99 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = "Time Schedule"
-    thin = Side(style="thin", color="D0D0D0")
+    ws.title = "Linimasa"
+    thin = Side(style="thin", color="E5E7EB")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
-    hdr_fill = PatternFill("solid", fgColor="4F46E5")
-    holiday_fill = PatternFill("solid", fgColor="FDECEA")
+    head_fill = PatternFill("solid", fgColor="F3F4F6")
+    muted_fill = PatternFill("solid", fgColor="F3F4F6")
+    event_fill = PatternFill("solid", fgColor="E5E7EB")
+    center = Alignment(horizontal="center", vertical="center")
+    today_side = Side(style="medium", color="111827")
 
-    ws.cell(row=1, column=1, value=f"{s.get('title','')} — {s.get('event_name','')}").font = Font(bold=True, size=14)
-
-    header_row = 3
-    ws.cell(row=header_row, column=1, value="Seksi/Panitia")
-    ws.cell(row=header_row, column=2, value="Kegiatan")
     holidays = set(s.get("holidays") or [])
-    for i, d in enumerate(days):
-        c = ws.cell(row=header_row, column=3 + i, value=d.strftime("%d/%m"))
-        c.font = Font(color="FFFFFF", bold=True, size=8)
-        c.fill = hdr_fill
-        c.alignment = Alignment(horizontal="center")
-        c.border = border
-        ws.column_dimensions[c.column_letter].width = 4
-    for col in (1, 2):
-        hc = ws.cell(row=header_row, column=col)
-        hc.font = Font(color="FFFFFF", bold=True)
-        hc.fill = hdr_fill
-        hc.border = border
-    ws.column_dimensions["A"].width = 26
-    ws.column_dimensions["B"].width = 40
-
+    event_dates = {str(d)[:10] for d in (s.get("event_dates") or [])}
+    today_key = datetime.now().date().isoformat()
     day_keys = [d.date().isoformat() for d in days]
-    for r, a in enumerate(activities, start=header_row + 1):
-        ws.cell(row=r, column=1, value=a.get("section") or s.get("section", "")).border = border
-        ws.cell(row=r, column=2, value=a.get("name", "")).border = border
+
+    ws.cell(row=1, column=1, value=s.get("title") or "Linimasa").font = Font(bold=True, size=14)
+    if s.get("event_name"):
+        ws.cell(row=2, column=1, value=s["event_name"]).font = Font(size=10, color="6B7280")
+
+    MONTH_ROW, DAY_ROW, FIRST_COL = 4, 5, 3
+
+    # Baris bulan: gabung kolom per bulan, seperti header "Agu 2026" di kartu.
+    groups = []
+    for i, d in enumerate(days):
+        key = (d.year, d.month)
+        if groups and groups[-1][0] == key:
+            groups[-1][2] = i
+        else:
+            groups.append([key, i, i])
+    for (year, month), i0, i1 in groups:
+        c0, c1 = FIRST_COL + i0, FIRST_COL + i1
+        if c1 > c0:
+            ws.merge_cells(start_row=MONTH_ROW, start_column=c0, end_row=MONTH_ROW, end_column=c1)
+        cell = ws.cell(row=MONTH_ROW, column=c0, value=f"{MONTHS_ID[month - 1]} {year}")
+        cell.font = Font(bold=True, size=9)
+        cell.alignment = center
+        for c in range(c0, c1 + 1):
+            ws.cell(row=MONTH_ROW, column=c).fill = head_fill
+            ws.cell(row=MONTH_ROW, column=c).border = border
+
+    ws.merge_cells(start_row=MONTH_ROW, start_column=1, end_row=DAY_ROW, end_column=1)
+    ws.merge_cells(start_row=MONTH_ROW, start_column=2, end_row=DAY_ROW, end_column=2)
+    for col, label in ((1, "KEGIATAN"), (2, "PIC")):
+        cell = ws.cell(row=MONTH_ROW, column=col, value=label)
+        cell.font = Font(bold=True, size=9, color="6B7280")
+        cell.alignment = Alignment(horizontal="left", vertical="center")
+        cell.fill = head_fill
+        cell.border = border
+
+    for i, d in enumerate(days):
+        key = day_keys[i]
+        weekend = d.weekday() >= 5
+        cell = ws.cell(row=DAY_ROW, column=FIRST_COL + i, value=d.day)
+        cell.font = Font(bold=key == today_key, size=8, color="6B7280")
+        cell.alignment = center
+        cell.border = border
+        cell.fill = event_fill if key in event_dates else (muted_fill if (weekend or key in holidays) else head_fill)
+        ws.column_dimensions[cell.column_letter].width = 3.6
+
+    ws.column_dimensions["A"].width = 34
+    ws.column_dimensions["B"].width = 22
+    ws.freeze_panes = ws.cell(row=DAY_ROW + 1, column=FIRST_COL)
+
+    for r, a in enumerate(activities, start=DAY_ROW + 1):
+        name = ws.cell(row=r, column=1, value=a.get("name", ""))
+        name.font = Font(bold=True, size=10)
+        name.border = border
+        pic = ws.cell(row=r, column=2, value=(a.get("pic") or {}).get("name") or "Tanpa PIC")
+        pic.font = Font(size=9, color="6B7280")
+        pic.border = border
+
         raw_color = (a.get("color") or "").lstrip("#")
-        hexc = raw_color.upper() if len(raw_color) == 6 else CAT_FILL.get(a.get("category", "pelaksanaan"), "FFF176")
-        fill = PatternFill("solid", fgColor=hexc)
+        hexc = raw_color.upper() if len(raw_color) == 6 else CAT_FILL.get(a.get("category", "pelaksanaan"), "5B5B5B")
+        bar = PatternFill("solid", fgColor=hexc)
         a_start = (a.get("start_date") or "")[:10]
         a_end = (a.get("end_date") or "")[:10]
         for i, dk in enumerate(day_keys):
-            cell = ws.cell(row=r, column=3 + i)
+            cell = ws.cell(row=r, column=FIRST_COL + i)
             cell.border = border
-            if dk in holidays:
-                cell.fill = holiday_fill
+            weekend = days[i].weekday() >= 5
             if a_start and a_end and a_start <= dk <= a_end:
-                cell.fill = fill
+                cell.fill = bar
+            elif dk in event_dates:
+                cell.fill = event_fill
+            elif weekend or dk in holidays:
+                cell.fill = muted_fill
+            if dk == today_key:
+                cell.border = Border(left=today_side, right=thin, top=thin, bottom=thin)
+        ws.row_dimensions[r].height = 20
 
     buf = io.BytesIO()
     wb.save(buf)
     buf.seek(0)
-    fname = (s.get("title") or "time-schedule").replace(" ", "_")
+    fname = (s.get("title") or "linimasa").replace(" ", "_")
     return StreamingResponse(
         buf,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

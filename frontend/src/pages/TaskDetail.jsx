@@ -15,6 +15,7 @@ import {
   Phone,
   Plus,
   RotateCcw,
+  Save,
   Send,
   Trash2,
   Upload,
@@ -843,7 +844,7 @@ export default function TaskDetail() {
               <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={saveTemplate} data-testid="btn-confirm-template">
-              {ACTION.save}
+              <Save className="size-4" /> {ACTION.save}
             </Button>
           </DialogFooter>
         </DialogContent>
