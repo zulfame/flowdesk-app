@@ -1,86 +1,402 @@
-import React, { useEffect, useState } from "react";
-import { api, apiError } from "@/lib/api";
-import { useBranding } from "@/context/BrandingContext";
-import { PageHeader } from "@/components/common";
-import ImageUpload from "@/components/ImageUpload";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { SlidersHorizontal, Save, Loader2, Palette, Image as ImageIcon } from "lucide-react";
-import { toast } from "sonner";
+import React, { useCallback, useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Info, Loader2, Save } from "lucide-react";
 
-function Field({ label, children, hint }) {
-  return <div className="space-y-1.5"><Label>{label}</Label>{children}{hint && <p className="text-xs text-muted-foreground">{hint}</p>}</div>;
-}
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Textarea } from "@/components/ui/textarea";
+import { ImagePicker } from "@/components/composite/ImagePicker";
+import { api, apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { useBranding } from "@/context/BrandingContext";
+import { ACTION } from "@/constants/labels";
+import { brandingSchema, identitySchema } from "@/lib/validation/adminSchema";
 
 const TIMEZONES = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "UTC"];
-const LANGS = [{ v: "id", l: "Indonesia" }, { v: "en", l: "English" }];
+const LANGUAGES = [
+  { value: "id", label: "Indonesia" },
+  { value: "en", label: "English" },
+];
 const DATE_FORMATS = ["DD/MM/YYYY", "YYYY-MM-DD", "DD MMM YYYY"];
 
+const HEX_PLACEHOLDER = "#111827"; // guard-allow: default/contoh hex — warna merek = DATA pengguna (E2), bukan gaya UI
+
+/** Configuration section whose submit action lives in the Card footer (R51/FD5). */
+const FormSection = ({ title, form, onSubmit, submitting, submitTestId, testid, children }) => (
+  <Card data-testid={testid}>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
+        <CardHeader>
+          <CardTitle className="text-base">{title}</CardTitle>
+        </CardHeader>
+        <CardContent className="form-dense space-y-4">{children}</CardContent>
+        <CardFooter className="justify-end gap-2">
+          <Button type="submit" size="sm" disabled={submitting} data-testid={submitTestId}>
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Save className="size-4" aria-hidden="true" />
+            )}
+            {submitting ? ACTION.saving : ACTION.save}
+          </Button>
+        </CardFooter>
+      </form>
+    </Form>
+  </Card>
+);
+
+/**
+ * AppSettings — application configuration (R51 + FD5):
+ * stacked section cards (Identitas, Tampilan & Merek), each saving from its
+ * own Card footer. Both sections persist the full `general` settings object.
+ */
 export default function AppSettings() {
   const { refresh } = useBranding();
-  const [g, setG] = useState(null);
-  const [saving, setSaving] = useState(false);
+  const [ready, setReady] = useState(false);
 
-  useEffect(() => { api.get("/settings").then(({ data }) => setG(data.general)).catch((e) => toast.error(apiError(e))); }, []);
-  const up = (k, v) => setG((s) => ({ ...s, [k]: v }));
+  const identityForm = useForm({
+    resolver: zodResolver(identitySchema),
+    defaultValues: {
+      app_name: "",
+      company: "",
+      timezone: "Asia/Jakarta",
+      language: "id",
+      date_format: "DD/MM/YYYY",
+      app_url: "",
+      meta_description: "",
+    },
+    mode: "onSubmit",
+  });
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      await api.put("/settings", { general: g, application: { primary_color: g.primary_color, date_format: g.date_format } });
-      toast.success("Konfigurasi aplikasi disimpan");
+  const brandingForm = useForm({
+    resolver: zodResolver(brandingSchema),
+    defaultValues: { primary_color: "", logo: "", favicon: "", thumbnail: "" },
+    mode: "onSubmit",
+  });
+
+  useEffect(() => {
+    let active = true;
+    api
+      .get("/settings")
+      .then(({ data }) => {
+        if (!active) return;
+        const g = data.general || {};
+        identityForm.reset({
+          app_name: g.app_name || "",
+          company: g.company || "",
+          timezone: g.timezone || "Asia/Jakarta",
+          language: g.language || "id",
+          date_format: g.date_format || "DD/MM/YYYY",
+          app_url: g.app_url || "",
+          meta_description: g.meta_description || "",
+        });
+        brandingForm.reset({
+          primary_color: g.primary_color || "",
+          logo: g.logo || "",
+          favicon: g.favicon || "",
+          thumbnail: g.thumbnail || "",
+        });
+        setReady(true);
+      })
+      .catch((err) => notify.error(apiError(err)));
+    return () => {
+      active = false;
+    };
+  }, [identityForm, brandingForm]);
+
+  const persist = useCallback(
+    async (successMessage) => {
+      const general = { ...identityForm.getValues(), ...brandingForm.getValues() };
+      await api.put("/settings", {
+        general,
+        application: {
+          primary_color: general.primary_color,
+          date_format: general.date_format,
+        },
+      });
+      notify.success(successMessage);
       refresh();
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSaving(false); }
+    },
+    [identityForm, brandingForm, refresh]
+  );
+
+  const saveIdentity = async () => {
+    try {
+      await persist("Identitas aplikasi berhasil disimpan.");
+    } catch (err) {
+      notify.error(apiError(err));
+    }
   };
 
-  if (!g) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  const saveBranding = async () => {
+    try {
+      await persist("Tampilan & merek berhasil disimpan.");
+    } catch (err) {
+      notify.error(apiError(err));
+    }
+  };
+
+  if (!ready) {
+    return (
+      <div className="space-y-6" data-testid="app-settings-loading">
+        {Array.from({ length: 2 }).map((_, i) => (
+          <Card key={i}>
+            <CardHeader>
+              <Skeleton className="h-4 w-40" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {Array.from({ length: 3 }).map((__, j) => (
+                <Skeleton key={j} className="h-8 w-full" />
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <PageHeader title="Kelola Aplikasi" subtitle="Atur identitas, tampilan, dan metadata aplikasi.">
-        <Button onClick={save} disabled={saving} className="rounded-xl" data-testid="btn-save-app-settings">{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan</Button>
-      </PageHeader>
+    <div className="space-y-6" data-testid="app-settings-page">
+      <FormSection
+        title="Identitas"
+        form={identityForm}
+        onSubmit={saveIdentity}
+        submitting={identityForm.formState.isSubmitting}
+        submitTestId="btn-save-app-settings"
+        testid="app-identity-card"
+      >
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+          <FormField
+            control={identityForm.control}
+            name="app_name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Nama Aplikasi</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-app-name" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={identityForm.control}
+            name="company"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Perusahaan</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-company" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={identityForm.control}
+            name="timezone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Zona Waktu</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="setting-timezone">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {TIMEZONES.map((tz) => (
+                      <SelectItem key={tz} value={tz}>
+                        {tz}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={identityForm.control}
+            name="language"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Bahasa</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="setting-language">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {LANGUAGES.map((lang) => (
+                      <SelectItem key={lang.value} value={lang.value}>
+                        {lang.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={identityForm.control}
+            name="date_format"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Format Tanggal</FormLabel>
+                <Select value={field.value} onValueChange={field.onChange}>
+                  <FormControl>
+                    <SelectTrigger data-testid="setting-date-format">
+                      <SelectValue />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    {DATE_FORMATS.map((fmt) => (
+                      <SelectItem key={fmt} value={fmt}>
+                        {fmt}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={identityForm.control}
+            name="app_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>URL Aplikasi</FormLabel>
+                <FormControl>
+                  <Input placeholder="https://..." data-testid="setting-app-url" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="p-6 rounded-lg shadow-soft" data-testid="app-identity-card">
-          <div className="flex items-center gap-2 mb-5"><SlidersHorizontal className="h-5 w-5 text-primary" /><h2 className="font-semibold">Identitas</h2></div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nama Aplikasi"><Input value={g.app_name} onChange={(e) => up("app_name", e.target.value)} data-testid="setting-app-name" /></Field>
-            <Field label="Perusahaan"><Input value={g.company} onChange={(e) => up("company", e.target.value)} data-testid="setting-company" /></Field>
-            <Field label="Zona Waktu">
-              <Select value={g.timezone} onValueChange={(v) => up("timezone", v)}><SelectTrigger data-testid="setting-timezone"><SelectValue /></SelectTrigger><SelectContent>{TIMEZONES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select>
-            </Field>
-            <Field label="Bahasa">
-              <Select value={g.language} onValueChange={(v) => up("language", v)}><SelectTrigger data-testid="setting-language"><SelectValue /></SelectTrigger><SelectContent>{LANGS.map((l) => <SelectItem key={l.v} value={l.v}>{l.l}</SelectItem>)}</SelectContent></Select>
-            </Field>
-            <Field label="Format Tanggal">
-              <Select value={g.date_format} onValueChange={(v) => up("date_format", v)}><SelectTrigger data-testid="setting-date-format"><SelectValue /></SelectTrigger><SelectContent>{DATE_FORMATS.map((d) => <SelectItem key={d} value={d}>{d}</SelectItem>)}</SelectContent></Select>
-            </Field>
-            <Field label="URL Aplikasi"><Input value={g.app_url} onChange={(e) => up("app_url", e.target.value)} placeholder="https://..." data-testid="setting-app-url" /></Field>
-          </div>
-          <div className="mt-4"><Field label="Meta Deskripsi" hint="Digunakan untuk SEO / preview tautan."><Textarea value={g.meta_description} onChange={(e) => up("meta_description", e.target.value)} rows={2} data-testid="setting-meta-description" /></Field></div>
-        </Card>
+        <FormField
+          control={identityForm.control}
+          name="meta_description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Meta Deskripsi</FormLabel>
+              <FormControl>
+                <Textarea rows={2} data-testid="setting-meta-description" {...field} />
+              </FormControl>
+              <FormDescription>Digunakan untuk SEO / preview tautan.</FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </FormSection>
 
-        <Card className="p-6 rounded-lg shadow-soft" data-testid="app-branding-card">
-          <div className="flex items-center gap-2 mb-5"><Palette className="h-5 w-5 text-primary" /><h2 className="font-semibold">Tampilan & Merek</h2></div>
-          <div className="space-y-5">
-            <Field label="Warna Utama">
-              <div className="flex items-center gap-3">
-                <input type="color" value={g.primary_color || "#4F46E5"} onChange={(e) => up("primary_color", e.target.value)} className="h-10 w-14 rounded-lg border border-border cursor-pointer" data-testid="setting-primary-color" />
-                <Input value={g.primary_color} onChange={(e) => up("primary_color", e.target.value)} className="max-w-[140px]" />
+      <FormSection
+        title="Tampilan & Merek"
+        form={brandingForm}
+        onSubmit={saveBranding}
+        submitting={brandingForm.formState.isSubmitting}
+        submitTestId="btn-save-branding"
+        testid="app-branding-card"
+      >
+        <Alert>
+          <Info className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription>
+            Antarmuka aplikasi memakai palet monokrom. Warna utama disimpan sebagai identitas
+            merek dan tidak mengubah warna antarmuka.
+          </AlertDescription>
+        </Alert>
+
+        <FormField
+          control={brandingForm.control}
+          name="primary_color"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Warna Utama</FormLabel>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={field.value || HEX_PLACEHOLDER}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  className="h-[var(--ctl-h)] w-12 cursor-pointer rounded-md border border-input bg-background p-1"
+                  aria-label="Pilih warna utama"
+                  data-testid="setting-primary-color"
+                />
+                <FormControl>
+                  <Input className="w-full sm:w-[9rem]" placeholder={HEX_PLACEHOLDER} {...field} />
+                </FormControl>
               </div>
-            </Field>
-            <Field label="Logo" hint="Tampil di sidebar. Maks 600 KB."><ImageUpload value={g.logo} onChange={(v) => up("logo", v)} label="Unggah Logo" testId="logo" /></Field>
-            <Field label="Favicon" hint="Ikon tab browser (PNG/ICO)."><ImageUpload value={g.favicon} onChange={(v) => up("favicon", v)} label="Unggah Favicon" testId="favicon" /></Field>
-            <Field label="Thumbnail" hint="Gambar preview saat dibagikan."><ImageUpload value={g.thumbnail} onChange={(v) => up("thumbnail", v)} label="Unggah Thumbnail" testId="thumbnail" /></Field>
-          </div>
-        </Card>
-      </div>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2">
+          <FormField
+            control={brandingForm.control}
+            name="logo"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Logo</FormLabel>
+                <ImagePicker value={field.value} onChange={field.onChange} testid="logo" />
+                <FormDescription>Tampil di sidebar & layar masuk. Maks 600 KB.</FormDescription>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={brandingForm.control}
+            name="favicon"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Favicon</FormLabel>
+                <ImagePicker value={field.value} onChange={field.onChange} testid="favicon" />
+                <FormDescription>Ikon tab browser (PNG/ICO).</FormDescription>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={brandingForm.control}
+            name="thumbnail"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Thumbnail</FormLabel>
+                <ImagePicker value={field.value} onChange={field.onChange} testid="thumbnail" />
+                <FormDescription>Gambar preview saat tautan dibagikan.</FormDescription>
+              </FormItem>
+            )}
+          />
+        </div>
+      </FormSection>
     </div>
   );
 }

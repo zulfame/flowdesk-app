@@ -20,7 +20,7 @@ SRC="$SCRIPT_DIR/../src"
 DIRS="$SRC/pages $SRC/components/composite $SRC/components/layout $SRC/components/auth"
 
 # Not-yet-migrated modules + old shared components (phase-scoped exclusions).
-LEGACY='(Dashboard\.jsx|Tasks|TaskDetail|TaskForm|Meetings|MeetingDetail|MeetingForm|HelpTickets|Calendar|Reminders|TimeSchedule|TimeScheduleDetail|Notes|Notifications|NotificationSettings|Users|Roles|Database|Archive|AppSettings|Settings)'
+LEGACY='/(Dashboard|Tasks|TaskDetail|TaskForm|Meetings|MeetingDetail|MeetingForm|HelpTickets|Calendar|Reminders|TimeSchedule|TimeScheduleDetail|Notes|Notifications|NotificationSettings|Database|Archive|Settings)\.jsx'
 EXCLUDE="$LEGACY"
 
 scan() { grep -rnE "$1" $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXCLUDE" | grep -vE '//\s*guard-allow'; }
@@ -90,6 +90,10 @@ report "TabsList tanpa 'overflow-x-auto' (wajib scroll-x di mobile; dilarang wra
 #     Exempt: auth screens (2A hero scale) and the shared PageHeader H1 (2A).
 report "Teks oversized (text-xl/2xl/3xl/4xl...) di halaman fitur — R45; judul cukup 'text-base'" \
   "$(scan_pages 'text-(xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
+
+# 21) FD9 — Search placeholder must come from ACTION.search ("Pencarian...").
+report "Placeholder pencarian khusus (FD9: WAJIB ACTION.search / 'Pencarian...' dari src/constants/labels.js)" \
+  "$(scan 'placeholder=\"(Cari|Search)[^\"]*\"|searchPlaceholder=')"
 
 # 20) FD8 — Label→control gap comes from --item-gap only.
 report "space-y/mt manual pada FormItem/FormLabel (FD8: jarak label ke kontrol hanya dari --item-gap; 'space-y-0' untuk baris checkbox diizinkan)" \

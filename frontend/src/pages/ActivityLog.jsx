@@ -210,7 +210,6 @@ export default function ActivityLog() {
         columns={COLUMNS}
         data={rows}
         loading={loading}
-        searchPlaceholder="Cari deskripsi atau pengguna..."
         search={{ value: search, onChange: setSearch }}
         pagination={{
           pageIndex,

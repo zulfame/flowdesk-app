@@ -81,6 +81,7 @@ export function SortableHeader({ column, children, align = "left" }) {
  *    pageSize, pageCount, totalRows, onPageChange, onPageSizeChange }}` to let
  *    the caller drive them from the API.
  * `filters` renders extra controls on the right side of the toolbar.
+ * The search placeholder is LOCKED to `ACTION.search` ("Pencarian...") — FD9.
  */
 export function DataTableCard({
   title,
@@ -92,7 +93,6 @@ export function DataTableCard({
   columns,
   data,
   loading,
-  searchPlaceholder = ACTION.search,
   search,
   pagination,
   testid,
@@ -172,7 +172,7 @@ export function DataTableCard({
             <Input
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
-              placeholder={searchPlaceholder}
+              placeholder={ACTION.search}
               className="h-[var(--ctl-h-sm)] pl-8 text-xs"
               data-testid={`${testid}-search`}
             />

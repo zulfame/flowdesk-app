@@ -21,7 +21,7 @@ export const ACTION = {
   import: "Impor",
   upload: "Unggah",
   download: "Unduh",
-  search: "Cari...",
+  search: "Pencarian...",   // FD9: placeholder pencarian SERAGAM di seluruh app
   filter: "Filter",
   back: "Kembali",
   login: "Masuk",
