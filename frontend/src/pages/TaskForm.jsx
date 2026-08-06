@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Mail, Phone, Plus, Save, X } from "lucide-react";
+import { Building2, Link2, Mail, Phone, Plus, Save, Upload, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,6 +71,7 @@ export default function TaskForm() {
   const [documents, setDocuments] = useState([]);
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
+  const docsRef = useRef(null);
 
   useEffect(() => {
     api
@@ -300,13 +301,33 @@ export default function TaskForm() {
             </CardHeader>
             <CardContent>
               <DocumentManager
+                ref={docsRef}
                 taskId={draftId}
                 documents={documents}
                 onChange={setDocuments}
                 idPrefix="task"
                 hideHeaderTitle
+                hideActions
               />
             </CardContent>
+            <CardFooter className="justify-between">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => docsRef.current?.addUrl()}
+                data-testid="btn-doc-url"
+              >
+                <Link2 className="size-4" /> URL
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => docsRef.current?.pickFile()}
+                data-testid="btn-doc-upload"
+              >
+                <Upload className="size-4" /> {ACTION.upload}
+              </Button>
+            </CardFooter>
           </Card>
         </div>
       </div>

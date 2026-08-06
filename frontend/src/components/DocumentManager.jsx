@@ -75,7 +75,7 @@ function DocLink({ doc }) {
 }
 
 /** Dense document list with URL/file entries and threaded responses. */
-export default function DocumentManager({
+const DocumentManager = React.forwardRef(function DocumentManager({
   taskId,
   documents = [],
   onChange,
@@ -87,7 +87,8 @@ export default function DocumentManager({
   canAddDoc = null,
   emptyText = "Belum ada dokumen sumber",
   hideHeaderTitle = false,
-}) {
+  hideActions = false,
+}, ref) {
   const allowAdd = canAddDoc == null ? canManage : canAddDoc;
   const fileRef = useRef(null);
   const respFileRef = useRef(null);
@@ -151,6 +152,16 @@ export default function DocumentManager({
 
   const removeDoc = (docId) => onChange(documents.filter((d) => d.id !== docId));
 
+  React.useImperativeHandle(
+    ref,
+    () => ({
+      addUrl: () => setUrlOpen(true),
+      pickFile: () => fileRef.current?.click(),
+      uploading,
+    }),
+    [uploading]
+  );
+
   const openResp = (docId) => {
     setRespForm({ docId, kind: "url", status: "revisi", url: "", label: "", note: "" });
     setRespOpen(true);
@@ -199,22 +210,22 @@ export default function DocumentManager({
 
   return (
     <div className="space-y-2">
-      {!hideHeaderTitle || allowAdd ? (
+      <input
+        ref={fileRef}
+        type="file"
+        className="hidden"
+        onChange={addFileDoc}
+        data-testid={`${idPrefix}-doc-file-input`}
+      />
+      {!hideHeaderTitle || (allowAdd && !hideActions) ? (
         <div className={`flex items-center gap-2 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}>
           {!hideHeaderTitle ? (
             <p className="text-[13px] font-medium">
               {label} ({(documents || []).length})
             </p>
           ) : null}
-          {allowAdd ? (
+          {allowAdd && !hideActions ? (
             <div className="flex gap-1.5">
-              <input
-                ref={fileRef}
-                type="file"
-                className="hidden"
-                onChange={addFileDoc}
-                data-testid={`${idPrefix}-doc-file-input`}
-              />
               <Button
                 size="sm"
                 variant="outline"
@@ -523,4 +534,6 @@ export default function DocumentManager({
       </Dialog>
     </div>
   );
-}
+});
+
+export default DocumentManager;

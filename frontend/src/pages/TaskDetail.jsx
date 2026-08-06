@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -7,6 +7,7 @@ import {
   Copy,
   FileText,
   LayoutTemplate,
+  Link2,
   Loader2,
   Mail,
   MoreHorizontal,
@@ -16,6 +17,7 @@ import {
   RotateCcw,
   Send,
   Trash2,
+  Upload,
   User,
   Video,
 } from "lucide-react";
@@ -134,6 +136,7 @@ export default function TaskDetail() {
   const [info, setInfo] = useState({ status: "Pending", priority: "Medium", deadline: "" });
   const [reqDraft, setReqDraft] = useState(null);
   const [picDraft, setPicDraft] = useState(null);
+  const docsRef = useRef(null);
 
   const load = useCallback(async () => {
     try {
@@ -808,6 +811,7 @@ export default function TaskDetail() {
             </CardHeader>
             <CardContent>
               <DocumentManager
+                ref={docsRef}
                 taskId={id}
                 documents={task.documents || []}
                 onChange={(docs) => patch({ documents: docs }, { documents: docs })}
@@ -816,8 +820,29 @@ export default function TaskDetail() {
                 canRespond={canProgress}
                 currentUserId={user?.id}
                 hideHeaderTitle
+                hideActions
               />
             </CardContent>
+            {canEditStructure ? (
+              <CardFooter className="justify-between">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => docsRef.current?.addUrl()}
+                  data-testid="btn-doc-url"
+                >
+                  <Link2 className="size-4" /> URL
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => docsRef.current?.pickFile()}
+                  data-testid="btn-doc-upload"
+                >
+                  <Upload className="size-4" /> {ACTION.upload}
+                </Button>
+              </CardFooter>
+            ) : null}
           </Card>
 
         </div>
