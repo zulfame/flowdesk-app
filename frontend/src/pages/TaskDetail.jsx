@@ -219,6 +219,7 @@ export default function TaskDetail() {
     );
 
   const req = typeof task.requester === "string" ? { name: task.requester } : task.requester || {};
+  const pic = typeof task.pic === "string" ? { name: task.pic } : task.pic || {};
   const doneCount = items.filter((i) => i.done).length;
   const isOwner = canManage(user, task);
   const isPic = isTaskPic(user, task);
@@ -605,16 +606,28 @@ export default function TaskDetail() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Informasi</CardTitle>
+              <CardTitle className="text-base">PIC Pelaksana</CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-3">
               <dl className="space-y-2">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">PIC</dt>
-                  <dd className="font-medium">
-                    {(typeof task.pic === "string" ? task.pic : task.pic?.name) || "\u2014"}
-                  </dd>
+                <div className="flex items-center gap-2">
+                  <User className="size-4 shrink-0 text-muted-foreground" />
+                  <span className="font-medium">{pic.name || "\u2014"}</span>
                 </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Building2 className="size-4 shrink-0" />
+                  <span>{pic.department || "\u2014"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Phone className="size-4 shrink-0" />
+                  <span>{pic.phone || "\u2014"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="size-4 shrink-0" />
+                  <span className="truncate">{pic.email || "\u2014"}</span>
+                </div>
+              </dl>
+              <dl className="space-y-2 border-t pt-3">
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-muted-foreground">Prioritas</dt>
                   <dd>
