@@ -210,13 +210,6 @@ const DocumentManager = React.forwardRef(function DocumentManager({
 
   return (
     <div className="space-y-2">
-      <input
-        ref={fileRef}
-        type="file"
-        className="hidden"
-        onChange={addFileDoc}
-        data-testid={`${idPrefix}-doc-file-input`}
-      />
       {!hideHeaderTitle || (allowAdd && !hideActions) ? (
         <div className={`flex items-center gap-2 ${hideHeaderTitle ? "justify-end" : "justify-between"}`}>
           {!hideHeaderTitle ? (
@@ -371,6 +364,14 @@ const DocumentManager = React.forwardRef(function DocumentManager({
           ))}
         </div>
       )}
+
+      <input
+        ref={fileRef}
+        type="file"
+        className="hidden"
+        onChange={addFileDoc}
+        data-testid={`${idPrefix}-doc-file-input`}
+      />
 
       <Dialog open={urlOpen} onOpenChange={setUrlOpen}>
         <DialogContent className="sm:max-w-md">

@@ -1,0 +1,47 @@
+{
+  "summary": "Frontend regression testing untuk modul Kelola Tugas (iterasi UI). Fokus utama: presisi padding body kartu 'Dokumen Sumber' di Detail Tugas dan Tambah Tugas setelah fix DocumentManager (hidden file input dipindah ke anak terakhir). Semua item pengujian lulus. Padding CardContent kartu Dokumen Sumber sekarang simetris 16px : 16px pada kedua halaman.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "/tasks/<id>/edit (route lama)", "issues": ["Route sudah dihapus dari App.js, tapi URL menampilkan halaman KOSONG (tanpa 404 explicit). React Router console warning: 'No routes matched location'. User yang membuka bookmark lama akan bingung. Rekomendasi: tambahkan route catch-all -> redirect ke /tasks/<id> atau tampilkan komponen NotFound."]},
+      {"screen": "Dialog input URL (btn-doc-url)", "issues": ["Console warning aksesibilitas: 'Missing Description or aria-describedby for DialogContent'. Tambahkan <DialogDescription> atau aria-describedby untuk DialogContent."]}
+    ]
+  },
+  "verified_behaviors": [
+    "MAIN BUG: /tasks/<id> - CardContent 'Dokumen Sumber' padding-top=16px, padding-bottom=16px; firstChildTopGap=16px, lastChildBottomGap=16px (simetris, hanya 1 anak span-y-2 berisi daftar). PRESISI TERKONFIRMASI.",
+    "MAIN BUG: /tasks/new - CardContent 'Dokumen Sumber' (placeholder 'Belum ada dokumen sumber') pad 16/16, firstTopGap=16, lastBotGap=16. PRESISI TERKONFIRMASI.",
+    "Footer Dokumen Sumber: btn-doc-url x=1078.3 (kiri), btn-doc-upload x=1297.9 (kanan). Layout benar.",
+    "btn-doc-url membuka dialog dengan data-testid=task-url-input (count 1); Escape menutup (count 0).",
+    "btn-doc-upload dapat diklik tanpa error console (memicu file input tersembunyi).",
+    "Inline edit info deadline: nilai awal 2026-08-15 ditangkap, diubah ke 2026-12-31, toast 'Sukses - Informasi tugas diperbarui' tampil, kartu Informasi Tugas menampilkan 'Tenggat 31 Des 2026', lalu DIKEMBALIKAN ke 2026-08-15 (data user tidak berubah).",
+    "btn-edit-head -> btn-cancel-head menutup mode edit tanpa perubahan (btn-save-head hilang setelah cancel).",
+    "/tasks: menu Aksi baris berisi PERSIS ['Detail','Duplikat','Hapus'] - tidak ada 'Ubah'.",
+    "/tasks: kolom Tenggat menampilkan teks relatif berwarna, contoh: '9 hari lagi', 'Lewat 62 hari', 'Lewat 37 hari'.",
+    "/tasks/<id>/edit (route lama) tidak menampilkan form Ubah; hanya kosong + warning router (route sudah dihapus).",
+    "Detail Tugas: teks 'Riwayat' tidak ditemukan di body; [data-testid=btn-broadcast] count = 0.",
+    "Tidak ada console ERROR pada /tasks, /tasks/new, /tasks/<id>. Hanya 2 warning (aria-describedby dialog & route match).",
+    "Kredensial admin@flowdesk.com/admin123 berhasil login."
+  ],
+  "measurements": {
+    "detail_page_dokumen_sumber": {"padding_top_px": 16, "padding_bottom_px": 16, "first_child_top_gap_px": 16, "last_child_bottom_gap_px": 16, "content_height_px": 110, "children": [{"cls": "space-y-2", "height": 78, "text": "Email Unlimited - Re_ (Update)"}]},
+    "new_page_dokumen_sumber": {"padding_top_px": 16, "padding_bottom_px": 16, "first_child_top_gap_px": 16, "last_child_bottom_gap_px": 16, "content_height_px": 70, "children": [{"cls": "space-y-2", "height": 38, "text": "Belum ada dokumen sumber"}]},
+    "footer_buttons": {"btn_doc_url_x": 1078.33, "btn_doc_upload_x": 1297.98}
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Opsional: Tambahkan route catch-all untuk /tasks/:id/edit -> redirect ke /tasks/:id (atau NotFound page) supaya URL lama tidak menampilkan halaman kosong.",
+    "Opsional: Tambahkan DialogDescription/aria-describedby pada DialogContent input URL untuk menghilangkan warning aksesibilitas."
+  ],
+  "critical_code_review_comments": [
+    "CardContent memakai className 'px-6 py-4' tetapi tidak memiliki atribut data-slot='card-content'. Testing lain yang bergantung pada data-slot bisa gagal - pertimbangkan menambahkan data-slot untuk konsistensi otomasi."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (frontend only)", "frontend": "100% (semua 8 item pengujian lulus; 2 warning minor)"},
+  "seed_data_creation": "Tidak membuat/menghapus tugas. Sunting deadline tugas '7897b6ed-...' dari 2026-08-15 -> 2026-12-31 -> DIKEMBALIKAN ke 2026-08-15. Data user tetap utuh.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@flowdesk.com/admin123",
+  "context_for_next_testing_agent": "Iterasi UI Kelola Tugas: semua regresi lolos, bug padding kartu Dokumen Sumber sudah diperbaiki (16/16 simetris di Detail & Tambah Tugas). Hanya rekomendasi minor (route catch-all /tasks/:id/edit dan Dialog a11y). Tidak ada perubahan kode dari testing agent."
+}
