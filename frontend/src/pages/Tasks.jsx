@@ -12,6 +12,7 @@ import {
   Video,
 } from "lucide-react";
 
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,6 +65,18 @@ const fmtDay = (iso) => {
     : d.toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" });
 };
 
+const dueLabel = (iso) => {
+  if (!iso) return null;
+  const start = new Date(new Date().toDateString());
+  const end = new Date(new Date(iso).toDateString());
+  const d = Math.round((end - start) / 86400000);
+  if (Number.isNaN(d)) return null;
+  if (d < 0) return { text: `Lewat ${Math.abs(d)} hari`, variant: "destructive" };
+  if (d === 0) return { text: "Hari ini", variant: "default" };
+  if (d === 1) return { text: "Besok", variant: "secondary" };
+  return { text: `${d} hari lagi`, variant: "outline" };
+};
+
 const STATUS_OPTIONS = ["Pending", "On Progress", "Completed", "Overdue", "Draft", "Cancelled", "Archived"];
 const PRIORITY_OPTIONS = ["Urgent", "High", "Medium", "Low"];
 
@@ -103,9 +116,15 @@ const buildColumns = ({ user, onOpen, onDuplicate, onDelete }) => [
   {
     accessorKey: "deadline",
     header: ({ column }) => <SortableHeader column={column}>Tenggat</SortableHeader>,
-    cell: ({ row }) => (
-      <span className="text-muted-foreground">{fmtDay(row.original.deadline)}</span>
-    ),
+    cell: ({ row }) => {
+      const due = dueLabel(row.original.deadline);
+      if (!due) return <span className="text-muted-foreground">{"\u2014"}</span>;
+      return (
+        <Badge variant={due.variant} className="font-normal" title={fmtDay(row.original.deadline)}>
+          {due.text}
+        </Badge>
+      );
+    },
   },
   {
     accessorKey: "progress",
