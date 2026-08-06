@@ -7,7 +7,7 @@ import { api } from "@/lib/api";
 import {
   LayoutDashboard, CheckSquare, CalendarDays, Bell, FileText, Video, ScrollText,
   Search, Sun, Moon, LogOut, Menu, X, Waves, ChevronDown, PanelLeftClose, PanelLeft,
-  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive, CalendarRange, LifeBuoy,
+  UserCircle, Users2, ShieldCheck, Database, BellRing, SlidersHorizontal, Archive, CalendarRange, LifeBuoy, KeyRound,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,11 +43,12 @@ const NAV_GROUPS = [
     adminOnly: true,
     items: [
       { to: "/app-settings", label: "Kelola Aplikasi", icon: SlidersHorizontal },
-      { to: "/roles", label: "Kelola Peranan", icon: ShieldCheck },
-      { to: "/users", label: "Kelola Pengguna", icon: Users2 },
-      { to: "/database", label: "Kelola Database", icon: Database },
-      { to: "/notification-settings", label: "Kelola Notifikasi", icon: BellRing },
       { to: "/archive", label: "Kelola Arsip", icon: Archive },
+      { to: "/database", label: "Kelola Database", icon: Database },
+      { to: "/security-settings", label: "Kelola Keamanan", icon: KeyRound },
+      { to: "/notification-settings", label: "Kelola Notifikasi", icon: BellRing },
+      { to: "/users", label: "Kelola Pengguna", icon: Users2 },
+      { to: "/roles", label: "Kelola Peranan", icon: ShieldCheck },
       { to: "/activity", label: "Log Aktivitas", icon: ScrollText },
     ],
   },

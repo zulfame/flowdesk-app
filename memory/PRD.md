@@ -372,3 +372,13 @@ Permintaan user + hasil testing agent (`/app/test_reports/iteration_11.json`):
   - `GET /api/og/preview` → data pratinjau + `html` mentah untuk UI.
 - **`lib/validation/adminSchema.js`**: skema baru `seoSchema`, `ogSchema`, `contactSchema`; `identitySchema` + tagline/brand_initials; `brandingSchema` + logo_dark.
 - Verifikasi: simpan Identitas & Pratinjau Tautan sukses (toast "Berhasil"), dialog HTML mentah menampilkan meta OG hasil server, `curl /api/og/render` 200. `design-guard.sh` exit 0.
+
+## Update (2026-06-08f) — Menu "Kelola Keamanan" + Menu Admin urut abjad
+- **Menu Admin diurutkan abjad** (di `components/Layout.jsx` DAN `config/navigation.js`): Kelola Aplikasi → Kelola Arsip → Kelola Database → **Kelola Keamanan** → Kelola Notifikasi → Kelola Pengguna → Kelola Peranan → Log Aktivitas. Breadcrumb `ROUTE_TRAILS` + `ADMIN_ROUTES` ditambah `/security-settings`.
+- **Halaman baru `pages/SecuritySettings.jsx`** (route `/security-settings`, ikon `KeyRound`), 2 kartu dengan Simpan per kartu:
+  1. **Autentikasi Terpusat (Authty)** — badge Aktif/Nonaktif, switch "Aktifkan autentikasi terpusat" & "Izinkan Super Admin lokal sebagai jalur darurat", Base URL, Timeout (detik), API Key (X-API-Key) dengan toggle mata + placeholder hint "Tersimpan: ••••xxxx", blok "Uji kredensial (tanpa membuat sesi)" (identitas + password + tombol Uji).
+     **MOCKED/BELUM TERSAMBUNG:** tombol **Uji** disabled dan login terpusat belum diimplementasikan — kontrak API Authty & API Key belum diberikan user. Alert di dalam kartu menyatakan ini secara eksplisit. Setelan tetap tersimpan agar siap dipakai saat integrasi disambungkan.
+  2. **Sesi Login** — Masa aktif sesi login (jam, 1–720). **FUNGSIONAL**: `create_token(..., hours=)` di `security.py` + `routers/auth.py` membaca `security.session_hours` dari settings saat login. Diverifikasi: exp token = 12.0 jam sesuai setelan, tanpa restart server.
+- **Backend settings**: section baru `security` = `{authty_enabled, authty_allow_local_superadmin, authty_base_url, authty_timeout, authty_api_key, session_hours}`. `GET /api/settings` **tidak pernah** mengembalikan `authty_api_key` (selalu `""`) melainkan `authty_api_key_hint` (12 bullet + 4 karakter terakhir); `PUT /api/settings` mengabaikan `authty_api_key` kosong agar kunci tersimpan tidak terhapus, dan membuang `authty_api_key_hint`.
+- Verifikasi: simpan kedua kartu sukses (toast "Berhasil"), urutan menu sidebar sesuai abjad, `design-guard.sh` exit 0.
+- **PENDING dari user**: dokumentasi endpoint verifikasi Authty (path/method/request/response), nama field jabatan + pemetaan ke peran, dan API Key.

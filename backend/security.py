@@ -25,11 +25,12 @@ def _secret() -> str:
     return os.environ["JWT_SECRET"]
 
 
-def create_token(user_id: str, email: str) -> str:
+def create_token(user_id: str, email: str, hours: int | None = None) -> str:
+    ttl = timedelta(hours=hours) if hours else timedelta(days=TOKEN_EXPIRE_DAYS)
     payload = {
         "sub": user_id,
         "email": email,
-        "exp": datetime.now(timezone.utc) + timedelta(days=TOKEN_EXPIRE_DAYS),
+        "exp": datetime.now(timezone.utc) + ttl,
         "type": "access",
     }
     return jwt.encode(payload, _secret(), algorithm=JWT_ALGORITHM)

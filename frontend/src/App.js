@@ -35,6 +35,7 @@ import Roles from "@/pages/Roles";
 import Database from "@/pages/Database";
 import ArchivePage from "@/pages/Archive";
 import AppSettings from "@/pages/AppSettings";
+import SecuritySettings from "@/pages/SecuritySettings";
 import NotificationSettings from "@/pages/NotificationSettings";
 
 const PAGES = [
@@ -60,6 +61,7 @@ const PAGES = [
   { path: "/database", element: <Database /> },
   { path: "/archive", element: <ArchivePage /> },
   { path: "/app-settings", element: <AppSettings /> },
+  { path: "/security-settings", element: <SecuritySettings /> },
   { path: "/notification-settings", element: <NotificationSettings /> },
 ];
 

@@ -159,3 +159,23 @@ export const autoBackupSchema = z.object({
   weekday: z.coerce.number().min(1).max(7),
   destination: z.string().min(1, "Tujuan wajib dipilih."),
 });
+
+/** Security settings — Authty (autentikasi terpusat). */
+export const authtySchema = z.object({
+  authty_enabled: z.boolean(),
+  authty_allow_local_superadmin: z.boolean(),
+  authty_base_url: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^https?:\/\/.+/i.test(v), {
+      message: "URL harus dimulai dengan http:// atau https://",
+    }),
+  authty_timeout: z.coerce.number().int().min(1, "Minimal 1 detik.").max(120, "Maksimal 120 detik."),
+  authty_api_key: z.string().optional(),
+});
+
+/** Security settings — masa aktif sesi login. */
+export const sessionSchema = z.object({
+  session_hours: z.coerce.number().int().min(1, "Minimal 1 jam.").max(720, "Maksimal 720 jam."),
+});

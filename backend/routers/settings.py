@@ -27,6 +27,11 @@ DEFAULT_SETTINGS = {
     "storage": {"max_file_mb": 50, "allowed_types": "image,pdf,office,zip,video,audio",
                 "endpoint": "", "bucket": "", "access_key": "", "secret_key": "", "region": "", "path": ""},
     "application": {"theme": "system", "primary_color": "#4F46E5", "date_format": "DD/MM/YYYY"},
+    "security": {
+        "authty_enabled": False, "authty_allow_local_superadmin": True,
+        "authty_base_url": "", "authty_timeout": 10, "authty_api_key": "",
+        "session_hours": 12,
+    },
     "backup": {"auto_enabled": False, "frequency": "daily", "time": "02:00", "weekday": 1, "destination": "s3", "last_run": None},
 }
 
@@ -48,6 +53,7 @@ class SettingsUpdate(BaseModel):
     telegram: Optional[Dict[str, Any]] = None
     notification: Optional[Dict[str, Any]] = None
     storage: Optional[Dict[str, Any]] = None
+    security: Optional[Dict[str, Any]] = None
     application: Optional[Dict[str, Any]] = None
     backup: Optional[Dict[str, Any]] = None
 
@@ -88,6 +94,13 @@ async def public_settings():
 @router.get("")
 async def get_settings_endpoint(user: dict = Depends(get_current_user)):
     s = await _ensure_settings()
+    key = (s.get("security") or {}).get("authty_api_key") or ""
+    s = dict(s)
+    s["security"] = {
+        **s["security"],
+        "authty_api_key": "",
+        "authty_api_key_hint": f"{'•' * 12}{key[-4:]}" if key else "",
+    }
     # mask password for non-admin
     if user.get("role") != "admin":
         s = dict(s)
@@ -106,6 +119,10 @@ async def update_settings(body: SettingsUpdate, admin: dict = Depends(require_ad
     update = {}
     for section, value in body.model_dump().items():
         if value is not None:
+            if section == "security":
+                value = {k: v for k, v in value.items() if k != "authty_api_key_hint"}
+                if not value.get("authty_api_key"):
+                    value.pop("authty_api_key", None)
             merged = {**current.get(section, {}), **value}
             update[section] = merged
     await db.settings.update_one({"key": "app"}, {"$set": update}, upsert=True)

@@ -92,7 +92,9 @@ async def login(body: LoginBody, request: Request):
 
     await db.login_attempts.delete_one({"identifier": identifier})
     await log_activity(db, user, "login", "auth", user["id"], f"{email} masuk")
-    token = create_token(user["id"], email)
+    cfg = await db.settings.find_one({"key": "app"}, {"_id": 0, "security": 1})
+    hours = ((cfg or {}).get("security") or {}).get("session_hours")
+    token = create_token(user["id"], email, hours=hours)
     return {"token": token, "user": await _with_perms(user)}
 
 
