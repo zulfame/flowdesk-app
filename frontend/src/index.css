@@ -123,6 +123,11 @@ code {
         --ev-task: 25 95% 50%;
         --ev-reminder: 271 81% 60%;
         --ev-event: 165 82% 40%;
+        /* Linimasa Time Schedule (E9) — kategori & kolom hari libur */
+        --ts-plan: 38 92% 55%;
+        --ts-event: 160 84% 39%;
+        --ts-holiday: 347 77% 57%;
+        --ts-holiday-col: 0 86% 97%;
 
         /* Sidebar semantics (monochrome-first) */
         --sidebar-background: var(--neutral-50);
@@ -189,6 +194,11 @@ code {
         --ev-task: 27 96% 61%;
         --ev-reminder: 270 95% 75%;
         --ev-event: 163 74% 50%;
+        /* Linimasa Time Schedule (E9) — dark */
+        --ts-plan: 41 96% 62%;
+        --ts-event: 158 64% 52%;
+        --ts-holiday: 351 95% 71%;
+        --ts-holiday-col: 350 40% 16%;
 
         /* Sidebar semantics (dark) */
         --sidebar-background: var(--neutral-900);

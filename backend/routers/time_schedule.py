@@ -15,7 +15,7 @@ router = APIRouter(prefix="/time-schedules", tags=["time-schedules"])
 
 CATEGORIES = {"pelaksanaan", "event", "libur"}
 # Selaras dengan kartu Linimasa (monokrom bila kegiatan tidak punya warna sendiri).
-CAT_FILL = {"pelaksanaan": "5B5B5B", "event": "1F1F1F", "libur": "B8B8B8"}
+CAT_FILL = {"pelaksanaan": "F0A21B", "event": "10B27A", "libur": "E8546F"}
 MONTHS_ID = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"]
 
 
@@ -251,7 +251,8 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
     thin = Side(style="thin", color="E5E7EB")
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
     head_fill = PatternFill("solid", fgColor="F3F4F6")
-    muted_fill = PatternFill("solid", fgColor="F3F4F6")
+    holiday_fill = PatternFill("solid", fgColor="FEF1F2")
+    holiday_font = "D33A57"
     event_fill = PatternFill("solid", fgColor="E5E7EB")
     center = Alignment(horizontal="center", vertical="center")
     today_side = Side(style="medium", color="111827")
@@ -299,10 +300,13 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
         key = day_keys[i]
         weekend = d.weekday() >= 5
         cell = ws.cell(row=DAY_ROW, column=FIRST_COL + i, value=d.day)
-        cell.font = Font(bold=key == today_key, size=8, color="6B7280")
+        holiday = weekend or key in holidays
+        cell.font = Font(bold=key == today_key or holiday, size=8,
+                         color=holiday_font if holiday else "6B7280")
         cell.alignment = center
         cell.border = border
-        cell.fill = event_fill if key in event_dates else (muted_fill if (weekend or key in holidays) else head_fill)
+        cell.fill = (holiday_fill if holiday
+                     else event_fill if key in event_dates else head_fill)
         ws.column_dimensions[cell.column_letter].width = 3.6
 
     ws.column_dimensions["A"].width = 34
@@ -328,10 +332,10 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
             weekend = days[i].weekday() >= 5
             if a_start and a_end and a_start <= dk <= a_end:
                 cell.fill = bar
+            elif weekend or dk in holidays:
+                cell.fill = holiday_fill
             elif dk in event_dates:
                 cell.fill = event_fill
-            elif weekend or dk in holidays:
-                cell.fill = muted_fill
             if dk == today_key:
                 cell.border = Border(left=today_side, right=thin, top=thin, bottom=thin)
         ws.row_dimensions[r].height = 20

@@ -59,12 +59,14 @@ const DAY_W = 26;
 const NAME_W = 240;
 const ROW_H = 36;
 
-/** Category defaults stay monochrome; per-activity `color` is user DATA (E2). */
+/** Warna kategori & hari libur = DATA (E9); warna per-kegiatan (`color`) menimpanya (E2). */
 const CAT = {
-  pelaksanaan: { label: "Pelaksanaan", bar: "bg-foreground/70" },
-  event: { label: "Event", bar: "bg-foreground" },
-  libur: { label: "Hari Libur", bar: "bg-muted-foreground/40" },
+  pelaksanaan: { label: "Pelaksanaan", hue: "--ts-plan" },
+  event: { label: "Event", hue: "--ts-event" },
+  libur: { label: "Hari Libur", hue: "--ts-holiday" },
 };
+const HOLIDAY_COL = "hsl(var(--ts-holiday-col))";
+const HOLIDAY_TEXT = "hsl(var(--ts-holiday))";
 const STATUSES = ["Rencana", "Proses", "Selesai"];
 const SWATCHES = ["#f59e0b", "#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]; // guard-allow (E2: warna kegiatan = data)
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -119,8 +121,11 @@ const buildColumns = ({ editable, onEdit, onDelete, onOpenTask }) => [
       return (
         <div className="flex items-center gap-2">
           <span
-            className={cn("size-2 shrink-0 rounded-full", !a.color && (CAT[a.category]?.bar || CAT.pelaksanaan.bar))}
-            style={a.color ? { backgroundColor: a.color } : undefined}
+            className="size-2 shrink-0 rounded-full"
+            style={{
+              backgroundColor:
+                a.color || `hsl(var(${CAT[a.category]?.hue || CAT.pelaksanaan.hue}))`,
+            }}
             data-testid={`activity-dot-${a.id}`}
           />
           <span className="block max-w-[18rem] truncate font-medium" title={a.name}>
@@ -463,11 +468,19 @@ export default function TimeScheduleDetail() {
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             {Object.entries(CAT).map(([k, v]) => (
               <span key={k} className="inline-flex items-center gap-1.5">
-                <span className={cn("h-2.5 w-4 rounded-sm", v.bar)} /> {v.label}
+                <span
+                  className="h-2.5 w-4 rounded-sm"
+                  style={{ backgroundColor: `hsl(var(${v.hue}))` }}
+                />{" "}
+                {v.label}
               </span>
             ))}
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-4 rounded-sm border bg-muted" /> Libur / akhir pekan
+              <span
+                className="h-2.5 w-4 rounded-sm border"
+                style={{ backgroundColor: HOLIDAY_COL, borderColor: HOLIDAY_TEXT }}
+              />{" "}
+              Kolom Hari Libur
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-2.5 w-4 rounded-sm bg-accent ring-1 ring-primary/50" /> Hari Event
@@ -516,11 +529,15 @@ export default function TimeScheduleDetail() {
                         key={i}
                         className={cn(
                           "shrink-0 border-r py-1.5 text-center text-[10px] text-muted-foreground",
-                          (holidays.has(key) || wknd) && "bg-muted",
                           eventDates.has(key) && "bg-accent font-semibold text-accent-foreground",
                           key === todayKey && "border-l-2 border-l-primary font-semibold text-foreground"
                         )}
-                        style={{ width: DAY_W }}
+                        style={{
+                          width: DAY_W,
+                          ...(holidays.has(key) || wknd
+                            ? { backgroundColor: HOLIDAY_COL, color: HOLIDAY_TEXT }
+                            : null),
+                        }}
                         title={d.toLocaleDateString("id-ID")}
                       >
                         {d.getDate()}
@@ -560,22 +577,30 @@ export default function TimeScheduleDetail() {
                             key={i}
                             className={cn(
                               "flex shrink-0 items-center border-r px-px",
-                              (holidays.has(key) || wknd) && "bg-muted/70",
                               eventDates.has(key) && "bg-accent/60",
                               key === todayKey && "border-l-2 border-l-primary"
                             )}
-                            style={{ width: DAY_W, height: ROW_H }}
+                            style={{
+                              width: DAY_W,
+                              height: ROW_H,
+                              ...(holidays.has(key) || wknd
+                                ? { backgroundColor: HOLIDAY_COL }
+                                : null),
+                            }}
                           >
                             {on ? (
                               <div
                                 className={cn(
                                   "h-4 w-full",
-                                  !a.color && (CAT[a.category]?.bar || CAT.pelaksanaan.bar),
                                   isStart && "ml-0.5 rounded-l-full",
                                   isEnd && "mr-0.5 rounded-r-full",
                                   key > todayKey && "opacity-40"
                                 )}
-                                style={a.color ? { backgroundColor: a.color } : undefined}
+                                style={{
+                                  backgroundColor:
+                                    a.color ||
+                                    `hsl(var(${CAT[a.category]?.hue || CAT.pelaksanaan.hue}))`,
+                                }}
                               />
                             ) : null}
                           </div>
