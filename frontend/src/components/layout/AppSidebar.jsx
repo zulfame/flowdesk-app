@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Check, ChevronsUpDown, LogOut, UserRound, Waves } from "lucide-react";
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,6 +84,7 @@ export const AppSidebar = (props) => {
   const currentUser = {
     name: user?.name || "Pengguna",
     email: user?.email || "",
+    avatar: user?.avatar || "",
     initials: initialsOf(user?.name, user?.email),
   };
 
@@ -217,6 +218,13 @@ export const AppSidebar = (props) => {
                   data-testid="user-menu-trigger"
                 >
                   <Avatar className="h-8 w-8 rounded-lg">
+                    {currentUser.avatar ? (
+                      <AvatarImage
+                        src={currentUser.avatar}
+                        alt=""
+                        className="object-cover"
+                      />
+                    ) : null}
                     <AvatarFallback className="rounded-lg text-xs">
                       {currentUser.initials}
                     </AvatarFallback>
@@ -239,6 +247,13 @@ export const AppSidebar = (props) => {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
+                      {currentUser.avatar ? (
+                        <AvatarImage
+                          src={currentUser.avatar}
+                          alt=""
+                          className="object-cover"
+                        />
+                      ) : null}
                       <AvatarFallback className="rounded-lg text-xs">
                         {currentUser.initials}
                       </AvatarFallback>

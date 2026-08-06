@@ -252,7 +252,8 @@ export default function Profile() {
             control={passwordForm.control}
             name="new_password"
             render={({ field }) => (
-              <FormItem>
+              /* Forces a new row: current password sits alone above (UX request). */
+              <FormItem className="sm:col-start-1">
                 <FormLabel>Kata Sandi Baru</FormLabel>
                 <FormControl>
                   <PasswordInput
