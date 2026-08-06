@@ -16,11 +16,11 @@ import {
   Phone,
   Plus,
   Printer,
+  RotateCcw,
   Send,
   Trash2,
   User,
   Video,
-  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -46,7 +46,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import DocumentManager from "@/components/DocumentManager";
 import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
@@ -316,177 +315,192 @@ export default function TaskDetail() {
                 Item Tugas ({doneCount}/{items.length})
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
+            <CardContent className="p-0">
               {items.length === 0 ? (
-                <p className="py-3 text-center text-muted-foreground">Belum ada item tugas.</p>
-              ) : null}
-              {items.map((item) => (
-                <Collapsible
-                  key={item.id}
-                  className={cn("rounded-md border", itemOverdue(item) && "border-destructive/50")}
-                  data-testid={`item-${item.id}`}
-                >
-                  <div className="flex items-start gap-3 p-3">
-                    <Checkbox
-                      checked={Boolean(item.pic_done || item.done)}
-                      disabled={!(isPic && !item.done)}
-                      onCheckedChange={() => togglePicDone(item.id)}
-                      className="mt-0.5"
-                      data-testid={`item-check-${item.id}`}
-                    />
-                    <div className="min-w-0 flex-1 space-y-1.5">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <p className={cn("text-[13px] font-medium", item.done && "text-muted-foreground line-through")}>
-                          {item.title}
-                        </p>
-                        {item.done ? (
-                          <Badge variant="default" className="font-normal">
-                            Disetujui
-                          </Badge>
-                        ) : item.pic_done ? (
-                          <Badge variant="secondary" className="font-normal">
-                            Menunggu persetujuan
-                          </Badge>
-                        ) : null}
-                        {itemOverdue(item) ? (
-                          <Badge variant="destructive" className="font-normal">
-                            Terlambat
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-                        {canEditStructure ? (
-                          <span className="flex items-center gap-1.5">
-                            Tenggat:
-                            <Input
-                              type="date"
-                              value={item.due_date ? item.due_date.slice(0, 10) : ""}
-                              onChange={(e) =>
-                                setItemField(
-                                  item.id,
-                                  "due_date",
-                                  e.target.value ? new Date(e.target.value).toISOString() : null
-                                )
-                              }
-                              className="h-[var(--ctl-h-sm)] w-36 text-xs"
-                              data-testid={`item-due-${item.id}`}
-                            />
-                          </span>
-                        ) : item.due_date ? (
-                          <span>Tenggat: {fmtDay(item.due_date)}</span>
-                        ) : null}
-                        {item.pic_done && !item.done && item.pic_done_at ? (
-                          <span>Dikerjakan: {fmtDay(item.pic_done_at)}</span>
-                        ) : null}
-                        {item.done && item.done_at ? <span>Disetujui: {fmtDay(item.done_at)}</span> : null}
-                        {item.done && item.approved_by ? <span>oleh {item.approved_by}</span> : null}
-                      </div>
-                      {isOwner ? (
-                        !(item.pic_done || item.done) ? (
-                          <p className="text-xs italic text-muted-foreground">
-                            Menunggu PIC menandai item ini selesai…
-                          </p>
-                        ) : !item.done ? (
-                          <Button
-                            size="sm"
-                            onClick={() => toggleApprove(item.id)}
-                            data-testid={`item-approve-${item.id}`}
-                          >
-                            <Check className="size-4" /> Setujui
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => toggleApprove(item.id)}
-                            data-testid={`item-unapprove-${item.id}`}
-                          >
-                            <X className="size-4" /> Batalkan Persetujuan
-                          </Button>
-                        )
-                      ) : null}
-                    </div>
-                    <div className="flex shrink-0 items-center gap-1">
-                      <CollapsibleTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-xs"
-                          data-testid={`item-docs-toggle-${item.id}`}
+                <p className="py-6 text-center text-muted-foreground">Belum ada item tugas.</p>
+              ) : (
+                <div className="divide-y">
+                  {items.map((item) => {
+                    const meta = [
+                      item.due_date ? `Tenggat ${fmtDay(item.due_date)}` : "Tanpa tenggat",
+                      item.pic_done && !item.done && item.pic_done_at
+                        ? `Dikerjakan ${fmtDay(item.pic_done_at)}`
+                        : null,
+                      item.done && item.done_at ? `Disetujui ${fmtDay(item.done_at)}` : null,
+                      item.done && item.approved_by ? `oleh ${item.approved_by}` : null,
+                      !item.pic_done && !item.done ? "Menunggu PIC" : null,
+                    ].filter(Boolean);
+                    const docCount = (item.documents || []).length + (item.result_docs || []).length;
+                    return (
+                      <Collapsible key={item.id} className="group/item" data-testid={`item-${item.id}`}>
+                        <div
+                          className={cn(
+                            "flex items-center gap-3 px-6 py-2 transition-colors hover:bg-muted/40",
+                            itemOverdue(item) && "border-l-2 border-l-destructive"
+                          )}
                         >
-                          <FileText className="size-3.5" />
-                          {(item.documents || []).length + (item.result_docs || []).length}
-                          <ChevronDown className="size-3.5" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      {canEditStructure ? (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="size-7 text-destructive"
-                          aria-label={ACTION.delete}
-                          onClick={() => removeItem(item.id)}
-                          data-testid={`item-remove-${item.id}`}
-                        >
-                          <X className="size-4" />
-                        </Button>
-                      ) : null}
-                    </div>
-                  </div>
-                  <CollapsibleContent>
-                    <Separator />
-                    <div className="space-y-4 p-3">
-                      {(item.documents || []).length > 0 || showDocsFor[item.id] ? (
-                        <DocumentManager
-                          taskId={id}
-                          documents={item.documents || []}
-                          onChange={(docs) => setItemField(item.id, "documents", docs)}
-                          label="Dokumen Item"
-                          idPrefix={`item-${item.id}`}
-                          canManage={canEditStructure}
-                          canRespond={canProgress}
-                          currentUserId={user?.id}
-                          emptyText="Belum ada dokumen item"
-                        />
-                      ) : canEditStructure ? (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setShowDocsFor((s) => ({ ...s, [item.id]: true }))}
-                          data-testid={`btn-add-item-doc-${item.id}`}
-                        >
-                          <Plus className="size-4" /> Dokumen Item
-                        </Button>
-                      ) : null}
+                          <Checkbox
+                            checked={Boolean(item.pic_done || item.done)}
+                            disabled={!(isPic && !item.done)}
+                            onCheckedChange={() => togglePicDone(item.id)}
+                            data-testid={`item-check-${item.id}`}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <p
+                                className={cn(
+                                  "truncate text-[13px] font-medium",
+                                  item.done && "text-muted-foreground line-through"
+                                )}
+                                title={item.title}
+                              >
+                                {item.title}
+                              </p>
+                              {item.done ? (
+                                <Badge variant="default" className="shrink-0 font-normal">
+                                  Disetujui
+                                </Badge>
+                              ) : item.pic_done ? (
+                                <Badge variant="secondary" className="shrink-0 font-normal">
+                                  Menunggu persetujuan
+                                </Badge>
+                              ) : null}
+                              {itemOverdue(item) ? (
+                                <Badge variant="destructive" className="shrink-0 font-normal">
+                                  Terlambat
+                                </Badge>
+                              ) : null}
+                            </div>
+                            <p className="truncate text-xs text-muted-foreground">{meta.join(" · ")}</p>
+                          </div>
 
-                      <div className="space-y-[var(--item-gap)]">
-                        <Label>Catatan Tugas</Label>
-                        <ItemResult
-                          value={item.result}
-                          editable={canProgress}
-                          onSave={(text) => setItemField(item.id, "result", text)}
-                          testid={`item-result-${item.id}`}
-                        />
-                      </div>
+                          {isOwner && item.pic_done && !item.done ? (
+                            <Button
+                              size="sm"
+                              className="h-7 shrink-0"
+                              onClick={() => toggleApprove(item.id)}
+                              data-testid={`item-approve-${item.id}`}
+                            >
+                              <Check className="size-3.5" /> Setujui
+                            </Button>
+                          ) : null}
+                          {isOwner && item.done ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 shrink-0"
+                              aria-label="Batalkan persetujuan"
+                              onClick={() => toggleApprove(item.id)}
+                              data-testid={`item-unapprove-${item.id}`}
+                            >
+                              <RotateCcw className="size-3.5" />
+                            </Button>
+                          ) : null}
 
-                      {canProgress || (item.result_docs || []).length > 0 ? (
-                        <DocumentManager
-                          taskId={id}
-                          documents={item.result_docs || []}
-                          onChange={(docs) => setItemField(item.id, "result_docs", docs)}
-                          label="Lampiran Catatan"
-                          idPrefix={`result-${item.id}`}
-                          canManage={canEditStructure}
-                          canAddDoc={canProgress}
-                          canRespond={false}
-                          currentUserId={user?.id}
-                          emptyText="Belum ada lampiran"
-                        />
-                      ) : null}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              ))}
+                          <CollapsibleTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 shrink-0 gap-1 px-2 text-xs text-muted-foreground"
+                              data-testid={`item-docs-toggle-${item.id}`}
+                            >
+                              <FileText className="size-3.5" />
+                              {docCount}
+                              <ChevronDown className="size-3.5 transition-transform group-data-[state=open]/item:rotate-180" />
+                            </Button>
+                          </CollapsibleTrigger>
+                          {canEditStructure ? (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
+                              aria-label={ACTION.delete}
+                              onClick={() => removeItem(item.id)}
+                              data-testid={`item-remove-${item.id}`}
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          ) : null}
+                        </div>
+
+                        <CollapsibleContent>
+                          <div className="space-y-4 border-t bg-muted/30 px-6 py-3">
+                            {canEditStructure ? (
+                              <div className="flex items-center gap-2">
+                                <Label htmlFor={`item-due-${item.id}`} className="shrink-0">
+                                  Tenggat item
+                                </Label>
+                                <Input
+                                  id={`item-due-${item.id}`}
+                                  type="date"
+                                  value={item.due_date ? item.due_date.slice(0, 10) : ""}
+                                  onChange={(e) =>
+                                    setItemField(
+                                      item.id,
+                                      "due_date",
+                                      e.target.value ? new Date(e.target.value).toISOString() : null
+                                    )
+                                  }
+                                  className="h-[var(--ctl-h-sm)] w-40"
+                                  data-testid={`item-due-${item.id}`}
+                                />
+                              </div>
+                            ) : null}
+
+                            {(item.documents || []).length > 0 || showDocsFor[item.id] ? (
+                              <DocumentManager
+                                taskId={id}
+                                documents={item.documents || []}
+                                onChange={(docs) => setItemField(item.id, "documents", docs)}
+                                label="Dokumen Item"
+                                idPrefix={`item-${item.id}`}
+                                canManage={canEditStructure}
+                                canRespond={canProgress}
+                                currentUserId={user?.id}
+                                emptyText="Belum ada dokumen item"
+                              />
+                            ) : canEditStructure ? (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setShowDocsFor((s) => ({ ...s, [item.id]: true }))}
+                                data-testid={`btn-add-item-doc-${item.id}`}
+                              >
+                                <Plus className="size-4" /> Dokumen Item
+                              </Button>
+                            ) : null}
+
+                            <div className="space-y-[var(--item-gap)]">
+                              <Label>Catatan Tugas</Label>
+                              <ItemResult
+                                value={item.result}
+                                editable={canProgress}
+                                onSave={(text) => setItemField(item.id, "result", text)}
+                                testid={`item-result-${item.id}`}
+                              />
+                            </div>
+
+                            {canProgress || (item.result_docs || []).length > 0 ? (
+                              <DocumentManager
+                                taskId={id}
+                                documents={item.result_docs || []}
+                                onChange={(docs) => setItemField(item.id, "result_docs", docs)}
+                                label="Lampiran Catatan"
+                                idPrefix={`result-${item.id}`}
+                                canManage={canEditStructure}
+                                canAddDoc={canProgress}
+                                canRespond={false}
+                                currentUserId={user?.id}
+                                emptyText="Belum ada lampiran"
+                              />
+                            ) : null}
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    );
+                  })}
+                </div>
+              )}
             </CardContent>
             {canEditStructure ? (
               <CardFooter className="gap-2">

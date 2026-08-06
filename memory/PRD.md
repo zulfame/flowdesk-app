@@ -276,3 +276,11 @@ Feedback user: "banyak text dalam konten 16px, sangat jauh dari compact" + "form
 - **Form Tugas** (`TaskForm.jsx`) dikembalikan ke layout lama: kiri = *Informasi Tugas* + *Item Tugas*, kanan = *Pemberi Tugas*, *PIC Pelaksana*, *Dokumen Sumber*; bar aksi Batal/Simpan sebagai `Card > CardFooter` di bawah grid.
 - **Komponen lama dipadatkan** (dipakai di Tugas/Rapat/Time Schedule): `UserSelect` h-11→**h-8**, 14→13px, rounded-md, placeholder `ACTION.search`; `DocumentManager` → daftar `divide-y` padat 13px, badge Revisi/Final pakai token (bukan amber/emerald), dialog URL/Balasan/Pratinjau pakai `DialogBody`+`form-dense`, toast via `notify`; `AttachmentPanel` → baris padat 13px + `notify`; `RichTextEditor` → toolbar 28px, rounded-md, `bg-muted/40`.
 - Verifikasi: audit `getComputedStyle` di Dashboard, Tugas, Rapat, Catatan, Kalender, Pengguna, Profil, Notifikasi, dan dialog → **tidak ada lagi teks ≥17px**; 16px hanya judul card/dialog. Guard exit 0. Login hero tetap besar (dikecualikan).
+
+## Update (2026-08-06, lanjutan 4) — Redesign kartu "Item Tugas" (Detail Tugas)
+Feedback user: daftar item terlihat berantakan (tiap item jadi kotak terpisah, input tanggal inline, teks italic "Menunggu PIC…").
+- `TaskDetail.jsx`: kartu Item Tugas kini **satu kontainer `divide-y`** tanpa kotak per item; `CardContent` jadi `p-0`, baris `px-6 py-2` dengan hover `bg-muted/40`.
+- Satu baris = `Checkbox` · judul (13px) + badge status (Disetujui / Menunggu persetujuan / Terlambat) · baris meta 12px berisi `Tenggat … · Dikerjakan … · Disetujui … · oleh …` atau "Menunggu PIC" (menggantikan teks italic) · cluster aksi kanan: **Setujui** (h-7, hanya saat menunggu persetujuan), ikon `RotateCcw` (batalkan persetujuan), pemicu `⌄` dengan jumlah dokumen + rotasi ikon, dan `Trash2` hapus item.
+- Input **tenggat item dipindah ke panel Collapsible** (`bg-muted/30`, `border-t`) bersama Dokumen Item, Catatan Tugas, dan Lampiran Catatan — baris utama jadi bersih.
+- Item terlambat ditandai `border-l-2 border-l-destructive` (bukan border penuh).
+- Import `Separator`/`X` yang tak terpakai dibersihkan. Guard exit 0. Diverifikasi visual: baris rapat & sejajar, panel expand berfungsi.
