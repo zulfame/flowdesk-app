@@ -3,14 +3,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Building2,
-  Check,
   ChevronDown,
   Copy,
   FileText,
   LayoutTemplate,
   Loader2,
   Mail,
-  Megaphone,
   MoreHorizontal,
   Phone,
   Plus,
@@ -228,18 +226,6 @@ export default function TaskDetail() {
       await api.post(`/tasks/${id}/comments`, { text: comment });
       setComment("");
       load();
-    } catch (err) {
-      notify.error(apiError(err));
-    }
-  };
-
-  const broadcast = async () => {
-    try {
-      const { data } = await api.post(`/tasks/${id}/broadcast`, { channels: ["email", "whatsapp"] });
-      if (data.wa_url) window.open(data.wa_url, "_blank");
-      if (data.email_sent) notify.success("Pemberitahuan terkirim ke pemberi tugas.");
-      else if (data.wa_url) notify.success("Tautan WhatsApp dibuka.");
-      else notify.error("Pemberi tugas belum memiliki nomor HP atau email.");
     } catch (err) {
       notify.error(apiError(err));
     }
@@ -497,11 +483,11 @@ export default function TaskDetail() {
                           {isOwner && item.pic_done && !item.done ? (
                             <Button
                               size="sm"
-                              className="h-7 shrink-0"
+                              className="h-6 shrink-0 rounded-md px-2.5 py-0.5 text-xs font-normal"
                               onClick={() => toggleApprove(item.id)}
                               data-testid={`item-approve-${item.id}`}
                             >
-                              <Check className="size-3.5" /> Setujui
+                              Setujui
                             </Button>
                           ) : null}
                           {isOwner && item.done ? (
@@ -776,17 +762,6 @@ export default function TaskDetail() {
             testid="requester"
             onEditStart={() => setReqDraft(task.requester?.name ? task.requester : null)}
             onSave={() => saveAnd({ requester: reqDraft }, "Pemberi tugas diperbarui.")}
-            footerExtra={
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={broadcast}
-                disabled={!req.phone && !req.email}
-                data-testid="btn-broadcast"
-              >
-                <Megaphone className="size-4" /> {ACTION.send}
-              </Button>
-            }
           >
             {(editing) =>
               editing ? (
@@ -845,34 +820,6 @@ export default function TaskDetail() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Riwayat ({(task.history || []).length})</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="thin-scroll max-h-72 space-y-3 overflow-y-auto pr-1">
-                {(task.history || []).length === 0 ? (
-                  <p className="text-muted-foreground">Belum ada riwayat.</p>
-                ) : null}
-                {(task.history || [])
-                  .slice()
-                  .reverse()
-                  .map((h, i) => (
-                    <div key={i} className="flex items-start gap-2">
-                      <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground" />
-                      <div className="min-w-0">
-                        <p className={h.detail ? "" : "capitalize"}>
-                          {h.detail || (h.action || "").replace(/_/g, " ")}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {h.by} · {timeAgo(h.at)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </CardContent>
-          </Card>
         </div>
       </div>
 
