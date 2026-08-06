@@ -1,17 +1,19 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Info, Loader2, Save } from "lucide-react";
+import { Eye, Info, Loader2, Save } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Form,
   FormControl,
@@ -30,13 +32,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { ImagePicker } from "@/components/composite/ImagePicker";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useBranding } from "@/context/BrandingContext";
 import { ACTION } from "@/constants/labels";
-import { brandingSchema, identitySchema } from "@/lib/validation/adminSchema";
+import {
+  brandingSchema,
+  contactSchema,
+  identitySchema,
+  ogSchema,
+  seoSchema,
+} from "@/lib/validation/adminSchema";
 
 const TIMEZONES = ["Asia/Jakarta", "Asia/Makassar", "Asia/Jayapura", "UTC"];
 const LANGUAGES = [
@@ -45,10 +54,18 @@ const LANGUAGES = [
 ];
 const DATE_FORMATS = ["DD/MM/YYYY", "YYYY-MM-DD", "DD MMM YYYY"];
 
-const HEX_PLACEHOLDER = "#111827"; // guard-allow: default/contoh hex — warna merek = DATA pengguna (E2), bukan gaya UI
+const HEX_PLACEHOLDER = "#111827"; // guard-allow: contoh hex — warna merek = DATA pengguna (E2)
+
+const domainOf = (url) => {
+  try {
+    return new URL(url).hostname.toUpperCase();
+  } catch {
+    return "";
+  }
+};
 
 /** Configuration section whose submit action lives in the Card footer (R51/FD5). */
-const FormSection = ({ title, form, onSubmit, submitting, submitTestId, testid, children }) => (
+const FormSection = ({ title, form, onSubmit, submitTestId, testid, extraAction, children }) => (
   <Card data-testid={testid}>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} noValidate>
@@ -56,14 +73,20 @@ const FormSection = ({ title, form, onSubmit, submitting, submitTestId, testid, 
           <CardTitle className="text-base">{title}</CardTitle>
         </CardHeader>
         <CardContent className="form-dense space-y-4">{children}</CardContent>
-        <CardFooter className="justify-end gap-2">
-          <Button type="submit" size="sm" disabled={submitting} data-testid={submitTestId}>
-            {submitting ? (
+        <CardFooter className={extraAction ? "justify-between gap-2" : "justify-end gap-2"}>
+          {extraAction}
+          <Button
+            type="submit"
+            size="sm"
+            disabled={form.formState.isSubmitting}
+            data-testid={submitTestId}
+          >
+            {form.formState.isSubmitting ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />
             ) : (
               <Save className="size-4" aria-hidden="true" />
             )}
-            {submitting ? ACTION.saving : ACTION.save}
+            {form.formState.isSubmitting ? ACTION.saving : ACTION.save}
           </Button>
         </CardFooter>
       </form>
@@ -71,19 +94,19 @@ const FormSection = ({ title, form, onSubmit, submitting, submitTestId, testid, 
   </Card>
 );
 
-/**
- * AppSettings — application configuration (R51 + FD5):
- * stacked section cards (Identitas, Tampilan & Merek), each saving from its
- * own Card footer. Both sections persist the full `general` settings object.
- */
+/** AppSettings — konfigurasi aplikasi: 6 section card, simpan per section (R51/FD5). */
 export default function AppSettings() {
   const { refresh } = useBranding();
   const [ready, setReady] = useState(false);
+  const [rawOpen, setRawOpen] = useState(false);
+  const [raw, setRaw] = useState("");
 
   const identityForm = useForm({
     resolver: zodResolver(identitySchema),
     defaultValues: {
       app_name: "",
+      tagline: "",
+      brand_initials: "",
       company: "",
       timezone: "Asia/Jakarta",
       language: "id",
@@ -96,7 +119,30 @@ export default function AppSettings() {
 
   const brandingForm = useForm({
     resolver: zodResolver(brandingSchema),
-    defaultValues: { primary_color: "", logo: "", favicon: "", thumbnail: "" },
+    defaultValues: { primary_color: "", logo: "", logo_dark: "", favicon: "", thumbnail: "" },
+    mode: "onSubmit",
+  });
+
+  const seoForm = useForm({
+    resolver: zodResolver(seoSchema),
+    defaultValues: {
+      meta_description: "",
+      meta_keywords: "",
+      canonical_url: "",
+      search_visible: false,
+    },
+    mode: "onSubmit",
+  });
+
+  const ogForm = useForm({
+    resolver: zodResolver(ogSchema),
+    defaultValues: { og_title: "", og_description: "", og_image: "" },
+    mode: "onSubmit",
+  });
+
+  const contactForm = useForm({
+    resolver: zodResolver(contactSchema),
+    defaultValues: { support_email: "", footer_text: "" },
     mode: "onSubmit",
   });
 
@@ -109,6 +155,8 @@ export default function AppSettings() {
         const g = data.general || {};
         identityForm.reset({
           app_name: g.app_name || "",
+          tagline: g.tagline || "",
+          brand_initials: g.brand_initials || "",
           company: g.company || "",
           timezone: g.timezone || "Asia/Jakarta",
           language: g.language || "id",
@@ -119,8 +167,24 @@ export default function AppSettings() {
         brandingForm.reset({
           primary_color: g.primary_color || "",
           logo: g.logo || "",
+          logo_dark: g.logo_dark || "",
           favicon: g.favicon || "",
           thumbnail: g.thumbnail || "",
+        });
+        seoForm.reset({
+          meta_description: g.meta_description || "",
+          meta_keywords: g.meta_keywords || "",
+          canonical_url: g.canonical_url || "",
+          search_visible: Boolean(g.search_visible),
+        });
+        ogForm.reset({
+          og_title: g.og_title || "",
+          og_description: g.og_description || "",
+          og_image: g.og_image || "",
+        });
+        contactForm.reset({
+          support_email: g.support_email || "",
+          footer_text: g.footer_text || "",
         });
         setReady(true);
       })
@@ -128,35 +192,26 @@ export default function AppSettings() {
     return () => {
       active = false;
     };
-  }, [identityForm, brandingForm]);
+  }, [identityForm, brandingForm, seoForm, ogForm, contactForm]);
 
   const persist = useCallback(
-    async (successMessage) => {
-      const general = { ...identityForm.getValues(), ...brandingForm.getValues() };
-      await api.put("/settings", {
-        general,
-        application: {
-          primary_color: general.primary_color,
-          date_format: general.date_format,
-        },
-      });
-      notify.success(successMessage);
-      refresh();
+    async (values, successMessage) => {
+      try {
+        await api.put("/settings", { general: values });
+        notify.success(successMessage);
+        refresh();
+      } catch (err) {
+        notify.error(apiError(err));
+      }
     },
-    [identityForm, brandingForm, refresh]
+    [refresh]
   );
 
-  const saveIdentity = async () => {
+  const openRaw = async () => {
     try {
-      await persist("Identitas aplikasi berhasil disimpan.");
-    } catch (err) {
-      notify.error(apiError(err));
-    }
-  };
-
-  const saveBranding = async () => {
-    try {
-      await persist("Tampilan & merek berhasil disimpan.");
+      const { data } = await api.get("/og/preview");
+      setRaw(data.html || "");
+      setRawOpen(true);
     } catch (err) {
       notify.error(apiError(err));
     }
@@ -165,7 +220,7 @@ export default function AppSettings() {
   if (!ready) {
     return (
       <div className="space-y-6" data-testid="app-settings-loading">
-        {Array.from({ length: 2 }).map((_, i) => (
+        {Array.from({ length: 3 }).map((_, i) => (
           <Card key={i}>
             <CardHeader>
               <Skeleton className="h-4 w-40" />
@@ -181,17 +236,23 @@ export default function AppSettings() {
     );
   }
 
+  const ident = identityForm.watch();
+  const og = ogForm.watch();
+  const seo = seoForm.watch();
+  const ogTitle = og.og_title || ident.app_name || "FlowDesk";
+  const ogDesc = og.og_description || seo.meta_description || "";
+  const ogUrl = seo.canonical_url || ident.app_url || "";
+
   return (
     <div className="space-y-6" data-testid="app-settings-page">
       <FormSection
-        title="Identitas"
+        title="Identitas Aplikasi"
         form={identityForm}
-        onSubmit={saveIdentity}
-        submitting={identityForm.formState.isSubmitting}
+        onSubmit={(v) => persist(v, "Identitas aplikasi berhasil disimpan.")}
         submitTestId="btn-save-app-settings"
         testid="app-identity-card"
       >
-        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-3 sm:grid-cols-2 lg:grid-cols-4">
           <FormField
             control={identityForm.control}
             name="app_name"
@@ -205,6 +266,43 @@ export default function AppSettings() {
               </FormItem>
             )}
           />
+          <FormField
+            control={identityForm.control}
+            name="tagline"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Tagline / Sub Judul</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-tagline" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={identityForm.control}
+            name="brand_initials"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Inisial Brand</FormLabel>
+                <FormControl>
+                  <Input maxLength={3} data-testid="setting-brand-initials" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="flex items-center gap-3 rounded-md border bg-muted/30 px-3 py-2">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-md bg-foreground text-xs font-semibold text-background">
+              {(ident.brand_initials || ident.app_name || "FD").slice(0, 3).toUpperCase()}
+            </span>
+            <span className="min-w-0">
+              <span className="block truncate font-medium">{ident.app_name || "FlowDesk"}</span>
+              <span className="block truncate text-xs text-muted-foreground">
+                {ident.tagline || "Tanpa tagline"}
+              </span>
+            </span>
+          </div>
           <FormField
             control={identityForm.control}
             name="company"
@@ -304,72 +402,35 @@ export default function AppSettings() {
             )}
           />
         </div>
-
-        <FormField
-          control={identityForm.control}
-          name="meta_description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Meta Deskripsi</FormLabel>
-              <FormControl>
-                <Textarea rows={2} data-testid="setting-meta-description" {...field} />
-              </FormControl>
-              <FormDescription>Digunakan untuk SEO / preview tautan.</FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
       </FormSection>
 
       <FormSection
-        title="Tampilan & Merek"
+        title="Aset Merek"
         form={brandingForm}
-        onSubmit={saveBranding}
-        submitting={brandingForm.formState.isSubmitting}
+        onSubmit={(v) => persist(v, "Aset merek berhasil disimpan.")}
         submitTestId="btn-save-branding"
         testid="app-branding-card"
       >
-        <Alert>
-          <Info className="h-4 w-4" aria-hidden="true" />
-          <AlertDescription>
-            Antarmuka aplikasi memakai palet monokrom. Warna utama disimpan sebagai identitas
-            merek dan tidak mengubah warna antarmuka.
-          </AlertDescription>
-        </Alert>
-
-        <FormField
-          control={brandingForm.control}
-          name="primary_color"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Warna Utama</FormLabel>
-              <div className="flex items-center gap-2">
-                <input
-                  type="color"
-                  value={field.value || HEX_PLACEHOLDER}
-                  onChange={(e) => field.onChange(e.target.value)}
-                  className="h-[var(--ctl-h)] w-12 cursor-pointer rounded-md border border-input bg-background p-1"
-                  aria-label="Pilih warna utama"
-                  data-testid="setting-primary-color"
-                />
-                <FormControl>
-                  <Input className="w-full sm:w-[9rem]" placeholder={HEX_PLACEHOLDER} {...field} />
-                </FormControl>
-              </div>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
           <FormField
             control={brandingForm.control}
             name="logo"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Logo</FormLabel>
+                <FormLabel>Logo (latar terang)</FormLabel>
+                <FormDescription>Logo gelap untuk latar terang. Maks 600 KB.</FormDescription>
                 <ImagePicker value={field.value} onChange={field.onChange} testid="logo" />
-                <FormDescription>Tampil di sidebar & layar masuk. Maks 600 KB.</FormDescription>
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={brandingForm.control}
+            name="logo_dark"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Logo (latar gelap)</FormLabel>
+                <FormDescription>Logo terang untuk latar gelap, mis. panel masuk.</FormDescription>
+                <ImagePicker value={field.value} onChange={field.onChange} testid="logo-dark" />
               </FormItem>
             )}
           />
@@ -379,8 +440,8 @@ export default function AppSettings() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Favicon</FormLabel>
+                <FormDescription>Ikon persegi (PNG/ICO), 32–512 px.</FormDescription>
                 <ImagePicker value={field.value} onChange={field.onChange} testid="favicon" />
-                <FormDescription>Ikon tab browser (PNG/ICO).</FormDescription>
               </FormItem>
             )}
           />
@@ -390,13 +451,250 @@ export default function AppSettings() {
             render={({ field }) => (
               <FormItem>
                 <FormLabel>Thumbnail</FormLabel>
+                <FormDescription>Cadangan gambar pratinjau bila OG Image kosong.</FormDescription>
                 <ImagePicker value={field.value} onChange={field.onChange} testid="thumbnail" />
-                <FormDescription>Gambar preview saat tautan dibagikan.</FormDescription>
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <FormField
+          control={brandingForm.control}
+          name="primary_color"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Warna Merek</FormLabel>
+              <div className="flex items-center gap-2">
+                <input
+                  type="color"
+                  value={field.value || HEX_PLACEHOLDER}
+                  onChange={(e) => field.onChange(e.target.value)}
+                  className="h-[var(--ctl-h)] w-12 cursor-pointer rounded-md border border-input bg-background p-1"
+                  aria-label="Pilih warna merek"
+                  data-testid="setting-primary-color"
+                />
+                <FormControl>
+                  <Input className="w-full sm:w-[9rem]" placeholder={HEX_PLACEHOLDER} {...field} />
+                </FormControl>
+              </div>
+              <FormDescription>
+                Antarmuka tetap monokrom; warna ini hanya disimpan sebagai identitas merek.
+              </FormDescription>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <Alert>
+          <Info className="h-4 w-4" aria-hidden="true" />
+          <AlertDescription>
+            Semua aset disimpan langsung di database (bukan penyimpanan berkas), sehingga otomatis
+            ikut terbawa saat Backup &amp; Restore.
+          </AlertDescription>
+        </Alert>
+      </FormSection>
+
+      <FormSection
+        title="SEO & Metadata"
+        form={seoForm}
+        onSubmit={(v) => persist(v, "Pengaturan SEO berhasil disimpan.")}
+        submitTestId="btn-save-seo"
+        testid="app-seo-card"
+      >
+        <FormField
+          control={seoForm.control}
+          name="meta_description"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Meta Description</FormLabel>
+              <FormControl>
+                <Textarea rows={2} data-testid="setting-meta-description" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+          <FormField
+            control={seoForm.control}
+            name="meta_keywords"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Meta Keywords</FormLabel>
+                <FormControl>
+                  <Input placeholder="pisahkan dengan koma" data-testid="setting-meta-keywords" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={seoForm.control}
+            name="canonical_url"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Canonical URL</FormLabel>
+                <FormControl>
+                  <Input placeholder="https://..." data-testid="setting-canonical-url" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={seoForm.control}
+          name="search_visible"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between gap-3 space-y-0 rounded-md border px-3 py-2">
+              <div className="min-w-0">
+                <FormLabel>Terlihat di mesin pencari</FormLabel>
+                <FormDescription>
+                  Bila nonaktif, halaman meminta mesin pencari untuk tidak mengindeks (noindex,
+                  nofollow). Disarankan tetap nonaktif untuk konsol internal.
+                </FormDescription>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                  data-testid="setting-search-visible"
+                />
+              </FormControl>
+            </FormItem>
+          )}
+        />
+      </FormSection>
+
+      <FormSection
+        title="Pratinjau Tautan (Open Graph)"
+        form={ogForm}
+        onSubmit={(v) => persist(v, "Pratinjau tautan berhasil disimpan.")}
+        submitTestId="btn-save-og"
+        testid="app-og-card"
+        extraAction={
+          <Button type="button" variant="outline" size="sm" onClick={openRaw} data-testid="btn-og-raw">
+            <Eye className="size-4" /> Lihat HTML mentah
+          </Button>
+        }
+      >
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+          <FormField
+            control={ogForm.control}
+            name="og_title"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>OG Title</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-og-title" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={ogForm.control}
+            name="og_description"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>OG Description</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-og-description" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+        <FormField
+          control={ogForm.control}
+          name="og_image"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>OG Image</FormLabel>
+              <FormDescription>Gambar pratinjau tautan (disarankan 1200×630).</FormDescription>
+              <ImagePicker value={field.value} onChange={field.onChange} testid="og-image" />
+            </FormItem>
+          )}
+        />
+
+        <p className="text-xs text-muted-foreground">
+          Pratinjau disajikan dari server <code>/api/og/render</code> untuk crawler WhatsApp,
+          Facebook, Telegram, dan X. Perubahan di sini langsung dipakai tanpa build ulang. Setelah
+          mengubah, minta ulang pratinjau di aplikasi chat (cache crawler bisa bertahan beberapa
+          jam).
+        </p>
+
+        <div className="max-w-md overflow-hidden rounded-md border" data-testid="og-preview">
+          <div className="flex aspect-[1200/630] items-center justify-center bg-muted/40">
+            {og.og_image ? (
+              <img src={og.og_image} alt="" className="size-full object-cover" />
+            ) : (
+              <span className="text-xs text-muted-foreground">Belum ada gambar pratinjau</span>
+            )}
+          </div>
+          <div className="space-y-1 px-3 py-2">
+            {ogUrl ? (
+              <p className="text-xs text-muted-foreground">{domainOf(ogUrl)}</p>
+            ) : null}
+            <p className="font-medium">{ogTitle}</p>
+            <p className="text-xs text-muted-foreground">{ogDesc || "Tanpa deskripsi."}</p>
+          </div>
+        </div>
+      </FormSection>
+
+      <FormSection
+        title="Kontak & Footer"
+        form={contactForm}
+        onSubmit={(v) => persist(v, "Kontak & footer berhasil disimpan.")}
+        submitTestId="btn-save-contact"
+        testid="app-contact-card"
+      >
+        <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+          <FormField
+            control={contactForm.control}
+            name="support_email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Email Dukungan</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-support-email" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <FormField
+            control={contactForm.control}
+            name="footer_text"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Teks Hak Cipta / Footer</FormLabel>
+                <FormControl>
+                  <Input data-testid="setting-footer-text" {...field} />
+                </FormControl>
+                <FormMessage />
               </FormItem>
             )}
           />
         </div>
       </FormSection>
+
+      <Dialog open={rawOpen} onOpenChange={setRawOpen}>
+        <DialogContent className="sm:max-w-2xl" data-testid="og-raw-dialog">
+          <DialogHeader>
+            <DialogTitle>HTML Pratinjau Tautan</DialogTitle>
+            <DialogDescription>
+              Keluaran <code>/api/og/render</code> yang dibaca crawler.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody>
+            <pre className="thin-scroll max-h-[24rem] overflow-auto rounded-md border bg-muted/40 p-3 text-xs">
+              {raw}
+            </pre>
+          </DialogBody>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

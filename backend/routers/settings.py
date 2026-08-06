@@ -15,6 +15,10 @@ DEFAULT_SETTINGS = {
         "app_name": "FlowDesk", "company": "", "timezone": "Asia/Jakarta", "language": "id",
         "primary_color": "#4F46E5", "favicon": "", "logo": "", "thumbnail": "",
         "meta_description": "Sistem Manajemen Kerja Internal", "app_url": "", "date_format": "DD/MM/YYYY",
+        "tagline": "", "brand_initials": "", "logo_dark": "",
+        "meta_keywords": "", "canonical_url": "", "search_visible": False,
+        "og_title": "", "og_description": "", "og_image": "",
+        "support_email": "", "footer_text": "",
     },
     "email": {"smtp_host": "", "smtp_port": 587, "smtp_user": "", "smtp_password": "",
               "from_name": "", "from_email": "", "notify_email": ""},
@@ -73,6 +77,11 @@ async def public_settings():
         "logo": g.get("logo", ""),
         "thumbnail": g.get("thumbnail", ""),
         "meta_description": g.get("meta_description", ""),
+        "tagline": g.get("tagline", ""),
+        "brand_initials": g.get("brand_initials", ""),
+        "logo_dark": g.get("logo_dark", ""),
+        "support_email": g.get("support_email", ""),
+        "footer_text": g.get("footer_text", ""),
     }
 
 

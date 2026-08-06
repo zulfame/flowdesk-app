@@ -43,6 +43,41 @@ export const identitySchema = z.object({
       message: "URL harus dimulai dengan http:// atau https://",
     }),
   meta_description: z.string().trim().optional(),
+  tagline: z.string().trim().optional(),
+  brand_initials: z.string().trim().max(3, "Maksimal 3 karakter.").optional(),
+});
+
+/** Application settings — SEO & metadata section. */
+export const seoSchema = z.object({
+  meta_description: z.string().trim().optional(),
+  meta_keywords: z.string().trim().optional(),
+  canonical_url: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^https?:\/\/.+/i.test(v), {
+      message: "URL harus dimulai dengan http:// atau https://",
+    }),
+  search_visible: z.boolean(),
+});
+
+/** Application settings — Open Graph section. */
+export const ogSchema = z.object({
+  og_title: z.string().trim().optional(),
+  og_description: z.string().trim().optional(),
+  og_image: z.string().optional(),
+});
+
+/** Application settings — contact & footer section. */
+export const contactSchema = z.object({
+  support_email: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), {
+      message: "Format email tidak valid.",
+    }),
+  footer_text: z.string().trim().optional(),
 });
 
 /** Application settings — branding section. */
@@ -55,6 +90,7 @@ export const brandingSchema = z.object({
       message: "Gunakan format warna heksadesimal, mis. #1F2937.",
     }),
   logo: z.string().optional(),
+  logo_dark: z.string().optional(),
   favicon: z.string().optional(),
   thumbnail: z.string().optional(),
 });
