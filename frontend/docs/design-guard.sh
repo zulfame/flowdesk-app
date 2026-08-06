@@ -108,7 +108,7 @@ m=$(grep -rnE 'from "sonner"' $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXC
 report "Import toast langsung dari 'sonner' (FD7: WAJIB lewat notify dari @/lib/notify)" "$m"
 
 # 19) FD7 — No hand-written toast titles.
-report "Judul toast dikarang (FD7: judul baku Sukses/Gagal/Peringatan/Info dari lib/notify.js; pemanggil hanya mengisi deskripsi)" \
+report "Judul toast dikarang (FD7: judul baku Berhasil/Gagal/Peringatan/Info dari lib/notify.js; pemanggil hanya mengisi deskripsi)" \
   "$(scan 'toast\.(success|error|warning|info)\s*\(')"
 
 # 15) FD5 — Card actions belong in <CardFooter>, not a hand-rolled save bar.

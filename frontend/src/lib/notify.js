@@ -4,14 +4,14 @@ import { toast } from "sonner";
  * notify — the ONLY way to raise a toast in FlowDesk (FD7).
  *
  * Titles are fixed so the same outcome always reads the same way:
- *   sukses → "Sukses" · gagal → "Gagal" · peringatan → "Peringatan" · info → "Info"
+ *   sukses → "Berhasil" · gagal → "Gagal" · peringatan → "Peringatan" · info → "Info"
  * Callers supply the DESCRIPTION (what happened), never the title.
  * Colour comes from the semantic feedback tokens wired in `ui/sonner.jsx`.
  *
  * Usage: notify.success("Profil diperbarui.") · notify.error(apiError(err))
  */
 export const TOAST_TITLE = {
-  success: "Sukses",
+  success: "Berhasil",
   error: "Gagal",
   warning: "Peringatan",
   info: "Info",

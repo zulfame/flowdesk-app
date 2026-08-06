@@ -54,7 +54,7 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
     due_soon = sorted(
         [t for t in tasks if t.get("deadline") and t["status"] in ACTIVE_STATUS],
         key=_due_key,
-    )[:6]
+    )[:50]
     due_soon = [
         {
             "id": t["id"], "title": t["title"], "deadline": t["deadline"], "status": t["status"],

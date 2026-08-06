@@ -53,34 +53,14 @@ const MONTHS = [
 const WEEKDAYS = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
 
 /**
- * Monochrome event styling: type is distinguished by fill/outline, never hue
- * (R05). Solid = rapat, outline = tenggat tugas, muted = pengingat/acara.
+ * Warna agenda (E9): tiap jenis punya hue token sendiri agar cepat dibedakan —
+ * dikecualikan dari aturan monokrom karena warna di sini adalah DATA.
  */
 const TYPE_META = {
-  meeting: {
-    label: "Rapat",
-    icon: Video,
-    chip: "bg-primary text-primary-foreground",
-    badge: "default",
-  },
-  task: {
-    label: "Tenggat Tugas",
-    icon: CheckSquare,
-    chip: "border border-foreground/40 bg-background text-foreground",
-    badge: "outline",
-  },
-  reminder: {
-    label: "Pengingat",
-    icon: Bell,
-    chip: "bg-muted text-muted-foreground",
-    badge: "secondary",
-  },
-  event: {
-    label: "Acara",
-    icon: CalendarDays,
-    chip: "border border-dashed border-foreground/40 bg-background text-muted-foreground",
-    badge: "outline",
-  },
+  meeting: { label: "Rapat", icon: Video, chip: "--ev-meeting" },
+  task: { label: "Tenggat Tugas", icon: CheckSquare, chip: "--ev-task" },
+  reminder: { label: "Pengingat", icon: Bell, chip: "--ev-reminder" },
+  event: { label: "Acara", icon: CalendarDays, chip: "--ev-event" },
 };
 
 const metaOf = (type) => TYPE_META[type] || TYPE_META.event;
@@ -212,7 +192,11 @@ export default function Calendar() {
                   key={key}
                   className="flex items-center gap-1.5 text-xs text-muted-foreground"
                 >
-                  <span className={cn("size-3 rounded-sm", meta.chip)} aria-hidden="true" />
+                  <span
+                    className="size-3 rounded-sm"
+                    style={{ backgroundColor: `hsl(var(${meta.chip}))` }}
+                    aria-hidden="true"
+                  />
                   {meta.label}
                 </span>
               ))}
@@ -293,10 +277,8 @@ export default function Calendar() {
                         {dayEvents.slice(0, 2).map((event) => (
                           <span
                             key={`${event.type}-${event.id}`}
-                            className={cn(
-                              "block truncate rounded px-1 py-0.5 text-[11px] leading-4",
-                              metaOf(event.type).chip
-                            )}
+                            className="state-chip block truncate rounded border px-1 py-0.5 text-[11px] font-medium leading-4"
+                            style={{ "--chip": `var(${metaOf(event.type).chip})` }}
                             title={event.title}
                             data-testid={`calendar-event-${event.id}`}
                           >
@@ -345,7 +327,8 @@ export default function Calendar() {
                   >
                     <div className="flex min-w-0 items-start gap-2">
                       <Icon
-                        className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                        className="mt-0.5 size-4 shrink-0"
+                        style={{ color: `hsl(var(${meta.chip}))` }}
                         aria-hidden="true"
                       />
                       <div className="min-w-0">

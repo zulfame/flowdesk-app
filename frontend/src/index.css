@@ -118,6 +118,11 @@ code {
         --mt-online: 174 72% 34%;
         --mt-klien: 25 95% 42%;
         --mt-review: 330 74% 44%;
+        /* Agenda kalender (E9) — warna terang agar jenis agenda cepat dibedakan */
+        --ev-meeting: 217 91% 55%;
+        --ev-task: 25 95% 50%;
+        --ev-reminder: 271 81% 60%;
+        --ev-event: 165 82% 40%;
 
         /* Sidebar semantics (monochrome-first) */
         --sidebar-background: var(--neutral-50);
@@ -179,6 +184,11 @@ code {
         --mt-online: 172 66% 50%;
         --mt-klien: 27 96% 61%;
         --mt-review: 330 81% 66%;
+        /* Agenda kalender (E9) — dark */
+        --ev-meeting: 213 94% 68%;
+        --ev-task: 27 96% 61%;
+        --ev-reminder: 270 95% 75%;
+        --ev-event: 163 74% 50%;
 
         /* Sidebar semantics (dark) */
         --sidebar-background: var(--neutral-900);

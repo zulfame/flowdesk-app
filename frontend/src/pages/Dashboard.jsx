@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   AlertTriangle,
   ArrowRight,
-  Bell,
   CalendarClock,
   CheckSquare,
   Clock,
@@ -21,20 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PriorityBadge, StatusBadge } from "@/components/composite/TaskBadges";
+import { PriorityBadge } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
-import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { ACTION } from "@/constants/labels";
-
-const timeAgo = (iso) => {
-  const diff = (Date.now() - new Date(iso).getTime()) / 1000;
-  if (diff < 60) return "baru saja";
-  if (diff < 3600) return `${Math.floor(diff / 60)} mnt lalu`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)} jam lalu`;
-  return `${Math.floor(diff / 86400)} hari lalu`;
-};
 
 const dayDiff = (iso) => {
   const start = new Date(new Date().toDateString());
@@ -72,7 +62,10 @@ function KpiCard({ label, value, hint, icon: Icon, tone, testid, onClick }) {
         <div className="min-w-0 space-y-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
           <p
-            className={cn("text-base font-semibold tabular-nums", tone === "danger" && "text-destructive")}
+            className={cn(
+              "text-base font-semibold tabular-nums",
+              tone === "danger" && "text-destructive"
+            )}
           >
             {value}
           </p>
@@ -86,9 +79,23 @@ function KpiCard({ label, value, hint, icon: Icon, tone, testid, onClick }) {
   );
 }
 
-/** Dashboard — ringkasan harian: KPI, tenggat terdekat, rapat hari ini, aktivitas. */
+/** Baris daftar padat — tetap rapi walau isinya ratusan (divide-y + area scroll). */
+function ListShell({ children, empty, emptyText, testid }) {
+  if (empty)
+    return (
+      <p className="px-6 py-8 text-center text-muted-foreground" data-testid={`${testid}-empty`}>
+        {emptyText}
+      </p>
+    );
+  return (
+    <div className="thin-scroll max-h-[26rem] divide-y overflow-y-auto" data-testid={testid}>
+      {children}
+    </div>
+  );
+}
+
+/** Dashboard — ringkasan harian: KPI, tenggat terdekat, agenda rapat, tren. */
 export default function Dashboard() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [s, setS] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -123,40 +130,11 @@ export default function Dashboard() {
 
   const d = s || {};
   const todayMeetings = d.today_meetings || [];
+  const upcoming = d.upcoming_meetings || [];
   const dueSoon = d.due_soon || [];
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
-      <Card>
-        <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <div className="min-w-0">
-            <CardTitle className="text-base">
-              Halo, {user?.name?.split(" ")[0] || "Rekan"}
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {new Date().toLocaleDateString("id-ID", {
-                weekday: "long",
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-              {" · "}
-              {todayMeetings.length
-                ? `${todayMeetings.length} rapat hari ini`
-                : "Tidak ada rapat hari ini"}
-            </p>
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" onClick={load} data-testid="dashboard-refresh">
-              <RefreshCw className="size-4" /> {ACTION.refresh}
-            </Button>
-            <Button size="sm" onClick={() => navigate("/tasks/new")} data-testid="btn-dashboard-new-task">
-              <Plus className="size-4" /> Tugas Baru
-            </Button>
-          </div>
-        </CardHeader>
-      </Card>
-
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <KpiCard
           label="Tugas Aktif"
@@ -176,7 +154,7 @@ export default function Dashboard() {
           onClick={() => navigate("/tasks")}
         />
         <KpiCard
-          label="Menunggu Persetujuan"
+          label="Menunggu"
           value={d.awaiting_approval ?? 0}
           hint="Item selesai dari PIC"
           icon={ListChecks}
@@ -195,51 +173,75 @@ export default function Dashboard() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-base">Tenggat Terdekat</CardTitle>
+          <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
+            <CardTitle className="flex items-center gap-2 text-base">
+              Tenggat Terdekat
+              <Badge variant="secondary" className="font-normal tabular-nums">
+                {dueSoon.length}
+              </Badge>
+            </CardTitle>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button variant="outline" size="sm" onClick={load} data-testid="dashboard-refresh">
+                <RefreshCw className="size-4" /> {ACTION.refresh}
+              </Button>
+              <Button
+                size="sm"
+                onClick={() => navigate("/tasks/new")}
+                data-testid="btn-dashboard-new-task"
+              >
+                <Plus className="size-4" /> Tugas Baru
+              </Button>
+            </div>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {dueSoon.length === 0 ? (
-              <p className="py-6 text-center text-muted-foreground" data-testid="due-soon-empty">
-                Tidak ada tugas aktif bertenggat. Selamat, meja Anda bersih.
-              </p>
-            ) : (
-              dueSoon.map((t) => {
+          <CardContent className="p-0">
+            <ListShell
+              empty={dueSoon.length === 0}
+              emptyText="Tidak ada tugas aktif bertenggat. Selamat, meja Anda bersih."
+              testid="due-soon"
+            >
+              {dueSoon.map((t) => {
                 const due = dueLabel(t.deadline);
                 return (
                   <button
                     key={t.id}
                     type="button"
                     onClick={() => navigate(`/tasks/${t.id}`)}
-                    className="flex w-full flex-col gap-2 rounded-md border p-3 text-left transition-colors hover:bg-muted/40"
+                    className="flex w-full items-center gap-3 px-6 py-2 text-left transition-colors hover:bg-muted/40"
                     data-testid={`due-soon-${t.id}`}
                   >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-                      <Badge
-                        variant="outline"
-                        className={due.chip ? "state-chip font-medium" : "font-normal text-muted-foreground"}
-                        style={due.chip ? { "--chip": `var(${due.chip})` } : undefined}
-                      >
-                        {due.text}
-                      </Badge>
-                      <PriorityBadge priority={t.priority} />
-                    </div>
-                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1.5">
-                        <CalendarClock className="size-3.5" /> {fmtDay(t.deadline)}
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium">{t.title}</span>
+                      <span className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+                        <CalendarClock className="size-3" aria-hidden="true" />
+                        {fmtDay(t.deadline)}
+                        {" · "}
+                        {t.pic?.name || "Tanpa PIC"}
                       </span>
-                      <span className="truncate">{t.pic?.name || "Tanpa PIC"}</span>
-                      <Progress value={t.progress} className="h-1.5 w-20" />
-                      <span className="tabular-nums">{t.progress}%</span>
-                    </div>
+                    </span>
+                    <Progress value={t.progress} className="hidden h-1.5 w-20 shrink-0 sm:block" />
+                    <span className="hidden w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground sm:block">
+                      {t.progress}%
+                    </span>
+                    <PriorityBadge priority={t.priority} />
+                    <Badge
+                      variant="outline"
+                      className="state-chip shrink-0 font-medium"
+                      style={{ "--chip": `var(${due.chip})` }}
+                    >
+                      {due.text}
+                    </Badge>
                   </button>
                 );
-              })
-            )}
+              })}
+            </ListShell>
           </CardContent>
           <CardFooter className="justify-end">
-            <Button variant="outline" size="sm" onClick={() => navigate("/tasks")} data-testid="link-all-tasks">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => navigate("/tasks")}
+              data-testid="link-all-tasks"
+            >
               Lihat semua tugas <ArrowRight className="size-4" />
             </Button>
           </CardFooter>
@@ -248,41 +250,47 @@ export default function Dashboard() {
         <div className="space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Rapat Hari Ini ({todayMeetings.length})</CardTitle>
+              <CardTitle className="flex items-center gap-2 text-base">
+                Rapat Hari Ini
+                <Badge variant="secondary" className="font-normal tabular-nums">
+                  {todayMeetings.length}
+                </Badge>
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {todayMeetings.length === 0 ? (
-                <p className="py-4 text-center text-muted-foreground" data-testid="today-meetings-empty">
-                  Tidak ada rapat hari ini.
-                </p>
-              ) : (
-                todayMeetings.map((m) => (
+            <CardContent className="p-0">
+              <ListShell
+                empty={todayMeetings.length === 0}
+                emptyText="Tidak ada rapat hari ini."
+                testid="today-meetings"
+              >
+                {todayMeetings.map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => navigate(`/meetings/${m.id}`)}
-                    className="flex w-full items-start gap-3 rounded-md border p-2 text-left transition-colors hover:bg-muted/40"
+                    className="flex w-full items-center gap-3 px-6 py-2 text-left transition-colors hover:bg-muted/40"
                     data-testid={`today-meeting-${m.id}`}
                   >
-                    <span className="flex w-14 shrink-0 flex-col items-center justify-center rounded-md border bg-muted/40 py-1 text-xs font-medium tabular-nums">
+                    <span className="w-11 shrink-0 text-xs font-medium tabular-nums text-muted-foreground">
                       {m.start_time || "--:--"}
                     </span>
-                    <div className="min-w-0 space-y-0.5">
-                      <p className="truncate font-medium">{m.title}</p>
-                      <p className="flex items-center gap-2 truncate text-xs text-muted-foreground">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium">{m.title}</span>
+                      <span className="flex items-center gap-2 truncate text-xs text-muted-foreground">
                         {m.location ? (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="size-3" /> {m.location}
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="size-3" aria-hidden="true" /> {m.location}
                           </span>
                         ) : null}
                         <span className="flex items-center gap-1">
-                          <Users className="size-3" /> {(m.participants || []).length}
+                          <Users className="size-3" aria-hidden="true" />
+                          {(m.participants || []).length}
                         </span>
-                      </p>
-                    </div>
+                      </span>
+                    </span>
                   </button>
-                ))
-              )}
+                ))}
+              </ListShell>
             </CardContent>
           </Card>
 
@@ -290,33 +298,40 @@ export default function Dashboard() {
             <CardHeader>
               <CardTitle className="text-base">Rapat Mendatang</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2">
-              {(d.upcoming_meetings || []).length === 0 ? (
-                <p className="py-4 text-center text-muted-foreground">Tidak ada rapat terjadwal.</p>
-              ) : (
-                (d.upcoming_meetings || []).map((m) => (
+            <CardContent className="p-0">
+              <ListShell
+                empty={upcoming.length === 0}
+                emptyText="Tidak ada rapat terjadwal."
+                testid="upcoming-meetings"
+              >
+                {upcoming.map((m) => (
                   <button
                     key={m.id}
                     type="button"
                     onClick={() => navigate(`/meetings/${m.id}`)}
-                    className="flex w-full items-center gap-3 rounded-md p-2 text-left transition-colors hover:bg-muted/40"
+                    className="flex w-full items-center gap-3 px-6 py-2 text-left transition-colors hover:bg-muted/40"
                     data-testid={`dashboard-meeting-${m.id}`}
                   >
-                    <Video className="size-4 shrink-0 text-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="truncate font-medium">{m.title}</p>
-                      <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Clock className="size-3" />
+                    <Video className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-[13px] font-medium">{m.title}</span>
+                      <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Clock className="size-3" aria-hidden="true" />
                         {new Date(m.date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
                         {m.start_time ? ` · ${m.start_time}` : ""}
-                      </p>
-                    </div>
+                      </span>
+                    </span>
                   </button>
-                ))
-              )}
+                ))}
+              </ListShell>
             </CardContent>
             <CardFooter className="justify-end">
-              <Button variant="outline" size="sm" onClick={() => navigate("/calendar")} data-testid="link-calendar">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/calendar")}
+                data-testid="link-calendar"
+              >
                 Buka Kalender <ArrowRight className="size-4" />
               </Button>
             </CardFooter>
@@ -324,120 +339,44 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Beban Kerja PIC</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(d.workload || []).length === 0 ? (
-              <p className="py-6 text-center text-muted-foreground">Belum ada tugas aktif.</p>
-            ) : (
-              d.workload.map((w) => {
-                const max = Math.max(...d.workload.map((x) => x.count), 1);
-                return (
-                  <div key={w.name} className="space-y-1" data-testid={`workload-${w.name}`}>
-                    <div className="flex items-center justify-between gap-3 text-xs">
-                      <span className="truncate">{w.name}</span>
-                      <span className="font-semibold tabular-nums">{w.count}</span>
-                    </div>
-                    <Progress value={(w.count / max) * 100} className="h-1.5" />
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Aktivitas Terkini</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="thin-scroll max-h-64 space-y-3 overflow-y-auto pr-1">
-              {(d.recent_activity || []).length === 0 ? (
-                <p className="py-4 text-center text-muted-foreground">Belum ada aktivitas.</p>
-              ) : (
-                (d.recent_activity || []).slice(0, 8).map((a) => (
-                  <div key={a.id} className="flex items-start gap-2">
-                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground" />
-                    <div className="min-w-0">
-                      <p className="truncate">{a.description}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {a.user_name} · {timeAgo(a.created_at)}
-                      </p>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </CardContent>
-          <CardFooter className="justify-end">
-            <Button variant="outline" size="sm" onClick={() => navigate("/notifications")} data-testid="link-notifications">
-              <Bell className="size-4" /> Notifikasi
-            </Button>
-          </CardFooter>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Tren Mingguan</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={d.trend || []} barGap={4}>
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
-                <YAxis
-                  allowDecimals={false}
-                  tick={{ fontSize: 11 }}
-                  stroke="hsl(var(--muted-foreground))"
-                  width={22}
-                />
-                <Tooltip
-                  contentStyle={{
-                    borderRadius: 8,
-                    fontSize: 12,
-                    border: "1px solid hsl(var(--border))",
-                    background: "hsl(var(--card))",
-                    color: "hsl(var(--card-foreground))",
-                  }}
-                />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="created" name="Dibuat" fill="hsl(var(--muted-foreground))" radius={[3, 3, 0, 0]} />
-                <Bar dataKey="completed" name="Selesai" fill="hsl(var(--primary))" radius={[3, 3, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Tugas Terbaru</CardTitle>
+          <CardTitle className="text-base">Tren Mingguan</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-2">
-          {(d.recent_tasks || []).length === 0 ? (
-            <p className="py-6 text-center text-muted-foreground">
-              Belum ada tugas. Buat tugas pertama Anda.
-            </p>
-          ) : (
-            (d.recent_tasks || []).map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => navigate(`/tasks/${t.id}`)}
-                className="flex w-full items-center gap-3 rounded-md border p-3 text-left transition-colors hover:bg-muted/40"
-                data-testid={`dashboard-task-${t.id}`}
-              >
-                <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-                <Progress value={t.progress} className="h-1.5 w-24" />
-                <span className="w-9 text-right text-xs tabular-nums text-muted-foreground">
-                  {t.progress}%
-                </span>
-                <StatusBadge status={t.status} />
-              </button>
-            ))
-          )}
+        <CardContent>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={d.trend || []} barGap={4}>
+              <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+              <YAxis
+                allowDecimals={false}
+                tick={{ fontSize: 11 }}
+                stroke="hsl(var(--muted-foreground))"
+                width={22}
+              />
+              <Tooltip
+                contentStyle={{
+                  borderRadius: 8,
+                  fontSize: 12,
+                  border: "1px solid hsl(var(--border))",
+                  background: "hsl(var(--card))",
+                  color: "hsl(var(--card-foreground))",
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar
+                dataKey="created"
+                name="Dibuat"
+                fill="hsl(var(--muted-foreground))"
+                radius={[3, 3, 0, 0]}
+              />
+              <Bar
+                dataKey="completed"
+                name="Selesai"
+                fill="hsl(var(--primary))"
+                radius={[3, 3, 0, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
         </CardContent>
       </Card>
     </div>

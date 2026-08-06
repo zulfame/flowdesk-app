@@ -15,6 +15,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -400,10 +401,14 @@ export default function NotificationSettings() {
             name="notify_email"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email Penerima</FormLabel>
+                <FormLabel>Email Penerima Uji / Sistem</FormLabel>
                 <FormControl>
                   <Input data-testid="setting-notify-email" {...field} />
                 </FormControl>
+                <FormDescription>
+                  Hanya dipakai untuk tombol Kirim Uji &amp; pemberitahuan sistem. Notifikasi
+                  pengguna (tugas, pengingat) selalu dikirim ke email pengguna terkait.
+                </FormDescription>
                 <FormMessage />
               </FormItem>
             )}

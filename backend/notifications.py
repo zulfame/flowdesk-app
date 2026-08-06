@@ -74,7 +74,10 @@ async def create_notification(user_id, title, message, ntype="info", link=None, 
         if notif_cfg.get("telegram_enabled"):
             _send_telegram(settings.get("telegram", {}), title, message)
         if notif_cfg.get("email_enabled"):
-            _send_email(settings.get("email", {}), title, message)
+            target = await db.users.find_one({"id": user_id}, {"_id": 0, "email": 1})
+            to_addr = (target or {}).get("email")
+            if to_addr:
+                _send_email(settings.get("email", {}), title, message, to_override=to_addr)
         if notif_cfg.get("browser_enabled", True):
             try:
                 from webpush import send_push
