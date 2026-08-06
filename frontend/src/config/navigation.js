@@ -46,13 +46,13 @@ export const AREAS = [
       {
         label: "Menu Utama",
         items: [
-          { title: "Kalender", to: "/calendar", icon: CalendarDays },
-          { title: "Kelola Tugas", to: "/tasks", icon: CheckSquare },
-          { title: "Kelola Rapat", to: "/meetings", icon: Video },
+          { title: "Kalender", to: "/calendar", icon: CalendarDays, perm: "calendar" },
+          { title: "Kelola Tugas", to: "/tasks", icon: CheckSquare, perm: "task" },
+          { title: "Kelola Rapat", to: "/meetings", icon: Video, perm: "meeting" },
           { title: "Tiket Bantuan", to: "/help-tickets", icon: LifeBuoy },
-          { title: "Time Schedule", to: "/time-schedule", icon: ClipboardList },
-          { title: "Kelola Catatan", to: "/notes", icon: FileText },
-          { title: "Ingatkan Saya", to: "/reminders", icon: Bell },
+          { title: "Time Schedule", to: "/time-schedule", icon: ClipboardList, perm: "time_schedule" },
+          { title: "Kelola Catatan", to: "/notes", icon: FileText, perm: "note" },
+          { title: "Ingatkan Saya", to: "/reminders", icon: Bell, perm: "reminder" },
         ],
       },
     ],
@@ -83,13 +83,23 @@ export const AREAS = [
 
 export const DEFAULT_AREA_ID = "member";
 
-/** Areas visible for the current user. */
-export const getAreas = (isAdmin) =>
-  AREAS.filter((area) => !area.adminOnly || isAdmin);
+/** Areas visible for the current user, with items filtered by permission. */
+export const getAreas = (isAdmin, can = () => true) =>
+  AREAS.filter((area) => !area.adminOnly || isAdmin)
+    .map((area) => ({
+      ...area,
+      sections: area.sections
+        .map((section) => ({
+          ...section,
+          items: section.items.filter((item) => !item.perm || can(item.perm)),
+        }))
+        .filter((section) => section.items.length > 0),
+    }))
+    .filter((area) => area.sections.length > 0);
 
 /** Resolve an area by id, falling back to the default area. */
-export const getArea = (areaId, isAdmin) => {
-  const areas = getAreas(isAdmin);
+export const getArea = (areaId, isAdmin, can) => {
+  const areas = getAreas(isAdmin, can);
   return areas.find((a) => a.id === areaId) || areas[0];
 };
 

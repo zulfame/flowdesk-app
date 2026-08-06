@@ -31,6 +31,7 @@ import {
   getArea,
   getAreas,
 } from "@/config/navigation";
+import { hasPerm } from "@/lib/perms";
 import { useBranding } from "@/context/BrandingContext";
 import { useAuth } from "@/context/AuthContext";
 import { LOGOUT } from "@/constants/testIds/auth";
@@ -56,7 +57,8 @@ export const AppSidebar = (props) => {
   const { user, logout } = useAuth();
 
   const isAdmin = user?.role === "admin";
-  const areas = getAreas(isAdmin);
+  const can = (key) => hasPerm(user, key);
+  const areas = getAreas(isAdmin, can);
 
   const [areaId, setAreaId] = useState(
     () => window.localStorage.getItem(AREA_KEY) || DEFAULT_AREA_ID
@@ -69,12 +71,12 @@ export const AppSidebar = (props) => {
     setAreaId(routeArea);
   }, [location.pathname, isAdmin]);
 
-  const activeArea = getArea(areaId, isAdmin);
+  const activeArea = getArea(areaId, isAdmin, can);
 
   const changeArea = (nextId) => {
     setAreaId(nextId);
     window.localStorage.setItem(AREA_KEY, nextId);
-    const target = firstRouteOf(getArea(nextId, isAdmin));
+    const target = firstRouteOf(getArea(nextId, isAdmin, can));
     if (target && target !== location.pathname) navigate(target);
   };
 

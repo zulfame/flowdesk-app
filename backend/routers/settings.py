@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Any
 
 from db import db
+import crypto
 from helpers import new_id, now_iso, log_activity
 from security import get_current_user, require_admin
 from notifications import _send_telegram, _send_email, get_settings
@@ -94,12 +95,12 @@ async def public_settings():
 @router.get("")
 async def get_settings_endpoint(user: dict = Depends(get_current_user)):
     s = await _ensure_settings()
-    key = (s.get("security") or {}).get("authty_api_key") or ""
+    key = crypto.decrypt((s.get("security") or {}).get("authty_api_key") or "")
     s = dict(s)
     s["security"] = {
         **s["security"],
         "authty_api_key": "",
-        "authty_api_key_hint": f"{'•' * 12}{key[-4:]}" if key else "",
+        "authty_api_key_hint": crypto.mask(key),
     }
     # mask password for non-admin
     if user.get("role") != "admin":
@@ -121,8 +122,12 @@ async def update_settings(body: SettingsUpdate, admin: dict = Depends(require_ad
         if value is not None:
             if section == "security":
                 value = {k: v for k, v in value.items() if k != "authty_api_key_hint"}
-                if not value.get("authty_api_key"):
+                if value.get("authty_api_key"):
+                    value["authty_api_key"] = crypto.encrypt(str(value["authty_api_key"]).strip())
+                else:
                     value.pop("authty_api_key", None)
+                if value.get("authty_base_url"):
+                    value["authty_base_url"] = str(value["authty_base_url"]).strip().rstrip("/")
             merged = {**current.get(section, {}), **value}
             update[section] = merged
     await db.settings.update_one({"key": "app"}, {"$set": update}, upsert=True)

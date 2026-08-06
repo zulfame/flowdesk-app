@@ -18,6 +18,8 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { NotificationsBell } from "@/components/layout/NotificationsBell";
 import { ModeToggle } from "@/components/mode-toggle";
 import { getBreadcrumb } from "@/config/navigation";
+import { useAuth } from "@/context/AuthContext";
+import NoAccess from "@/pages/NoAccess";
 
 /**
  * AppLayout — application shell (R34).
@@ -28,6 +30,12 @@ import { getBreadcrumb } from "@/config/navigation";
 export default function AppLayout({ children }) {
   const location = useLocation();
   const { trail } = getBreadcrumb(location.pathname);
+  const { user } = useAuth();
+
+  // Jabatan tanpa izin menu → jangan tampilkan shell kosong (SSO Authty: fallback `guest`).
+  const noAccess =
+    user && user.role !== "admin" && (user.permissions || []).length === 0;
+  if (noAccess) return <NoAccess />;
 
   return (
     <SidebarProvider className="h-svh">

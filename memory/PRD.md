@@ -411,3 +411,44 @@ Sumber: Excel `roles_20260806212246.xlsx` (sheet `Roles`, kolom `ID, Name, Paren
 - `Guest` belum punya izin apa pun.
 - Kelola Pengguna belum menampilkan dropdown jabatan hierarkis (masih daftar datar) — kandidat perbaikan berikutnya.
 - Integrasi Authty tetap DITUNDA sesuai permintaan user.
+
+## Update (2026-06-08h) — Integrasi SSO Authty Secure Identity (AKTIF)
+Sumber: `AUTHTY_API.md` + `AUTHTY_INTEGRATION_GUIDE.md` dari user. Pola: **verifikasi kredensial eksternal → JWT lokal → JIT provisioning** (Authty bukan OAuth/OIDC dan tidak mengembalikan token).
+
+### Cakupan (sesuai arahan user: SSO + data pengguna & jabatan saja)
+- ✅ `POST {base}/api/user-auth` (login) & `POST {base}/api/user-password` (ganti sandi sendiri)
+- ❌ TIDAK diambil/disimpan: `office`, `office_code`, `mso_code`, `collector_code`, payload `device`/geofence
+- ❌ TIDAK dibuat: panel proxy kelola pengguna Authty (`user-create/update/deactivate`)
+
+### Berkas baru
+- `backend/crypto.py` — Fernet, prefix `enc:v1:` (idempoten), `mask()`. Env baru **`APP_ENCRYPTION_KEY`** di `backend/.env`.
+- `backend/authty.py` — `get_config(reveal)`, `enabled()`, `_call()` (httpx timeout dari setelan, penerjemahan galat seragam: 401 pesan Authty · 503 unreachable · 502 skema tak dikenal), `verify_credentials()`, `change_password()`, `resolve_role_name()` (label case-insensitive → slug → fallback `guest`, `ensure_guest_role()`), `upsert_user()` (kunci email lowercase, fallback `<username>@authty.local`), `role_summary()` (untuk tombol Uji).
+- `backend/routers/authty.py` — `GET /api/authty/status`, `POST /api/authty/test` (verifikasi + sinkron + tampilkan pemetaan, **tanpa** membuat sesi), keduanya `require_admin`.
+- `frontend/src/pages/NoAccess.jsx` — halaman "Akses belum dikonfigurasi".
+
+### Perubahan
+- `routers/settings.py`: `authty_api_key` dienkripsi saat PUT, `authty_base_url` di-trim/rstrip; GET mengembalikan `authty_api_key: ""` + `authty_api_key_hint` hasil `crypto.mask()`; PUT dengan api key kosong tidak menghapus kunci.
+- `routers/auth.py`: `LoginBody.email` kini `str` (bukan `EmailStr`) agar bisa username/no. HP; `_client_ip()` memakai `X-Forwarded-For`; cabang Authty di `POST /api/auth/login` — sukses → `upsert_user` + log `Sinkron Authty`, `is_active=false` → **403**, gagal → jalur darurat **hanya admin/izin `*` lokal**, jika tidak → 401/503; lockout brute-force tetap, reset memakai identitas input **dan** email hasil resolve. Authty nonaktif → auth lokal penuh.
+- `routers/profile.py` `PUT /api/profile/password`: akun `auth_source=authty` → diteruskan ke Authty dulu (400 bila ditolak, 503 bila unreachable, tanpa perubahan lokal), sukses → upsert + hash lokal disinkronkan (agar jalur darurat memakai sandi terbaru).
+- `config/navigation.js`: item Member Area kini punya `perm` (calendar/task/meeting/time_schedule/note/reminder); `getAreas(isAdmin, can)` & `getArea(areaId, isAdmin, can)` memfilter berdasarkan izin. `AppSidebar` meneruskan `hasPerm`. `AppLayout` menampilkan `NoAccess` bila pengguna non-admin tidak punya izin sama sekali.
+- `pages/SecuritySettings.jsx`: tombol **Uji** kini fungsional (`POST /api/authty/test`) dan menampilkan nama/email/username, status aktif, serta pemetaan "Jabatan Authty → peranan (n izin, warisan level X)". Alert "belum tersambung" diganti penjelasan cakupan.
+
+### Hasil uji (skenario §11 dokumen)
+| Skenario | Hasil |
+|---|---|
+| Konfigurasi + api key tersamar & tidak hilang saat PUT lain | ✅ `••••••••••••e301`, `api_key_set: true` |
+| `POST /authty/test` | ✅ Zulfadli Rizal · `Kabag Teknologi Informasi` → peranan `kabag_teknologi_informasi` (7 izin, warisan level Kabag) |
+| Login via **email** | ✅ 200, peran & izin hasil pemetaan |
+| Login via **username** (`309011221`) | ✅ 200 (UI: menu terfilter 6 menu sesuai izin) |
+| Password salah | ✅ 401 `The credentials you entered are incorrect` (pesan Authty diteruskan) |
+| Authty tidak dapat dihubungi (base_url ngawur) | ✅ 503 "Layanan autentikasi terpusat tidak dapat dihubungi" |
+| Jalur darurat Super Admin lokal saat Authty mati | ✅ `admin@flowdesk.com` tetap 200 |
+| Pengguna lokal non-admin saat Authty aktif | ✅ ditolak (sentralisasi terjaga) |
+| Toggle `enabled` = off → auth lokal penuh | ✅ pengguna lokal 200 kembali |
+| Jabatan tak dikenal → `guest` + halaman NoAccess | ⚠️ **belum diuji** (tidak ada akun Authty dengan jabatan di luar 46 daftar) |
+| 2FA | tidak berlaku — FlowDesk belum punya 2FA |
+
+### Catatan penting
+- **Authty kini AKTIF.** Akun uji lokal (`kabag.kredit@`, `staff.legal@`, `staff.analis@`) hanya bisa masuk bila toggle Authty dimatikan; `admin@flowdesk.com` tetap bisa lewat jalur darurat.
+- Akun lokal lama dengan email `zulfadlirizal@gmail.com` ikut disinkronkan Authty, sehingga perannya kini `kabag_teknologi_informasi` (Authty = sumber kebenaran identitas & jabatan).
+- API key Authty tersimpan terenkripsi di `settings.security.authty_api_key`; `APP_ENCRYPTION_KEY` ada di `backend/.env` — **jangan hilangkan**, kalau berubah kunci lama tidak bisa didekripsi dan harus diisi ulang lewat UI.

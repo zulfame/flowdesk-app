@@ -3,6 +3,7 @@ from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 from db import db
+import authty
 from helpers import now_iso, log_activity
 from security import hash_password, verify_password, get_current_user
 
@@ -77,6 +78,19 @@ async def update_profile(body: ProfileUpdate, user: dict = Depends(get_current_u
 
 @router.put("/password")
 async def change_password(body: PasswordChange, user: dict = Depends(get_current_user)):
+    full_doc = await db.users.find_one({"id": user["id"]})
+    if full_doc and full_doc.get("auth_source") == "authty" and await authty.enabled():
+        res = await authty.change_password(full_doc["email"], body.current_password, body.new_password)
+        if not res["ok"]:
+            raise HTTPException(status_code=503 if res.get("unreachable") else 400,
+                                detail=res["message"])
+        await authty.upsert_user(res["data"])
+        await db.users.update_one({"id": user["id"]},
+                                  {"$set": {"password_hash": hash_password(body.new_password)}})
+        await log_activity(db, user, "update", "user", user["id"],
+                           "Mengganti kata sandi via Authty (SSO)")
+        return {"message": "Kata sandi berhasil diganti di Authty (SSO)", "source": "authty"}
+
     full = await db.users.find_one({"id": user["id"]})
     if not full or not verify_password(body.current_password, full.get("password_hash", "")):
         raise HTTPException(status_code=400, detail="Kata sandi saat ini salah")

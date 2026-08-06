@@ -32,6 +32,8 @@ export default function SecuritySettings() {
   const [showKey, setShowKey] = useState(false);
   const [showTestPass, setShowTestPass] = useState(false);
   const [test, setTest] = useState({ identity: "", password: "" });
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState(null);
 
   const authtyForm = useForm({
     resolver: zodResolver(authtySchema),
@@ -84,6 +86,21 @@ export default function SecuritySettings() {
     }
   }, []);
 
+  const runTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const { data } = await api.post("/authty/test", test);
+      setTestResult({ ok: true, ...data });
+      notify.success("Kredensial valid dan data pengguna tersinkron.");
+    } catch (err) {
+      setTestResult({ ok: false, message: apiError(err) });
+      notify.error(apiError(err));
+    } finally {
+      setTesting(false);
+    }
+  };
+
   if (!ready) {
     return (
       <div className="space-y-6" data-testid="security-settings-loading">
@@ -133,9 +150,9 @@ export default function SecuritySettings() {
               <Alert>
                 <KeyRound className="h-4 w-4" aria-hidden="true" />
                 <AlertDescription>
-                  Integrasi Authty <strong>belum tersambung</strong> — kontrak API dan API Key belum
-                  tersedia, sehingga tombol Uji dan login terpusat masih nonaktif. Setelan di bawah
-                  sudah tersimpan dan akan langsung dipakai begitu integrasinya disambungkan.
+                  FlowDesk memverifikasi kredensial ke Authty lalu menerbitkan sesinya sendiri.
+                  Hanya data pengguna &amp; jabatan yang disinkronkan — data kantor tidak diambil.
+                  Jabatan yang tidak dikenal jatuh ke <strong>Guest</strong> (tanpa izin).
                 </AlertDescription>
               </Alert>
 
@@ -293,16 +310,55 @@ export default function SecuritySettings() {
                     </Button>
                   </div>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled
-                  title="Menunggu kontrak API Authty"
-                  data-testid="btn-authty-test"
-                >
-                  <KeyRound className="size-4" /> Uji
-                </Button>
+                <div className="flex justify-end">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={testing || !test.identity || !test.password}
+                    onClick={runTest}
+                    data-testid="btn-authty-test"
+                  >
+                    {testing ? (
+                      <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    ) : (
+                      <KeyRound className="size-4" aria-hidden="true" />
+                    )}
+                    Uji
+                  </Button>
+                </div>
+                {testResult ? (
+                  <div
+                    className="space-y-1 rounded-md border px-3 py-2"
+                    data-testid="authty-test-result"
+                  >
+                    {testResult.ok ? (
+                      <>
+                        <p className="font-medium">
+                          {testResult.user.name}{" "}
+                          <Badge variant="secondary" className="font-normal">
+                            {testResult.user.is_active ? "Aktif" : "Nonaktif"}
+                          </Badge>
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {testResult.user.email}
+                          {testResult.user.username ? ` · ${testResult.user.username}` : ""}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Jabatan Authty <strong>{testResult.user.authty_role || "—"}</strong> →
+                          peranan <strong>{testResult.mapped_role.label}</strong> (
+                          {testResult.mapped_role.permission_count} izin
+                          {testResult.mapped_role.inherited
+                            ? `, warisan level ${testResult.mapped_role.level}`
+                            : ""}
+                          )
+                        </p>
+                      </>
+                    ) : (
+                      <p className="text-destructive">{testResult.message}</p>
+                    )}
+                  </div>
+                ) : null}
               </div>
             </CardContent>
             <CardFooter className="justify-end">
