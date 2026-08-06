@@ -1,13 +1,20 @@
 import {
   Archive,
+  Bell,
   BellRing,
+  CalendarDays,
+  CheckSquare,
+  ClipboardList,
   Database,
+  FileText,
   LayoutDashboard,
   LayoutGrid,
+  LifeBuoy,
   ScrollText,
   ShieldCheck,
   SlidersHorizontal,
   Users2,
+  Video,
 } from "lucide-react";
 
 /**
@@ -33,6 +40,18 @@ export const AREAS = [
         label: "Selamat Datang",
         items: [
           { title: "Dashboard", to: "/", end: true, icon: LayoutDashboard },
+        ],
+      },
+      {
+        label: "Menu Utama",
+        items: [
+          { title: "Kalender", to: "/calendar", icon: CalendarDays },
+          { title: "Kelola Tugas", to: "/tasks", icon: CheckSquare },
+          { title: "Kelola Rapat", to: "/meetings", icon: Video },
+          { title: "Tiket Bantuan", to: "/help-tickets", icon: LifeBuoy },
+          { title: "Time Schedule", to: "/time-schedule", icon: ClipboardList },
+          { title: "Kelola Catatan", to: "/notes", icon: FileText },
+          { title: "Ingatkan Saya", to: "/reminders", icon: Bell },
         ],
       },
     ],
