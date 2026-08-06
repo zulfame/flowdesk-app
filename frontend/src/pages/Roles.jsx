@@ -103,7 +103,7 @@ export default function Roles() {
     defaultValues: { label: "" },
     mode: "onSubmit",
   });
-  const [meta, setMeta] = useState({ parent_id: NO_PARENT, level: "Staff", order: 0 });
+  const [meta, setMeta] = useState({ parent_id: NO_PARENT, level: "Staff" });
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -131,7 +131,7 @@ export default function Roles() {
   const openNew = () => {
     setEditing(null);
     setSelected([]);
-    setMeta({ parent_id: NO_PARENT, level: "Staff", order: 0 });
+    setMeta({ parent_id: NO_PARENT, level: "Staff" });
     form.reset({ label: "" });
     setFormOpen(true);
   };
@@ -139,11 +139,7 @@ export default function Roles() {
   const openEdit = (role) => {
     setEditing(role);
     setSelected(role.permissions || []);
-    setMeta({
-      parent_id: role.parent_id || NO_PARENT,
-      level: role.level || "Staff",
-      order: role.order || 0,
-    });
+    setMeta({ parent_id: role.parent_id || NO_PARENT, level: role.level || "Staff" });
     form.reset({ label: role.label || "" });
     setFormOpen(true);
   };
@@ -158,7 +154,6 @@ export default function Roles() {
       permissions: editing?.permissions?.includes("*") ? ["*"] : selected,
       parent_id: meta.parent_id === NO_PARENT ? null : meta.parent_id,
       level: meta.level,
-      order: Number(meta.order) || 0,
     };
     try {
       if (editing) await api.put(`/roles/${editing.id}`, payload);
@@ -203,11 +198,9 @@ export default function Roles() {
   };
 
   const onExport = () => {
-    const head = ["ID", "Name", "Parent", "Parent ID", "Level", "Order"];
+    const head = ["ID", "Name", "Parent", "Parent ID", "Level"];
     const body = roles.map((r) =>
-      [r.id, r.label, r.parent_label || "", r.parent_id || "", r.level || "", r.order || 0]
-        .map(csvCell)
-        .join(",")
+      [r.id, r.label, r.parent_label || "", r.parent_id || "", r.level || ""].map(csvCell).join(",")
     );
     const blob = new Blob([[head.map(csvCell).join(","), ...body].join("\n")], {
       type: "text/csv;charset=utf-8",
@@ -291,7 +284,7 @@ export default function Roles() {
               Penugasan &amp; pemantauan mengikuti garis komando: pemberi tugas hanya dapat memilih
               PIC dari jabatan di bawahnya, dan hanya melihat data dirinya beserta seluruh
               bawahannya. Impor menerima kolom <code>Name</code>, <code>Parent</code>,{" "}
-              <code>Parent ID</code>, <code>Level</code>, <code>Order</code>.
+              <code>Parent ID</code>, dan <code>Level</code>.
             </AlertDescription>
           </Alert>
           <div className="mt-4 rounded-md border">
@@ -309,7 +302,6 @@ export default function Roles() {
                       <TableHead>Jabatan</TableHead>
                       <TableHead>Atasan Langsung</TableHead>
                       <TableHead>Level</TableHead>
-                      <TableHead>Urutan</TableHead>
                       <TableHead>Izin</TableHead>
                       <TableHead />
                     </TableRow>
@@ -335,9 +327,6 @@ export default function Roles() {
                           <Badge variant="outline" className="font-normal">
                             {role.level}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="tabular-nums text-muted-foreground">
-                          {role.order || 0}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -494,8 +483,8 @@ export default function Roles() {
                   )}
                 />
 
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <div className="space-y-1.5 sm:col-span-2">
+                <div className="space-y-1.5">
+                  <div className="space-y-1.5">
                     <FormLabel>Atasan Langsung</FormLabel>
                     <Select
                       value={meta.parent_id}
@@ -515,15 +504,6 @@ export default function Roles() {
                           ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <FormLabel>Urutan</FormLabel>
-                    <Input
-                      type="number"
-                      value={meta.order}
-                      onChange={(e) => setMeta((m) => ({ ...m, order: e.target.value }))}
-                      data-testid="role-order-input"
-                    />
                   </div>
                 </div>
 

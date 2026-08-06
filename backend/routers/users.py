@@ -64,7 +64,6 @@ class RoleBody(BaseModel):
     permissions: List[str] = []
     parent_id: Optional[str] = None
     level: Optional[str] = None
-    order: int = 0
 
 
 def _clean(u: dict) -> dict:
@@ -222,12 +221,12 @@ async def delete_user(user_id: str, admin: dict = Depends(require_admin)):
 
 
 def _sort_roles(roles: list) -> list:
-    """Urut hierarkis: induk lalu turunannya, tiap tingkat urut `order` lalu label."""
+    """Urut hierarkis: induk lalu turunannya, tiap tingkat urut nama jabatan."""
     children = {}
     for r in roles:
         children.setdefault(r.get("parent_id") or None, []).append(r)
     for v in children.values():
-        v.sort(key=lambda r: (r.get("order") or 0, (r.get("label") or "").lower()))
+        v.sort(key=lambda r: (r.get("label") or "").lower())
     out = []
 
     def walk(pid, depth):
@@ -255,7 +254,6 @@ async def list_roles(user: dict = Depends(get_current_user)):
     by_id = {r["id"]: r for r in roles}
     for r in roles:
         r.setdefault("parent_id", None)
-        r.setdefault("order", 0)
         r.setdefault("is_system", False)
         r["level"] = r.get("level") or guess_role_level(r.get("label"))
         parent = by_id.get(r.get("parent_id"))
@@ -314,7 +312,6 @@ async def import_roles(file: UploadFile = File(...), admin: dict = Depends(requi
             "parent_label": str(row.get("parent") or row.get("atasan") or "").strip() or None,
             "parent_ext_id": str(row.get("parent id") or row.get("parent_id") or "").strip() or None,
             "level": str(row.get("level") or "").strip() or guess_role_level(label),
-            "order": int(row.get("order") or 0) if str(row.get("order") or "0").strip().isdigit() else 0,
         })
     if not parsed:
         raise HTTPException(status_code=400, detail="Tidak ada baris jabatan yang bisa dibaca")
@@ -324,7 +321,7 @@ async def import_roles(file: UploadFile = File(...), admin: dict = Depends(requi
     for r in parsed:
         name = _slug(r["label"])
         existing = await db.roles.find_one({"name": name}, {"_id": 0})
-        fields = {"label": r["label"], "level": r["level"], "order": r["order"]}
+        fields = {"label": r["label"], "level": r["level"]}
         if existing:
             await db.roles.update_one({"name": name}, {"$set": fields})
             rid = existing["id"]
