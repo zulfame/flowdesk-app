@@ -70,7 +70,7 @@ function KpiCard({ label, value, hint, icon: Icon, tone, testid, onClick }) {
         <div className="min-w-0 space-y-1">
           <p className="text-xs uppercase tracking-wide text-muted-foreground">{label}</p>
           <p
-            className={cn("text-lg font-semibold tabular-nums", tone === "danger" && "text-destructive")}
+            className={cn("text-base font-semibold tabular-nums", tone === "danger" && "text-destructive")}
           >
             {value}
           </p>

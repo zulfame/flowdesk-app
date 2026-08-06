@@ -88,8 +88,8 @@ report "TabsList tanpa 'overflow-x-auto' (wajib scroll-x di mobile; dilarang wra
 
 # 13) Typography scale (R45): feature pages stay dense — no oversized headings.
 #     Exempt: auth screens (2A hero scale) and the shared PageHeader H1 (2A).
-report "Teks oversized (text-xl/2xl/3xl/4xl...) di halaman fitur — R45; judul cukup 'text-base'" \
-  "$(scan_pages 'text-(xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
+report "Teks oversized (text-lg/xl/2xl...) di halaman fitur — R45/FD10; judul cukup 'text-base'" \
+  "$(scan_pages 'text-(lg|xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
 
 # 21) FD9 — Search placeholder must come from ACTION.search ("Pencarian...").
 report "Placeholder pencarian khusus (FD9: WAJIB ACTION.search / 'Pencarian...' dari src/constants/labels.js)" \

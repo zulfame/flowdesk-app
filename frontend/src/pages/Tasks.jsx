@@ -314,7 +314,7 @@ export default function Tasks() {
   );
 
   return (
-    <div className="space-y-6 text-sm" data-testid="tasks-page">
+    <div className="space-y-6" data-testid="tasks-page">
       <DataTableCard
         title="Kelola Tugas"
         onRefresh={load}

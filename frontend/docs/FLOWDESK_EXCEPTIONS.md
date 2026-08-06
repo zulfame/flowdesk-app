@@ -28,8 +28,24 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
   `--field-gap: 0.75rem`, `--item-gap: 0.375rem`, `--tbl-cell-py: 0.25rem`).
 - Konsekuensi yang tetap berlaku: kontrol `h-8`, tombol `size="sm"`, tabel wajib
   `className="tbl-density"`, form pakai `space-y-[var(--field-gap)]`, dan
-  halaman fitur maksimal `text-base` untuk judul (R45).
+  halaman fitur maksimal `text-base` untuk judul (R45), dan tangga ukuran font
+  mengikuti **FD10**.
 - Dijaga guard: pemakaian `DensityToggle`/`density-provider`/`data-density` = gagal.
+
+### FD10 — Skala tipografi seimbang dengan compact (WAJIB)
+- **`body` = 14px / `line-height: 1.45`** (`index.css`, `@layer base`). Sebelumnya
+  base masih 16px default browser, sehingga teks isi tanpa kelas ukuran (paragraf,
+  `dt/dd`, item riwayat, komentar) tampil 16px dan memecah ritme compact.
+- Tangga ukuran resmi FlowDesk:
+  | Peran | Ukuran | Cara |
+  |---|---|---|
+  | Judul card / dialog | 16px | `CardTitle` (`text-base`), `DialogTitle`/`AlertDialogTitle` (kini `text-base`, bukan `text-lg`) |
+  | Teks isi default | **14px** | otomatis dari `body`; tak perlu `text-sm` manual |
+  | Tabel & form | 13px | `.tbl-density` / `.form-dense` (label, input, textarea, combobox) |
+  | Meta / bantuan / badge | 12px | `text-xs` |
+- Halaman fitur **dilarang** memakai `text-lg` ke atas (dijaga guard #13). Skala hero
+  besar hanya untuk layar autentikasi (`Login.jsx`).
+- Konsekuensi: jangan lagi menambal `text-sm` di root halaman — base sudah 14px.
 
 ### FD2 — Aksi header: hanya Notifikasi + Tema
 - Header hanya berisi `SidebarTrigger` + Breadcrumb + (kanan) **ikon lonceng

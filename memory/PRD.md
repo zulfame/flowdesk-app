@@ -268,3 +268,11 @@ Fase 3 selesai: seluruh halaman detail/form Member Area kini memakai pola sectio
 - P0: Tiket Bantuan (fitur baru, menu sudah ada), halaman `Settings.jsx` lama.
 - P1: Ekspor Excel untuk datatable.
 - P2: Overhaul alur autentikasi.
+
+## Update (2026-08-06, lanjutan 3) — FD10: skala tipografi seimbang dengan compact + revisi UI Kelola Tugas
+Feedback user: "banyak text dalam konten 16px, sangat jauh dari compact" + "form tambah/edit tugas ikuti layout sebelumnya".
+- **Akar masalah**: `body` masih memakai base 16px browser; hanya tabel (`.tbl-density`) dan form (`.form-dense`) yang turun ke 13px, sehingga semua teks isi tanpa kelas ukuran tampil 16px.
+- **FD10 (aturan baru di `FLOWDESK_EXCEPTIONS.md`)**: `body` = **14px / line-height 1.45** di `index.css`; tangga resmi → judul card & dialog 16px, teks isi 14px, tabel/form 13px, meta 12px. `DialogTitle` & `AlertDialogTitle` diturunkan `text-lg` → `text-base`. Guard #13 kini juga menolak `text-lg` di halaman fitur (sebelumnya hanya `text-xl`+). `Dashboard` KPI number `text-lg` → `text-base`.
+- **Form Tugas** (`TaskForm.jsx`) dikembalikan ke layout lama: kiri = *Informasi Tugas* + *Item Tugas*, kanan = *Pemberi Tugas*, *PIC Pelaksana*, *Dokumen Sumber*; bar aksi Batal/Simpan sebagai `Card > CardFooter` di bawah grid.
+- **Komponen lama dipadatkan** (dipakai di Tugas/Rapat/Time Schedule): `UserSelect` h-11→**h-8**, 14→13px, rounded-md, placeholder `ACTION.search`; `DocumentManager` → daftar `divide-y` padat 13px, badge Revisi/Final pakai token (bukan amber/emerald), dialog URL/Balasan/Pratinjau pakai `DialogBody`+`form-dense`, toast via `notify`; `AttachmentPanel` → baris padat 13px + `notify`; `RichTextEditor` → toolbar 28px, rounded-md, `bg-muted/40`.
+- Verifikasi: audit `getComputedStyle` di Dashboard, Tugas, Rapat, Catatan, Kalender, Pengguna, Profil, Notifikasi, dan dialog → **tidak ada lagi teks ≥17px**; 16px hanya judul card/dialog. Guard exit 0. Login hero tetap besar (dikecualikan).

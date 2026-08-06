@@ -227,7 +227,7 @@ export default function TaskDetail() {
   const canProgress = isOwner || isPic;
 
   return (
-    <div className="form-dense space-y-6 text-sm" data-testid="task-detail-page">
+    <div className="form-dense space-y-6" data-testid="task-detail-page">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>

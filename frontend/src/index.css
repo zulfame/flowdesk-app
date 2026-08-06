@@ -206,6 +206,11 @@ code {
     }
     body {
         @apply bg-background text-foreground;
+        /* FD10 — Skala tipografi compact: teks isi default 14px.
+           Tabel (.tbl-density) & form (.form-dense) turun ke 13px,
+           judul card/dialog 16px, teks bantu 12px. */
+        font-size: 0.875rem;
+        line-height: 1.45;
     }
 }
 
