@@ -1,13 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Loader2, Plus, Save, X } from "lucide-react";
+import { Building2, Loader2, Mail, Phone, Plus, Save, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -18,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import UserSelect from "@/components/UserSelect";
 import DocumentManager from "@/components/DocumentManager";
-import { STATUS_META, PRIORITY_META } from "@/components/composite/TaskBadges";
+import { PRIORITY_META, STATUS_META } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useAuth } from "@/context/AuthContext";
@@ -43,14 +42,25 @@ const fmtDay = (iso) =>
 
 function PersonMeta({ person }) {
   if (!person?.name) return null;
+  const rows = [
+    { icon: Building2, value: person.department },
+    { icon: Phone, value: person.phone },
+    { icon: Mail, value: person.email },
+  ].filter((r) => r.value);
+  if (rows.length === 0) return null;
   return (
-    <p className="text-xs text-muted-foreground">
-      {[person.department, person.phone, person.email].filter(Boolean).join(" · ") || "Tanpa kontak"}
-    </p>
+    <dl className="space-y-1 rounded-md border bg-muted/40 p-2">
+      {rows.map(({ icon: Icon, value }) => (
+        <div key={value} className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Icon className="size-3.5 shrink-0" aria-hidden="true" />
+          <span className="truncate">{value}</span>
+        </div>
+      ))}
+    </dl>
   );
 }
 
-/** Form Tugas (buat & ubah) — satu section card dengan subseksi + aksi di CardFooter (FD5). */
+/** Form Tugas (buat & ubah) — layout dua kolom: info + item di kiri, orang & dokumen di kanan. */
 export default function TaskForm() {
   const { id } = useParams();
   const editing = Boolean(id);
@@ -134,8 +144,6 @@ export default function TaskForm() {
     setNewItemDue("");
   };
 
-  const cancelTo = editing ? `/tasks/${id}` : "/tasks";
-
   const save = async () => {
     if (!form.title.trim()) {
       notify.error("Judul tugas wajib diisi.");
@@ -185,151 +193,134 @@ export default function TaskForm() {
     );
 
   return (
-    <div className="space-y-6" data-testid="task-form-page">
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">{editing ? "Ubah Tugas" : "Tugas Baru"}</CardTitle>
-        </CardHeader>
-        <CardContent className="form-dense space-y-4">
-          <div className="space-y-[var(--field-gap)]">
-            <div className="space-y-[var(--item-gap)]">
-              <Label htmlFor="task-title">Judul</Label>
-              <Input
-                id="task-title"
-                value={form.title}
-                onChange={(e) => setForm({ ...form, title: e.target.value })}
-                placeholder="Contoh: Siapkan laporan bulanan"
-                data-testid="task-title-input"
-              />
-            </div>
-            <div className="space-y-[var(--item-gap)]">
-              <Label htmlFor="task-desc">Deskripsi</Label>
-              <Textarea
-                id="task-desc"
-                rows={4}
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                placeholder="Detail pekerjaan, konteks, dan ekspektasi..."
-                data-testid="task-desc-input"
-              />
-            </div>
-            <div className="grid gap-[var(--field-gap)] sm:grid-cols-3">
+    <div className="form-dense space-y-6" data-testid="task-form-page">
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-6 lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Informasi Tugas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-[var(--field-gap)]">
               <div className="space-y-[var(--item-gap)]">
-                <Label>Prioritas</Label>
-                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
-                  <SelectTrigger data-testid="task-priority-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITIES.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {PRIORITY_META[p].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-[var(--item-gap)]">
-                <Label htmlFor="task-deadline">Tenggat</Label>
+                <Label htmlFor="task-title">Judul</Label>
                 <Input
-                  id="task-deadline"
-                  type="date"
-                  value={form.deadline}
-                  onChange={(e) => setForm({ ...form, deadline: e.target.value })}
-                  data-testid="task-deadline-input"
+                  id="task-title"
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="Contoh: Siapkan laporan bulanan"
+                  data-testid="task-title-input"
                 />
               </div>
-              {editing ? (
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="task-desc">Deskripsi</Label>
+                <Textarea
+                  id="task-desc"
+                  rows={4}
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Detail pekerjaan, konteks, dan ekspektasi..."
+                  data-testid="task-desc-input"
+                />
+              </div>
+              <div className="grid gap-[var(--field-gap)] sm:grid-cols-3">
                 <div className="space-y-[var(--item-gap)]">
-                  <Label>Status</Label>
-                  <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                    <SelectTrigger data-testid="task-status-select">
+                  <Label>Prioritas</Label>
+                  <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
+                    <SelectTrigger data-testid="task-priority-select">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {STATUSES.map((s) => (
-                        <SelectItem key={s} value={s}>
-                          {STATUS_META[s].label}
+                      {PRIORITIES.map((p) => (
+                        <SelectItem key={p} value={p}>
+                          {PRIORITY_META[p].label}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
-              ) : null}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
-            <div className="space-y-[var(--item-gap)]">
-              <Label>Pemberi Tugas</Label>
-              <UserSelect
-                users={users}
-                value={requester}
-                onChange={setRequester}
-                placeholder="Pilih pemberi tugas..."
-                testid="requester-select"
-              />
-              <PersonMeta person={requester} />
-            </div>
-            <div className="space-y-[var(--item-gap)]">
-              <Label>PIC Pelaksana</Label>
-              <UserSelect
-                users={users}
-                value={pic}
-                onChange={setPic}
-                placeholder="Pilih pelaksana..."
-                testid="pic-select"
-              />
-              <PersonMeta person={pic} />
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="space-y-2">
-            <div className="flex items-center justify-between gap-3">
-              <Label>Item Tugas ({items.length})</Label>
-              {items.length === 0 ? (
-                <span className="text-xs text-destructive">Minimal satu item tugas wajib ditambahkan.</span>
-              ) : null}
-            </div>
-            <div className="divide-y rounded-md border">
-              {items.length === 0 ? (
-                <p className="p-3 text-center text-xs text-muted-foreground">Belum ada item tugas.</p>
-              ) : (
-                items.map((item, idx) => (
-                  <div key={item.id || idx} className="flex items-center gap-2 p-2">
-                    <span
-                      className={cn(
-                        "size-3.5 shrink-0 rounded-sm border",
-                        item.done && "border-primary bg-primary"
-                      )}
-                    />
-                    <span className={cn("min-w-0 flex-1 truncate", item.done && "text-muted-foreground line-through")}>
-                      {item.title}
-                    </span>
-                    {item.due_date ? (
-                      <Badge variant={itemOverdue(item) ? "destructive" : "outline"} className="font-normal">
-                        {fmtDay(item.due_date)}
-                      </Badge>
-                    ) : null}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 text-destructive"
-                      aria-label={ACTION.delete}
-                      onClick={() => setItems(items.filter((_, i) => i !== idx))}
-                      data-testid={`remove-item-${idx}`}
-                    >
-                      <X className="size-4" />
-                    </Button>
+                <div className="space-y-[var(--item-gap)]">
+                  <Label htmlFor="task-deadline">Tenggat</Label>
+                  <Input
+                    id="task-deadline"
+                    type="date"
+                    value={form.deadline}
+                    onChange={(e) => setForm({ ...form, deadline: e.target.value })}
+                    data-testid="task-deadline-input"
+                  />
+                </div>
+                {editing ? (
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label>Status</Label>
+                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
+                      <SelectTrigger data-testid="task-status-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {STATUS_META[s].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
-                ))
-              )}
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
+                ) : null}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+              <CardTitle className="text-base">Item Tugas ({items.length})</CardTitle>
+              {items.length === 0 ? (
+                <span className="text-xs text-destructive">Minimal satu item tugas wajib ada.</span>
+              ) : null}
+            </CardHeader>
+            <CardContent>
+              <div className="divide-y rounded-md border">
+                {items.length === 0 ? (
+                  <p className="p-3 text-center text-xs text-muted-foreground">Belum ada item tugas.</p>
+                ) : (
+                  items.map((item, idx) => (
+                    <div key={item.id || idx} className="flex items-center gap-2 p-2">
+                      <span
+                        className={cn(
+                          "size-3.5 shrink-0 rounded-sm border",
+                          item.done && "border-primary bg-primary"
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate text-[13px]",
+                          item.done && "text-muted-foreground line-through"
+                        )}
+                      >
+                        {item.title}
+                      </span>
+                      {item.due_date ? (
+                        <Badge
+                          variant={itemOverdue(item) ? "destructive" : "outline"}
+                          className="font-normal"
+                        >
+                          {fmtDay(item.due_date)}
+                        </Badge>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-destructive"
+                        aria-label={ACTION.delete}
+                        onClick={() => setItems(items.filter((_, i) => i !== idx))}
+                        data-testid={`remove-item-${idx}`}
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+            <CardFooter className="gap-2">
               <Input
                 value={newItem}
                 onChange={(e) => setNewItem(e.target.value)}
@@ -347,27 +338,74 @@ export default function TaskForm() {
                 type="date"
                 value={newItemDue}
                 onChange={(e) => setNewItemDue(e.target.value)}
-                className="w-full sm:w-40"
+                className="w-full sm:w-36"
                 data-testid="item-due-input"
               />
               <Button type="button" size="sm" variant="outline" onClick={addItem} data-testid="btn-add-item">
                 <Plus className="size-4" /> {ACTION.add}
               </Button>
-            </div>
-          </div>
+            </CardFooter>
+          </Card>
+        </div>
 
-          <Separator />
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Pemberi Tugas</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <UserSelect
+                users={users}
+                value={requester}
+                onChange={setRequester}
+                placeholder="Pilih pemberi tugas..."
+                testid="requester-select"
+              />
+              <PersonMeta person={requester} />
+            </CardContent>
+          </Card>
 
-          <DocumentManager
-            taskId={taskId}
-            documents={documents}
-            onChange={setDocuments}
-            label="Dokumen Sumber"
-            idPrefix="task"
-          />
-        </CardContent>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">PIC Pelaksana</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <UserSelect
+                users={users}
+                value={pic}
+                onChange={setPic}
+                placeholder="Pilih pelaksana..."
+                testid="pic-select"
+              />
+              <PersonMeta person={pic} />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+              <CardTitle className="text-base">Dokumen Sumber ({documents.length})</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <DocumentManager
+                taskId={taskId}
+                documents={documents}
+                onChange={setDocuments}
+                idPrefix="task"
+                hideHeaderTitle
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      <Card>
         <CardFooter className="justify-end gap-2">
-          <Button variant="outline" size="sm" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(editing ? `/tasks/${id}` : "/tasks")}
+            data-testid="btn-cancel"
+          >
             {ACTION.cancel}
           </Button>
           <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-task">

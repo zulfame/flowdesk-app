@@ -227,7 +227,7 @@ export default function TaskDetail() {
   const canProgress = isOwner || isPic;
 
   return (
-    <div className="space-y-6" data-testid="task-detail-page">
+    <div className="form-dense space-y-6" data-testid="task-detail-page">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
           <Card>
@@ -336,7 +336,7 @@ export default function TaskDetail() {
                     />
                     <div className="min-w-0 flex-1 space-y-1.5">
                       <div className="flex flex-wrap items-center gap-1.5">
-                        <p className={cn("font-medium", item.done && "text-muted-foreground line-through")}>
+                        <p className={cn("text-[13px] font-medium", item.done && "text-muted-foreground line-through")}>
                           {item.title}
                         </p>
                         {item.done ? (

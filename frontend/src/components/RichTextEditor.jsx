@@ -44,30 +44,30 @@ export default function RichTextEditor({ value, onChange, placeholder = "Tulis c
   };
 
   return (
-    <div className="rounded-xl border border-border overflow-hidden bg-card">
-      <div className="flex items-center gap-1 flex-wrap border-b border-border px-2 py-1.5 bg-secondary/40">
+    <div className="overflow-hidden rounded-md border bg-card">
+      <div className="flex flex-wrap items-center gap-1 border-b bg-muted/40 px-2 py-1">
         {TOOLS.map((t) => (
           <Button
             key={t.cmd}
             type="button"
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0"
+            className="size-7 p-0"
             title={t.label}
             data-testid={`rte-${t.cmd}`}
             onMouseDown={(e) => { e.preventDefault(); exec(t.cmd); }}
           >
-            <t.icon className="h-4 w-4" />
+            <t.icon className="size-3.5" />
           </Button>
         ))}
-        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Checklist" data-testid="rte-checklist" onMouseDown={(e) => { e.preventDefault(); insertChecklist(); }}>
-          <CheckSquare className="h-4 w-4" />
+        <Button type="button" variant="ghost" size="sm" className="size-7 p-0" title="Checklist" data-testid="rte-checklist" onMouseDown={(e) => { e.preventDefault(); insertChecklist(); }}>
+          <CheckSquare className="size-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Tabel" data-testid="rte-table" onMouseDown={(e) => { e.preventDefault(); insertTable(); }}>
-          <TableIcon className="h-4 w-4" />
+        <Button type="button" variant="ghost" size="sm" className="size-7 p-0" title="Tabel" data-testid="rte-table" onMouseDown={(e) => { e.preventDefault(); insertTable(); }}>
+          <TableIcon className="size-3.5" />
         </Button>
-        <Button type="button" variant="ghost" size="sm" className="h-8 w-8 p-0" title="Gambar" data-testid="rte-image" onMouseDown={(e) => { e.preventDefault(); insertImage(); }}>
-          <ImageIcon className="h-4 w-4" />
+        <Button type="button" variant="ghost" size="sm" className="size-7 p-0" title="Gambar" data-testid="rte-image" onMouseDown={(e) => { e.preventDefault(); insertImage(); }}>
+          <ImageIcon className="size-3.5" />
         </Button>
       </div>
       <div
@@ -76,7 +76,7 @@ export default function RichTextEditor({ value, onChange, placeholder = "Tulis c
         data-testid="rte-content"
         data-placeholder={placeholder}
         onInput={(e) => onChange(e.currentTarget.innerHTML)}
-        className="rte-content px-4 py-3 outline-none text-sm leading-relaxed focus:ring-0"
+        className="rte-content px-3 py-2 text-sm leading-relaxed outline-none focus:ring-0"
         style={{ minHeight }}
         suppressContentEditableWarning
       />
