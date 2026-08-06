@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Building2,
+  Check,
   ChevronDown,
   Copy,
   FileText,
@@ -457,12 +458,15 @@ export default function TaskDetail() {
 
                           {isOwner && item.pic_done && !item.done ? (
                             <Button
-                              size="sm"
-                              className="h-6 shrink-0 rounded-md px-2.5 py-0.5 text-xs font-normal"
+                              variant="ghost"
+                              size="icon"
+                              className="size-7 shrink-0"
+                              title="Setujui"
+                              aria-label="Setujui"
                               onClick={() => toggleApprove(item.id)}
                               data-testid={`item-approve-${item.id}`}
                             >
-                              Setujui
+                              <Check className="size-3.5" />
                             </Button>
                           ) : null}
                           {isOwner && item.done ? (

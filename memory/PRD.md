@@ -316,3 +316,14 @@ Permintaan user + hasil testing agent (`/app/test_reports/iteration_11.json`):
 - **Menu `⋯` Detail Tugas** kini hanya **Duplikat · Jadikan Template**; item Cetak & Hapus dihapus (hapus dilakukan dari daftar) — fungsi `remove`, state `deleteOpen`, dan `ConfirmDeleteDialog` di halaman detail ikut dibersihkan.
 - Perbaikan dua temuan minor testing agent: (1) URL lama `/tasks/:id/edit` menampilkan halaman kosong → ditambahkan route catch-all `path="*"` → `Navigate to="/"`; (2) warning aksesibilitas `Missing Description for DialogContent` → `DialogDescription` ditambahkan pada dialog URL/Balasan/Pratinjau (DocumentManager), Jadikan Template, Catatan, dan Pengingat.
 - Guard exit 0. Data uji milik user dikembalikan ke nilai semula oleh testing agent (tenggat 2026-08-15).
+
+## Update (2026-06-08) — Ikon ceklis Setujui + audit FD10/FD12 halaman Member
+- **Tombol "Setujui" item tugas → ikon ceklis** (`TaskDetail.jsx`): `Button` teks h-6 diganti `variant="ghost" size="icon" className="size-7"` berisi `<Check className="size-3.5" />` + `title`/`aria-label` "Setujui", sehingga posisi & ukurannya identik dengan ikon reset (`RotateCcw`) dan baris item tetap sejajar. `data-testid="item-approve-{itemId}"` dipertahankan. Diverifikasi: bounding box 28×28 px, ikon tampil pada item ber-status "Menunggu persetujuan".
+- **Audit tipografi (FD10) & aturan footer (FD12)** untuk **Kelola Catatan, Ingatkan Saya, Time Schedule, Linimasa Time Schedule**: audit runtime `getComputedStyle` pada seluruh leaf node `main` → **tidak ada teks >14px** kecuali `CardTitle` 16px (sesuai aturan). Semua `DialogFooter` sudah berpola Batal (outline, kiri) → Simpan/aksi utama (kanan). **Tidak ada perubahan kode diperlukan** pada keempat halaman.
+- **Modul Rapat**: `MeetingDetail.jsx` sudah dimigrasi (EditableCard, `MeetingBadges`/`StateChip`, footer FD12) dan dikonfirmasi "sudah rapih" oleh user. Item aksi rapat hanya memakai checkbox (tanpa aksi persetujuan), jadi tidak ada tombol Setujui di sana.
+- `design-guard.sh` exit 0. Uji frontend via testing agent DITUNDA atas permintaan user (user menguji sendiri).
+
+### Berikutnya
+- P1: Tiket Bantuan (halaman masih placeholder, belum ada backend router).
+- P1: Ekspor Excel untuk datatable (Log Aktivitas, Pengguna, Tugas, dll).
+- P2: Overhaul alur autentikasi (ditunda sampai redesign tuntas).
