@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, apiError } from "@/lib/api";
+import { isAdminUser } from "@/lib/perms";
 import { useAuth } from "@/context/AuthContext";
 import { PageHeader } from "@/components/common";
 import { Card } from "@/components/ui/card";
@@ -17,7 +18,7 @@ function Field({ label, children }) {
 
 export default function Settings() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminUser(user);
   const [settings, setSettings] = useState(null);
   const [saving, setSaving] = useState(false);
 

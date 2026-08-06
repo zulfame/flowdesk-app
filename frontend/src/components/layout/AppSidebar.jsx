@@ -31,7 +31,7 @@ import {
   getArea,
   getAreas,
 } from "@/config/navigation";
-import { hasPerm } from "@/lib/perms";
+import { hasPerm, isAdminUser } from "@/lib/perms";
 import { useBranding } from "@/context/BrandingContext";
 import { useAuth } from "@/context/AuthContext";
 import { LOGOUT } from "@/constants/testIds/auth";
@@ -56,7 +56,7 @@ export const AppSidebar = (props) => {
   const { branding } = useBranding();
   const { user, logout } = useAuth();
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminUser(user);
   const can = (key) => hasPerm(user, key);
   const areas = getAreas(isAdmin, can);
 

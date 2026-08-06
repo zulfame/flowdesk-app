@@ -69,7 +69,7 @@ async def run(force: bool):
         "name": "Super Administrator",
         "email": admin_email,
         "password_hash": hash_password(admin_password),
-        "role": "admin",
+        "role": "super_admin",
         "permissions": ["*"],
         "phone": None,
         "department": "Sistem",

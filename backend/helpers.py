@@ -10,23 +10,25 @@ def new_id() -> str:
     return str(uuid.uuid4())
 
 
-PRIVILEGED_ROLES = ("admin", "manager")
-
-
-def is_privileged(user: dict) -> bool:
-    """Admin & Manajer melihat semua data."""
-    return (user or {}).get("role") in PRIVILEGED_ROLES
+ADMIN_ROLE = "super_admin"
+GUEST_ROLE = "guest"
 
 
 def is_admin(user: dict) -> bool:
-    return (user or {}).get("role") == "admin"
+    """Hanya Super Admin (atau pemegang izin '*') yang berstatus administrator."""
+    u = user or {}
+    return u.get("role") == ADMIN_ROLE or "*" in (u.get("permissions") or [])
+
+
+def is_privileged(user: dict) -> bool:
+    return is_admin(user)
 
 
 def can_manage(user: dict, doc: dict) -> bool:
-    """Boleh hapus / ubah info inti: Admin atau pembuat data."""
+    """Boleh hapus / ubah info inti: Super Admin atau pembuat data."""
     if not user or not doc:
         return False
-    return user.get("role") == "admin" or doc.get("created_by") == user.get("id")
+    return is_admin(user) or doc.get("created_by") == user.get("id")
 
 
 def task_visibility_query(user: dict) -> dict:
@@ -95,7 +97,7 @@ async def sees_all(db, user: dict) -> bool:
     """Admin / Super Admin (izin '*') melihat seluruh data organisasi."""
     if not user:
         return False
-    if user.get("role") == "admin" or "*" in (user.get("permissions") or []):
+    if is_admin(user):
         return True
     role = await role_by_name(db, user.get("role"))
     return bool(role and "*" in (role.get("permissions") or []))

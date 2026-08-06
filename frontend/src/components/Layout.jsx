@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { hasPerm } from "@/lib/perms";
+import { hasPerm, isAdminUser } from "@/lib/perms";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator, DropdownMenuLabel
 } from "@/components/ui/dropdown-menu";
@@ -112,7 +112,7 @@ export default function Layout({ children }) {
 
   const visibleGroups = NAV_GROUPS
     .map((g) => ({ ...g, items: g.items.filter((it) => !it.perm || hasPerm(user, it.perm)) }))
-    .filter((g) => (!g.adminOnly || user?.role === "admin") && g.items.length > 0);
+    .filter((g) => (!g.adminOnly || isAdminUser(user)) && g.items.length > 0);
 
   const SidebarContent = (
     <>

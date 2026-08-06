@@ -60,6 +60,6 @@ async def get_current_user(request: Request) -> dict:
 
 
 def require_admin(user: dict = Depends(get_current_user)) -> dict:
-    if user.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Akses ditolak. Hanya admin.")
+    if user.get("role") != "super_admin" and "*" not in (user.get("permissions") or []):
+        raise HTTPException(status_code=403, detail="Akses ditolak. Hanya Super Admin.")
     return user

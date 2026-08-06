@@ -35,7 +35,7 @@ async def _with_perms(u: dict) -> dict:
     """Kembalikan user + daftar izin efektif (gabungan izin peran) untuk gating menu di frontend."""
     u = _public_user(u)
     own = set(u.get("permissions") or [])
-    if u.get("role") == "admin" or "*" in own:
+    if u.get("role") == "super_admin" or "*" in own:
         u["permissions"] = ["*"]
         return u
     role = await db.roles.find_one({"name": u.get("role")}, {"_id": 0})
@@ -64,7 +64,7 @@ async def register(body: RegisterBody):
         "name": body.name,
         "email": email,
         "password_hash": hash_password(body.password),
-        "role": "admin" if count == 0 else "member",
+        "role": "super_admin" if count == 0 else "guest",
         "permissions": [],
         "is_active": True,
         "avatar": None,
@@ -120,7 +120,7 @@ async def login(body: LoginBody, request: Request):
             cfg = await authty.get_config()
             local = await db.users.find_one({"email": email})
             allow_local = (cfg["allow_local_fallback"] and local and local.get("password_hash")
-                           and (local.get("role") in ("admin", "super_admin")
+                           and (local.get("role") == "super_admin"
                                 or "*" in (local.get("permissions") or [])))
             if allow_local and verify_password(body.password, local["password_hash"]):
                 user = local

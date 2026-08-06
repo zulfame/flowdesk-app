@@ -18,7 +18,7 @@ export const userDefaultValues = {
   name: "",
   email: "",
   password: "",
-  role: "member",
+  role: "guest",
   phone: "",
   department: "",
 };

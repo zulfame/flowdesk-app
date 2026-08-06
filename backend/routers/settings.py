@@ -103,7 +103,7 @@ async def get_settings_endpoint(user: dict = Depends(get_current_user)):
         "authty_api_key_hint": crypto.mask(key),
     }
     # mask password for non-admin
-    if user.get("role") != "admin":
+    if user.get("role") != "super_admin" and "*" not in (user.get("permissions") or []):
         s = dict(s)
         if "email" in s:
             s["email"] = {**s["email"], "smtp_password": ""}

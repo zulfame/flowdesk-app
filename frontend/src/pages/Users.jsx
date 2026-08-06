@@ -62,6 +62,7 @@ import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog"
 import { PasswordInput } from "@/components/composite/PasswordInput";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
+import { isAdminUser } from "@/lib/perms";
 import { useAuth } from "@/context/AuthContext";
 import { ACTION } from "@/constants/labels";
 import { userDefaultValues, userSchema } from "@/lib/validation/adminSchema";
@@ -184,7 +185,7 @@ const CSV_TEMPLATE =
  */
 export default function Users() {
   const { user } = useAuth();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = isAdminUser(user);
 
   const [rows, setRows] = useState([]);
   const [total, setTotal] = useState(0);
@@ -264,7 +265,7 @@ export default function Users() {
         name: u.name || "",
         email: u.email || "",
         password: "",
-        role: u.role || "member",
+        role: u.role || "guest",
         phone: u.phone || "",
         department: u.department || "",
       });

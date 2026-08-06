@@ -1,10 +1,15 @@
+/** Administrator = Super Admin (atau pemegang izin '*'). Peran admin/manager/member sudah dihapus. */
+export function isAdminUser(user) {
+  return Boolean(user && (user.role === "super_admin" || (user.permissions || []).includes("*")));
+}
+
 export function isPrivileged(user) {
-  return user && (user.role === "admin" || user.role === "manager");
+  return isAdminUser(user);
 }
 
 export function canManage(user, doc) {
   if (!user || !doc) return false;
-  return user.role === "admin" || doc.created_by === user.id;
+  return isAdminUser(user) || doc.created_by === user.id;
 }
 
 export function isTaskPic(user, task) {
@@ -14,5 +19,5 @@ export function isTaskPic(user, task) {
 export function hasPerm(user, key) {
   if (!user) return false;
   const perms = user.permissions || [];
-  return user.role === "admin" || perms.includes("*") || perms.includes(key);
+  return isAdminUser(user) || perms.includes(key);
 }

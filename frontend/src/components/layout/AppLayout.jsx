@@ -18,6 +18,7 @@ import { AppSidebar } from "@/components/layout/AppSidebar";
 import { NotificationsBell } from "@/components/layout/NotificationsBell";
 import { ModeToggle } from "@/components/mode-toggle";
 import { getBreadcrumb } from "@/config/navigation";
+import { isAdminUser } from "@/lib/perms";
 import { useAuth } from "@/context/AuthContext";
 import NoAccess from "@/pages/NoAccess";
 
@@ -33,8 +34,7 @@ export default function AppLayout({ children }) {
   const { user } = useAuth();
 
   // Jabatan tanpa izin menu → jangan tampilkan shell kosong (SSO Authty: fallback `guest`).
-  const noAccess =
-    user && user.role !== "admin" && (user.permissions || []).length === 0;
+  const noAccess = user && !isAdminUser(user) && (user.permissions || []).length === 0;
   if (noAccess) return <NoAccess />;
 
   return (

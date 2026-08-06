@@ -30,9 +30,10 @@ PERMISSION_CATALOG = [
 ]
 
 DEFAULT_ROLES = [
-    {"name": "admin", "label": "Administrator", "permissions": ["*"], "is_system": True},
-    {"name": "manager", "label": "Manajer", "permissions": ["task", "meeting", "time_schedule", "reminder", "note", "calendar", "report"]},
-    {"name": "member", "label": "Anggota", "permissions": ["task", "meeting", "time_schedule", "reminder", "note", "calendar"]},
+    {"name": "super_admin", "label": "Super Admin", "permissions": ["*"], "parent_id": None,
+     "level": "Dirut", "is_system": True},
+    {"name": "guest", "label": "Guest", "permissions": [], "parent_id": None,
+     "level": "Staff", "is_system": True},
 ]
 
 
@@ -44,7 +45,7 @@ class UserCreate(BaseModel):
     name: str
     email: EmailStr
     password: str = Field(min_length=6)
-    role: str = "member"
+    role: str = "guest"
     phone: Optional[str] = None
     department: Optional[str] = None
 
@@ -130,7 +131,7 @@ async def import_users(file: UploadFile = File(...), admin: dict = Depends(requi
         raise HTTPException(status_code=400, detail=f"Gagal membaca berkas: {e}")
 
     created, updated, errors = 0, 0, []
-    valid_roles = {r["name"] for r in (await db.roles.find({}, {"_id": 0, "name": 1}).to_list(100))} or {"admin", "manager", "member"}
+    valid_roles = {r["name"] for r in (await db.roles.find({}, {"_id": 0, "name": 1}).to_list(100))} or {"super_admin", "guest"}
 
     for idx, row in enumerate(rows, start=2):
         name = str(row.get("name") or row.get("nama") or "").strip()
@@ -139,9 +140,9 @@ async def import_users(file: UploadFile = File(...), admin: dict = Depends(requi
             if name or email:
                 errors.append(f"Baris {idx}: email tidak valid")
             continue
-        role = str(row.get("role") or row.get("peran") or "member").strip().lower()
+        role = str(row.get("role") or row.get("peran") or "guest").strip().lower()
         if role not in valid_roles:
-            role = "member"
+            role = "guest"
         phone = str(row.get("phone") or row.get("telepon") or "").strip() or None
         dept = str(row.get("department") or row.get("departemen") or "").strip() or None
         fields = {"name": name or email.split("@")[0], "role": role, "phone": phone, "department": dept}
@@ -328,7 +329,7 @@ async def import_roles(file: UploadFile = File(...), admin: dict = Depends(requi
             updated += 1
         else:
             rid = new_id()
-            system = name in ("super_admin", "guest", "admin")
+            system = name in ("super_admin", "guest")
             await db.roles.insert_one({"id": rid, "name": name,
                                        "permissions": ["*"] if name == "super_admin" else [],
                                        "parent_id": None, "is_system": system, **fields})
@@ -373,7 +374,7 @@ async def update_role(role_id: str, body: RoleBody, admin: dict = Depends(requir
 @router.delete("/roles/{role_id}")
 async def delete_role(role_id: str, admin: dict = Depends(require_admin)):
     role = await db.roles.find_one({"id": role_id})
-    if role and (role.get("is_system") or role.get("name") in ("admin", "manager", "member", "super_admin", "guest")):
+    if role and (role.get("is_system") or role.get("name") in ("super_admin", "guest")):
         raise HTTPException(status_code=400, detail="Role bawaan tidak dapat dihapus")
     await db.roles.delete_one({"id": role_id})
     return {"message": "Role dihapus"}
