@@ -117,7 +117,7 @@ export const LoginForm = () => {
               <FormControl>
                 <PasswordInput
                   autoComplete="current-password"
-                  placeholder="•••••••••••••"
+                  placeholder="*****************************"
                   data-testid={LOGIN.passwordInput}
                   {...field}
                 />

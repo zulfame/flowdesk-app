@@ -171,7 +171,7 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid items-start gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -218,18 +218,24 @@ export default function Dashboard() {
                         {t.pic?.name || "Tanpa PIC"}
                       </span>
                     </span>
-                    <Progress value={t.progress} className="hidden h-1.5 w-20 shrink-0 sm:block" />
-                    <span className="hidden w-9 shrink-0 text-right text-xs tabular-nums text-muted-foreground sm:block">
-                      {t.progress}%
+                    <span className="hidden w-24 shrink-0 items-center gap-2 sm:flex">
+                      <Progress value={t.progress} className="h-1.5 flex-1" />
+                      <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
+                        {t.progress}%
+                      </span>
                     </span>
-                    <PriorityBadge priority={t.priority} />
-                    <Badge
-                      variant="outline"
-                      className="state-chip shrink-0 font-medium"
-                      style={{ "--chip": `var(${due.chip})` }}
-                    >
-                      {due.text}
-                    </Badge>
+                    <span className="hidden w-20 shrink-0 justify-end sm:flex">
+                      <PriorityBadge priority={t.priority} />
+                    </span>
+                    <span className="flex w-[6.5rem] shrink-0 justify-end">
+                      <Badge
+                        variant="outline"
+                        className="state-chip whitespace-nowrap font-medium"
+                        style={{ "--chip": `var(${due.chip})` }}
+                      >
+                        {due.text}
+                      </Badge>
+                    </span>
                   </button>
                 );
               })}
