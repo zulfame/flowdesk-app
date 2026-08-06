@@ -1,108 +1,230 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { api } from "@/lib/api";
-import { PageHeader, EmptyState } from "@/components/common";
-import { Card } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ScrollText, Plus, Pencil, Trash2, RotateCcw, LogIn, LogOut, Upload, Download, MessageSquare, Search, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import React, { useCallback, useEffect, useState } from "react";
+import {
+  Download,
+  LogIn,
+  LogOut,
+  MessageSquare,
+  Pencil,
+  Plus,
+  RotateCcw,
+  ScrollText,
+  Trash2,
+  Upload,
+} from "lucide-react";
 
-const ACTION_ICONS = { create: Plus, update: Pencil, delete: Trash2, restore: RotateCcw, login: LogIn, logout: LogOut, upload: Upload, download: Download, comment: MessageSquare };
-const ACTION_COLORS = {
-  create: "text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30", update: "text-blue-600 bg-blue-50 dark:bg-blue-900/30",
-  delete: "text-rose-600 bg-rose-50 dark:bg-rose-900/30", restore: "text-amber-600 bg-amber-50 dark:bg-amber-900/30",
-  login: "text-indigo-600 bg-indigo-50 dark:bg-indigo-900/30", logout: "text-slate-600 bg-slate-100 dark:bg-slate-800",
-  upload: "text-purple-600 bg-purple-50 dark:bg-purple-900/30", comment: "text-amber-600 bg-amber-50 dark:bg-amber-900/30",
+import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  DataTableCard,
+  SortableHeader,
+  fmtDate,
+} from "@/components/composite/DataTableCard";
+import { api, apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
+
+const ACTION_ICONS = {
+  create: Plus,
+  update: Pencil,
+  delete: Trash2,
+  restore: RotateCcw,
+  login: LogIn,
+  logout: LogOut,
+  upload: Upload,
+  download: Download,
+  comment: MessageSquare,
 };
-const ENTITY_LABELS = { task: "Tugas", meeting: "Rapat", reminder: "Pengingat", note: "Catatan", user: "Pengguna", auth: "Autentikasi", settings: "Pengaturan", backup: "Backup", role: "Peran", event: "Acara" };
-const ACTION_LABELS = { create: "Buat", update: "Ubah", delete: "Hapus", restore: "Pulihkan", login: "Masuk", logout: "Keluar", upload: "Unggah", download: "Unduh", comment: "Komentar" };
-const PAGE_SIZE = 25;
 
-function fmt(iso) { return new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" }); }
+const ACTION_LABELS = {
+  create: "Buat",
+  update: "Ubah",
+  delete: "Hapus",
+  restore: "Pulihkan",
+  login: "Masuk",
+  logout: "Keluar",
+  upload: "Unggah",
+  download: "Unduh",
+  comment: "Komentar",
+};
 
+const ENTITY_LABELS = {
+  task: "Tugas",
+  meeting: "Rapat",
+  reminder: "Pengingat",
+  note: "Catatan",
+  user: "Pengguna",
+  auth: "Autentikasi",
+  settings: "Pengaturan",
+  backup: "Backup",
+  role: "Peran",
+  event: "Acara",
+};
+
+/** Monochrome-first badge mapping: only destructive actions get colour. */
+const actionVariant = (action) =>
+  action === "delete" ? "destructive" : action === "create" ? "default" : "secondary";
+
+/** Column definitions (module scope: stable identity across renders). */
+const COLUMNS = [
+    {
+      accessorKey: "created_at",
+      header: ({ column }) => <SortableHeader column={column}>Waktu</SortableHeader>,
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">{fmtDate(row.original.created_at)}</span>
+      ),
+    },
+    {
+      accessorKey: "user_name",
+      header: ({ column }) => <SortableHeader column={column}>Pengguna</SortableHeader>,
+      cell: ({ row }) => <span className="font-medium">{row.original.user_name || "\u2014"}</span>,
+    },
+    {
+      accessorKey: "action",
+      header: ({ column }) => <SortableHeader column={column}>Aksi</SortableHeader>,
+      cell: ({ row }) => {
+        const value = row.original.action;
+        const Icon = ACTION_ICONS[value] || ScrollText;
+        return (
+          <Badge variant={actionVariant(value)} className="gap-1 font-normal">
+            <Icon className="size-3" aria-hidden="true" />
+            {ACTION_LABELS[value] || value}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "entity_type",
+      header: ({ column }) => <SortableHeader column={column}>Entitas</SortableHeader>,
+      cell: ({ row }) => (
+        <Badge variant="outline" className="font-normal">
+          {ENTITY_LABELS[row.original.entity_type] || row.original.entity_type}
+        </Badge>
+      ),
+    },
+    {
+      accessorKey: "description",
+      header: ({ column }) => <SortableHeader column={column}>Deskripsi</SortableHeader>,
+      cell: ({ row }) => (
+        <span className="block max-w-[28rem] truncate" title={row.original.description}>
+          {row.original.description}
+        </span>
+      ),
+    },
+];
+
+/**
+ * ActivityLog — read-only audit trail rendered with the standard DataTableCard
+ * (R47) in SERVER mode: search, entity/action filters and pagination are driven
+ * by the API so large logs stay fast.
+ */
 export default function ActivityLog() {
-  const [data, setData] = useState({ items: [], total: 0, page: 1 });
+  const [rows, setRows] = useState([]);
+  const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   const [entity, setEntity] = useState("all");
   const [action, setAction] = useState("all");
-  const [q, setQ] = useState("");
-  const [page, setPage] = useState(1);
-  const [loading, setLoading] = useState(true);
+  const [pageIndex, setPageIndex] = useState(0);
+  const [pageSize, setPageSize] = useState(10);
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/activity-logs", { params: { entity_type: entity, action, q: q || undefined, page, page_size: PAGE_SIZE } });
-      setData(data);
-    } catch {} finally { setLoading(false); }
-  }, [entity, action, q, page]);
+      const { data } = await api.get("/activity-logs", {
+        params: {
+          entity_type: entity,
+          action,
+          q: search || undefined,
+          page: pageIndex + 1,
+          page_size: pageSize,
+        },
+      });
+      setRows(data.items || []);
+      setTotal(data.total || 0);
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [entity, action, search, pageIndex, pageSize]);
 
-  useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
-  useEffect(() => { setPage(1); }, [entity, action, q]);
+  useEffect(() => {
+    const timer = setTimeout(load, 250);
+    return () => clearTimeout(timer);
+  }, [load]);
 
-  const totalPages = Math.max(1, Math.ceil(data.total / PAGE_SIZE));
+  // Any filter/search change restarts from the first page.
+  useEffect(() => {
+    setPageIndex(0);
+  }, [entity, action, search, pageSize]);
+
+  const filters = (
+    <>
+      <Select value={entity} onValueChange={setEntity}>
+        <SelectTrigger
+          className="h-[var(--ctl-h-sm)] w-full text-xs sm:w-40"
+          data-testid="activity-filter-entity"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Semua Entitas</SelectItem>
+          {Object.entries(ENTITY_LABELS).map(([key, label]) => (
+            <SelectItem key={key} value={key}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select value={action} onValueChange={setAction}>
+        <SelectTrigger
+          className="h-[var(--ctl-h-sm)] w-full text-xs sm:w-36"
+          data-testid="activity-filter-action"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">Semua Aksi</SelectItem>
+          {Object.entries(ACTION_LABELS).map(([key, label]) => (
+            <SelectItem key={key} value={key}>
+              {label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
+  );
 
   return (
-    <div>
-      <PageHeader title="Log Aktivitas" subtitle="Jejak audit lengkap dari seluruh aktivitas sistem." />
-
-      <div className="flex flex-col sm:flex-row gap-3 mb-6">
-        <div className="relative flex-1">
-          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cari deskripsi atau pengguna..." className="pl-9 rounded-xl" data-testid="activity-search" />
-        </div>
-        <Select value={entity} onValueChange={setEntity}>
-          <SelectTrigger className="w-full sm:w-40 rounded-xl" data-testid="activity-filter-entity"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Entitas</SelectItem>
-            {Object.entries(ENTITY_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={action} onValueChange={setAction}>
-          <SelectTrigger className="w-full sm:w-36 rounded-xl" data-testid="activity-filter-action"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Semua Aksi</SelectItem>
-            {Object.entries(ACTION_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
-          </SelectContent>
-        </Select>
-      </div>
-
-      <Card className="rounded-lg shadow-soft overflow-hidden">
-        {loading ? (
-          <div className="p-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-        ) : data.items.length === 0 ? (
-          <EmptyState icon={ScrollText} title="Belum ada aktivitas" description="Aktivitas sistem akan tercatat di sini." />
-        ) : (
-          <div className="divide-y divide-border">
-            {data.items.map((log) => {
-              const Icon = ACTION_ICONS[log.action] || ScrollText;
-              return (
-                <div key={log.id} className="flex items-center gap-4 p-4 hover:bg-secondary/40 transition-colors" data-testid={`log-${log.id}`}>
-                  <div className={`h-9 w-9 rounded-xl flex items-center justify-center shrink-0 ${ACTION_COLORS[log.action] || "text-slate-600 bg-slate-100 dark:bg-slate-800"}`}>
-                    <Icon className="h-4 w-4" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm">{log.description}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                      <span className="font-medium text-foreground/70">{log.user_name}</span>
-                      <span className="px-1.5 py-0.5 rounded-full bg-secondary">{ENTITY_LABELS[log.entity_type] || log.entity_type}</span>
-                    </div>
-                  </div>
-                  <span className="text-xs text-muted-foreground shrink-0">{fmt(log.created_at)}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </Card>
-
-      <div className="flex items-center justify-between mt-4 text-sm text-muted-foreground">
-        <span data-testid="activity-total">{data.total} aktivitas</span>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page <= 1} onClick={() => setPage((p) => p - 1)} data-testid="activity-prev"><ChevronLeft className="h-4 w-4" /></Button>
-          <span data-testid="activity-page">Hal {data.page} / {totalPages}</span>
-          <Button variant="outline" size="icon" className="h-8 w-8 rounded-lg" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} data-testid="activity-next"><ChevronRight className="h-4 w-4" /></Button>
-        </div>
-      </div>
+    <div className="space-y-6" data-testid="activity-page">
+      <DataTableCard
+        title="Log Aktivitas"
+        onRefresh={load}
+        refreshTestId="activity-refresh"
+        filters={filters}
+        columns={COLUMNS}
+        data={rows}
+        loading={loading}
+        searchPlaceholder="Cari deskripsi atau pengguna..."
+        search={{ value: search, onChange: setSearch }}
+        pagination={{
+          pageIndex,
+          pageSize,
+          pageCount: Math.ceil(total / pageSize) || 1,
+          totalRows: total,
+          onPageChange: setPageIndex,
+          onPageSizeChange: setPageSize,
+        }}
+        testid="activity"
+        emptyIcon={ScrollText}
+        emptyTitle="Belum ada aktivitas"
+        emptyDescription="Setiap aktivitas pada sistem akan tercatat otomatis di sini."
+      />
     </div>
   );
 }

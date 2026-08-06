@@ -1,4 +1,14 @@
-import { LayoutDashboard, LayoutGrid, ShieldCheck } from "lucide-react";
+import {
+  Archive,
+  BellRing,
+  Database,
+  LayoutDashboard,
+  LayoutGrid,
+  ScrollText,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users2,
+} from "lucide-react";
 
 /**
  * Centralised navigation config (R35).
@@ -33,7 +43,20 @@ export const AREAS = [
     description: "Pengelolaan sistem",
     icon: ShieldCheck,
     adminOnly: true,
-    sections: [],
+    sections: [
+      {
+        label: "Pengaturan",
+        items: [
+          { to: "/app-settings", title: "Kelola Aplikasi", icon: SlidersHorizontal },
+          { to: "/roles", title: "Kelola Peranan", icon: ShieldCheck },
+          { to: "/users", title: "Kelola Pengguna", icon: Users2 },
+          { to: "/database", title: "Kelola Database", icon: Database },
+          { to: "/notification-settings", title: "Kelola Notifikasi", icon: BellRing },
+          { to: "/archive", title: "Kelola Arsip", icon: Archive },
+          { to: "/activity", title: "Log Aktivitas", icon: ScrollText },
+        ],
+      },
+    ],
   },
 ];
 

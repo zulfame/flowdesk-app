@@ -111,6 +111,7 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
 | 0 | Fondasi: token 2-layer monokrom, Geist, density (Dense/Lega), primitive & composite shadcn, ThemeProvider/DensityProvider, ErrorBoundary, dokumen + guard | ✅ Selesai |
 | 1 | Shell (`AppLayout`/`AppSidebar`/breadcrumb) + `AuthLayout` + halaman **Login** + Dashboard blank; menu sidebar hanya Dashboard | ✅ Selesai |
 | 1b | Compact dikunci (FD1, density dihapus), lonceng notifikasi di header (FD2), area switcher Member Area/Administrator (FD3), aksi **Profil** di menu pengguna (FD4) | ✅ Selesai |
+| 2b | Area **Administrator** diaktifkan: grup menu **"Pengaturan"** (7 item) di `config/navigation.js`; **Log Aktivitas** dimigrasi ke `DataTableCard` mode SERVER (cari/filter/paginasi dari API) | ✅ Selesai |
 | 2 | Halaman list/CRUD (R47): Tugas, Rapat, Catatan, Pengingat, Time Schedule, Pengguna, Peranan, Arsip, Log Aktivitas | ⏳ Belum |
 | 2a-1 | Penyempurnaan Profil: tinggi `CardHeader`/`CardFooter` dikecilkan (E7), urutan field sandi (Saat Ini di baris atas sendiri; Baru + Konfirmasi di baris berikutnya), foto profil tampil di footer sidebar & dropdown pengguna | ✅ Selesai |
 | 2a | **Profil Pengguna** (`pages/Profile.jsx`) → pola konfigurasi R51 (section cards + save bar), rhf+zod, `AvatarUpload` composite baru | ✅ Selesai |

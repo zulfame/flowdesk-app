@@ -20,7 +20,7 @@ SRC="$SCRIPT_DIR/../src"
 DIRS="$SRC/pages $SRC/components/composite $SRC/components/layout $SRC/components/auth"
 
 # Not-yet-migrated modules + old shared components (phase-scoped exclusions).
-LEGACY='(Dashboard\.jsx|Tasks|TaskDetail|TaskForm|Meetings|MeetingDetail|MeetingForm|HelpTickets|Calendar|Reminders|TimeSchedule|TimeScheduleDetail|Notes|Notifications|NotificationSettings|ActivityLog|Users|Roles|Database|Archive|AppSettings|Settings)'
+LEGACY='(Dashboard\.jsx|Tasks|TaskDetail|TaskForm|Meetings|MeetingDetail|MeetingForm|HelpTickets|Calendar|Reminders|TimeSchedule|TimeScheduleDetail|Notes|Notifications|NotificationSettings|Users|Roles|Database|Archive|AppSettings|Settings)'
 EXCLUDE="$LEGACY"
 
 scan() { grep -rnE "$1" $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXCLUDE" | grep -vE '//\s*guard-allow'; }
