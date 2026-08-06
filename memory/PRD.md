@@ -489,3 +489,17 @@ Sumber: `AUTHTY_API.md` + `AUTHTY_INTEGRATION_GUIDE.md` dari user. Pola: **verif
 - **Perbaikan** (`pages/TimeScheduleDetail.jsx`): fungsi `autoProgress()` dan kolom `id: "progress"` **DIHAPUS**. Progres kini dihitung **satu kali di tingkat jadwal**, konsep sama seperti Tugas: `kegiatan status "Selesai" / total kegiatan`, ditampilkan di header kartu **Linimasa** (`data-testid="schedule-progress"`) sebagai bar + teks `"<persen>% · <selesai>/<total> kegiatan selesai"`.
 - **Diverifikasi testing agent** — `/app/test_reports/iteration_12.json`, frontend 100%, tanpa issue: kolom Progres hilang (kolom kini Kegiatan, Kategori, PIC, Periode, Status, Aksi), tidak ada `activity-progress-*`, 1 dari 2 kegiatan Selesai → tepat `50% · 1/2 kegiatan selesai` (tidak lompat 100%), dikembalikan ke Proses → `0% · 0/2`, menu baris tetap hanya Ubah/Hapus, gantt tetap render, tanpa console error.
 - Catatan testid dari testing agent: wrapper datatable = `activities`, elemen tabel = `activities-table`; aksi baris `activity-actions-{id}` / `btn-edit-activity-{id}` / `btn-delete-activity-{id}`; select status dialog = `activity-status-select`.
+
+## Update (2026-06-08f) — Modul Tiket Bantuan SELESAI (backend + frontend)
+Permintaan user: modul tiket bantuan (judul, deskripsi, kategori, prioritas, lampiran multi, ditujukan, komentar saling membalas, status oleh penerima) + **visibilitas monitoring berjenjang**.
+- **Backend** `routers/help_tickets.py` kini **terdaftar** di `server.py`. Nomor tiket otomatis `TKT-YYYYMM-NNNN`. Status: Baru → Ditugaskan → Diproses → Menunggu Info → Selesai → Ditutup. Izin `help_ticket` sudah ada di katalog permission.
+- **Aturan hierarki (baru)**: tiket terlihat oleh **pelapor, penerima, dan seluruh jabatan DI ATAS keduanya** (via `scope_user_ids`, OR pada `created_by`/`assignee.user_id`). **Status** hanya boleh diubah penerima (atau Super Admin). **Tujuan tiket** boleh dipindahkan oleh pelapor, Super Admin, atau **atasan penerima** — dan bila bukan pelapor, hanya boleh dialihkan ke pegawai **di bawah jabatannya** (`_can_reassign` + `_sub_ids`). Respons detail/update mengirim `can_handle`, `can_reassign`, `can_edit`.
+- **Frontend**: `pages/HelpTickets.jsx` (DataTableCard: No. Tiket/Judul/Kategori/Prioritas/Pelapor/Ditujukan/Status/Diperbarui; filter Lingkup(Semua/Tiket Saya/Ditujukan ke Saya)+Status+Kategori; dialog "Tiket Bantuan Baru" dengan lampiran multi via `DocumentManager`), `pages/HelpTicketDetail.jsx` (EditableCard: ringkasan, Penanganan(status+catatan penyelesaian), Ditujukan(UserSelect — kandidat = semua pengguna bila pelapor, hanya bawahan bila atasan), Informasi Tiket, kartu Komentar 2 arah, kartu Lampiran). `components/composite/TicketBadges.jsx` (status chip E9). Rute `/help-tickets/:id` + breadcrumb.
+- `design-guard.sh`: LEGACY tinggal `Settings`. Guard exit 0.
+- **Verifikasi**: hierarki via `backend/scripts/verify_ticket_hierarchy.py` (13 skenario lolos: atasan pelapor & atasan penerima melihat, staf lain 403, reassign atasan penerima 200 / atasan pelapor 403, status pelapor 403, komentar 2 arah). UI via testing agent `iteration_14.json` → **frontend 100%, 0 isu**. Data uji (5 peran + 5 user `@flowdesk.test`) sudah dihapus kembali dari DB.
+
+### Berikutnya
+- P1: Login via **username / nomor HP** (backend masih hanya email).
+- P1: Ekspor Excel untuk datatable lain (Log Aktivitas, Pengguna, Tugas).
+- P1: Integrasi WhatsApp API untuk broadcast pengingat (kini via email).
+- P2: Migrasi halaman `Settings.jsx` lama; PDF export siap cetak.
