@@ -67,6 +67,8 @@ const CAT = {
 };
 const HOLIDAY_COL = "hsl(var(--ts-holiday-col))";
 const HOLIDAY_TEXT = "hsl(var(--ts-holiday))";
+const EVENT_COL = "hsl(var(--ts-event-col))";
+const EVENT_TEXT = "hsl(var(--ts-event))";
 const STATUSES = ["Rencana", "Proses", "Selesai"];
 const SWATCHES = ["#f59e0b", "#10b981", "#ef4444", "#3b82f6", "#8b5cf6", "#ec4899", "#14b8a6", "#64748b"]; // guard-allow (E2: warna kegiatan = data)
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "Mei", "Jun", "Jul", "Agu", "Sep", "Okt", "Nov", "Des"];
@@ -466,15 +468,6 @@ export default function TimeScheduleDetail() {
         <CardHeader className="flex flex-col gap-2 space-y-0 sm:flex-row sm:items-center sm:justify-between">
           <CardTitle className="text-base">Linimasa</CardTitle>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
-            {Object.entries(CAT).map(([k, v]) => (
-              <span key={k} className="inline-flex items-center gap-1.5">
-                <span
-                  className="h-2.5 w-4 rounded-sm"
-                  style={{ backgroundColor: `hsl(var(${v.hue}))` }}
-                />{" "}
-                {v.label}
-              </span>
-            ))}
             <span className="inline-flex items-center gap-1.5">
               <span
                 className="h-2.5 w-4 rounded-sm border"
@@ -483,7 +476,11 @@ export default function TimeScheduleDetail() {
               Kolom Hari Libur
             </span>
             <span className="inline-flex items-center gap-1.5">
-              <span className="h-2.5 w-4 rounded-sm bg-accent ring-1 ring-primary/50" /> Hari Event
+              <span
+                className="h-2.5 w-4 rounded-sm border"
+                style={{ backgroundColor: EVENT_COL, borderColor: EVENT_TEXT }}
+              />{" "}
+              Hari Event
             </span>
             <span className="inline-flex items-center gap-1.5">
               <span className="h-3.5 w-0.5 bg-primary" /> Hari ini
@@ -529,14 +526,16 @@ export default function TimeScheduleDetail() {
                         key={i}
                         className={cn(
                           "shrink-0 border-r py-1.5 text-center text-[10px] text-muted-foreground",
-                          eventDates.has(key) && "bg-accent font-semibold text-accent-foreground",
+                          (eventDates.has(key) || holidays.has(key) || wknd) && "font-semibold",
                           key === todayKey && "border-l-2 border-l-primary font-semibold text-foreground"
                         )}
                         style={{
                           width: DAY_W,
-                          ...(holidays.has(key) || wknd
-                            ? { backgroundColor: HOLIDAY_COL, color: HOLIDAY_TEXT }
-                            : null),
+                          ...(eventDates.has(key)
+                            ? { backgroundColor: EVENT_COL, color: EVENT_TEXT }
+                            : holidays.has(key) || wknd
+                              ? { backgroundColor: HOLIDAY_COL, color: HOLIDAY_TEXT }
+                              : null),
                         }}
                         title={d.toLocaleDateString("id-ID")}
                       >
@@ -577,15 +576,16 @@ export default function TimeScheduleDetail() {
                             key={i}
                             className={cn(
                               "flex shrink-0 items-center border-r px-px",
-                              eventDates.has(key) && "bg-accent/60",
                               key === todayKey && "border-l-2 border-l-primary"
                             )}
                             style={{
                               width: DAY_W,
                               height: ROW_H,
-                              ...(holidays.has(key) || wknd
-                                ? { backgroundColor: HOLIDAY_COL }
-                                : null),
+                              ...(eventDates.has(key)
+                                ? { backgroundColor: EVENT_COL }
+                                : holidays.has(key) || wknd
+                                  ? { backgroundColor: HOLIDAY_COL }
+                                  : null),
                             }}
                           >
                             {on ? (

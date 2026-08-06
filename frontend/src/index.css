@@ -128,6 +128,7 @@ code {
         --ts-event: 160 84% 39%;
         --ts-holiday: 347 77% 57%;
         --ts-holiday-col: 0 86% 97%;
+        --ts-event-col: 152 70% 92%;
 
         /* Sidebar semantics (monochrome-first) */
         --sidebar-background: var(--neutral-50);
@@ -199,6 +200,7 @@ code {
         --ts-event: 158 64% 52%;
         --ts-holiday: 351 95% 71%;
         --ts-holiday-col: 350 40% 16%;
+        --ts-event-col: 155 40% 18%;
 
         /* Sidebar semantics (dark) */
         --sidebar-background: var(--neutral-900);

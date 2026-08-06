@@ -253,7 +253,8 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
     head_fill = PatternFill("solid", fgColor="F3F4F6")
     holiday_fill = PatternFill("solid", fgColor="FEF1F2")
     holiday_font = "D33A57"
-    event_fill = PatternFill("solid", fgColor="E5E7EB")
+    event_fill = PatternFill("solid", fgColor="DCF7E9")
+    event_font = "0E8A5F"
     center = Alignment(horizontal="center", vertical="center")
     today_side = Side(style="medium", color="111827")
 
@@ -301,12 +302,12 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
         weekend = d.weekday() >= 5
         cell = ws.cell(row=DAY_ROW, column=FIRST_COL + i, value=d.day)
         holiday = weekend or key in holidays
-        cell.font = Font(bold=key == today_key or holiday, size=8,
-                         color=holiday_font if holiday else "6B7280")
+        is_event = key in event_dates
+        cell.font = Font(bold=key == today_key or holiday or is_event, size=8,
+                         color=event_font if is_event else holiday_font if holiday else "6B7280")
         cell.alignment = center
         cell.border = border
-        cell.fill = (holiday_fill if holiday
-                     else event_fill if key in event_dates else head_fill)
+        cell.fill = event_fill if is_event else holiday_fill if holiday else head_fill
         ws.column_dimensions[cell.column_letter].width = 3.6
 
     ws.column_dimensions["A"].width = 34
@@ -332,10 +333,10 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
             weekend = days[i].weekday() >= 5
             if a_start and a_end and a_start <= dk <= a_end:
                 cell.fill = bar
-            elif weekend or dk in holidays:
-                cell.fill = holiday_fill
             elif dk in event_dates:
                 cell.fill = event_fill
+            elif weekend or dk in holidays:
+                cell.fill = holiday_fill
             if dk == today_key:
                 cell.border = Border(left=today_side, right=thin, top=thin, bottom=thin)
         ws.row_dimensions[r].height = 20
