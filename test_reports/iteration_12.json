@@ -1,0 +1,16 @@
+{
+  "summary": "Frontend-only verification of the TimeScheduleDetail bug fix: removal of per-activity Progres column and introduction of a schedule-level Linimasa progress computed like Tasks (Selesai / total). All acceptance criteria pass.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {"ui_bugs": [], "integration_issues": [], "design_issues": []},
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A", "frontend": "100%"},
+  "seed_data_creation": "None. Used existing schedule 7a6596b5-33ed-4e5d-b7b1-7e579db524bd (2 activities). Toggled row-0 status Proses -> Selesai -> Proses -> Proses (restored).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "admin@flowdesk.com / admin123 (Super Admin emergency-fallback login works)",
+  "context_for_next_testing_agent": "TimeScheduleDetail datatable uses DataTableCard: outer wrapper testid is 'activities' but internal table element is 'activities-table' (use activities-table for text/DOM checks). Column IDs via [data-testid^='sort-'] are: name, category, pic, start_date, status (no 'progress'). Activity row actions use activity-actions-{id}, btn-edit-activity-{id}, btn-delete-activity-{id}. Edit dialog has activity-status-select and btn-save-activity. Schedule-level progress is under [data-testid='schedule-progress'] with text pattern '<pct>% · <done>/<total> kegiatan selesai'. Login field selector: input[autocomplete='username'].",
+  "rca_of_the_issue": "Verified fix. Test results: (1) 'Progres' column absent from Daftar Kegiatan (columns: Kegiatan, Kategori, PIC, Periode, Status, Aksi). (2) No [data-testid^='activity-progress-'] elements. (3) schedule-progress shows '0% · 0/2 kegiatan selesai' initially with progress bar. (4) Setting 1 of 2 activities to Selesai yields exactly '50% · 1/2 kegiatan selesai' — does NOT jump to 100%. (5) Setting back to Proses returns to '0% · 0/2'. (6) Restoring original status leaves user data unchanged. (7) Row action menu contains only 'Ubah' and 'Hapus' (no 'Buat Tugas'). (8) Gantt chart (data-testid='gantt-chart') still renders. (9) No console errors during the flow. Progress math matches round(done/total*100) exactly, identical to Tasks concept."
+}

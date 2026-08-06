@@ -102,17 +102,6 @@ function daysBetween(start, end) {
   return out;
 }
 
-function autoProgress(a) {
-  if (a.status === "Selesai") return 100;
-  if (!a.start_date || !a.end_date) return 0;
-  const today = new Date(`${new Date().toISOString().slice(0, 10)}T00:00:00`);
-  const s = new Date(`${a.start_date}T00:00:00`);
-  const e = new Date(`${a.end_date}T00:00:00`);
-  if (today < s) return 0;
-  if (today >= e) return 100;
-  return Math.round(((today - s) / (e - s || 1)) * 100);
-}
-
 /** Column factory (module scope — no component defined during render). */
 const buildColumns = ({ editable, onEdit, onDelete, onOpenTask }) => [
   {
@@ -171,22 +160,6 @@ const buildColumns = ({ editable, onEdit, onDelete, onOpenTask }) => [
         {row.original.status}
       </Badge>
     ),
-  },
-  {
-    id: "progress",
-    accessorFn: (a) => autoProgress(a),
-    header: ({ column }) => <SortableHeader column={column}>Progres</SortableHeader>,
-    cell: ({ row }) => {
-      const p = autoProgress(row.original);
-      return (
-        <div className="flex items-center gap-2">
-          <Progress value={p} className="h-1.5 w-16" />
-          <span className="w-8 text-right text-xs text-muted-foreground" data-testid={`activity-progress-${row.original.id}`}>
-            {p}%
-          </span>
-        </div>
-      );
-    },
   },
   {
     id: "actions",
@@ -412,6 +385,13 @@ export default function TimeScheduleDetail() {
     );
 
   const acts = s.activities || [];
+  // Progres jadwal = kegiatan berstatus "Selesai" / total kegiatan (konsep sama seperti Tugas).
+  const doneActs = acts.filter((a) => a.status === "Selesai").length;
+  const progress = {
+    done: doneActs,
+    total: acts.length,
+    percent: acts.length ? Math.round((doneActs / acts.length) * 100) : 0,
+  };
   let start = s.start_date;
   let end = s.end_date;
   if (!start || !end) {
@@ -466,7 +446,15 @@ export default function TimeScheduleDetail() {
 
       <Card>
         <CardHeader className="flex flex-col gap-2 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base">Linimasa</CardTitle>
+          <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3">
+            <CardTitle className="text-base">Linimasa</CardTitle>
+            <div className="flex items-center gap-2" data-testid="schedule-progress">
+              <Progress value={progress.percent} className="h-1.5 w-24" />
+              <span className="text-xs tabular-nums text-muted-foreground">
+                {progress.percent}% · {progress.done}/{progress.total} kegiatan selesai
+              </span>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1.5">
               <span
