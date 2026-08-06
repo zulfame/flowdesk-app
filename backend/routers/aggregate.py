@@ -41,6 +41,38 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
 
     overdue = [t for t in tasks if t["status"] == "Overdue"]
 
+    ACTIVE_STATUS = {"Pending", "On Progress", "Overdue"}
+    today_meetings = await db.meetings.find(
+        {"date": today, **meeting_visibility_query(user), "is_deleted": {"$ne": True}},
+        {"_id": 0, "id": 1, "title": 1, "date": 1, "start_time": 1, "end_time": 1, "location": 1,
+         "meeting_type": 1, "participants": 1},
+    ).sort("start_time", 1).to_list(20)
+
+    def _due_key(t):
+        return t.get("deadline") or ""
+
+    due_soon = sorted(
+        [t for t in tasks if t.get("deadline") and t["status"] in ACTIVE_STATUS],
+        key=_due_key,
+    )[:6]
+    due_soon = [
+        {
+            "id": t["id"], "title": t["title"], "deadline": t["deadline"], "status": t["status"],
+            "priority": t.get("priority"), "progress": t.get("progress", 0),
+            "pic": t.get("pic"),
+        }
+        for t in due_soon
+    ]
+
+    awaiting_approval = sum(
+        1
+        for t in tasks
+        if t.get("created_by") == user["id"]
+        for it in (t.get("items") or [])
+        if it.get("pic_done") and not it.get("done")
+    )
+    active_tasks = sum(1 for t in tasks if t["status"] in ACTIVE_STATUS)
+
     activity = await db.activity_logs.find({}, {"_id": 0}).sort("created_at", -1).limit(8).to_list(8)
 
     # PIC workload (active tasks per PIC)
@@ -74,6 +106,10 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "completed": by_status.get("Completed", 0),
         "on_progress": by_status.get("On Progress", 0),
         "overdue_count": len(overdue),
+        "active_tasks": active_tasks,
+        "awaiting_approval": awaiting_approval,
+        "today_meetings": today_meetings,
+        "due_soon": due_soon,
         "upcoming_meetings": upcoming_meetings,
         "recent_tasks": recent_tasks,
         "recent_activity": activity,

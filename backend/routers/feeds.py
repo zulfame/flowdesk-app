@@ -16,17 +16,40 @@ class WhatsAppBody(BaseModel):
 
 
 @router.get("/notifications")
-async def list_notifications(user: dict = Depends(get_current_user)):
-    q = {"$or": [{"user_id": user["id"]}, {"user_id": None}]}
-    items = await db.notifications.find(q, {"_id": 0}).sort("created_at", -1).limit(100).to_list(100)
-    unread = sum(1 for i in items if not i.get("is_read"))
-    return {"items": items, "unread": unread}
+async def list_notifications(status: Optional[str] = None, type: Optional[str] = None,
+                             q: Optional[str] = None, page: int = 1, page_size: int = 20,
+                             user: dict = Depends(get_current_user)):
+    mine = [{"user_id": user["id"]}, {"user_id": None}]
+    query: dict = {"$and": [{"$or": mine}]}
+    if status == "unread":
+        query["$and"].append({"is_read": {"$ne": True}})
+    elif status == "read":
+        query["$and"].append({"is_read": True})
+    if type and type != "all":
+        query["$and"].append({"type": type})
+    if q:
+        rx = {"$regex": q, "$options": "i"}
+        query["$and"].append({"$or": [{"title": rx}, {"message": rx}]})
+
+    total = await db.notifications.count_documents(query)
+    unread = await db.notifications.count_documents({"$and": [{"$or": mine}, {"is_read": {"$ne": True}}]})
+    page = max(1, page)
+    page_size = min(max(1, page_size), 100)
+    items = await db.notifications.find(query, {"_id": 0}).sort("created_at", -1) \
+        .skip((page - 1) * page_size).limit(page_size).to_list(page_size)
+    return {"items": items, "total": total, "unread": unread, "page": page, "page_size": page_size}
 
 
 @router.put("/notifications/{notif_id}/read")
 async def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
     await db.notifications.update_one({"id": notif_id}, {"$set": {"is_read": True}})
     return {"message": "Ditandai dibaca"}
+
+
+@router.put("/notifications/{notif_id}/unread")
+async def mark_unread(notif_id: str, user: dict = Depends(get_current_user)):
+    await db.notifications.update_one({"id": notif_id}, {"$set": {"is_read": False}})
+    return {"message": "Ditandai belum dibaca"}
 
 
 @router.put("/notifications/read-all")

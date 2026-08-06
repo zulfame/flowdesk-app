@@ -10,12 +10,11 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
 
 import Login from "@/pages/Login";
-import DashboardPage from "@/pages/DashboardPage";
+import Dashboard from "@/pages/Dashboard";
 
 // ── Modules pending design-system migration ──
 // Routes stay registered (reachable by direct URL) but are hidden from the
 // sidebar until each one is rebuilt (see config/navigation.js).
-import Dashboard from "@/pages/Dashboard";
 import Profile from "@/pages/Profile";
 import Tasks from "@/pages/Tasks";
 import TaskDetail from "@/pages/TaskDetail";
@@ -39,8 +38,7 @@ import AppSettings from "@/pages/AppSettings";
 import NotificationSettings from "@/pages/NotificationSettings";
 
 const PAGES = [
-  { path: "/", element: <DashboardPage /> },
-  { path: "/dashboard-legacy", element: <Dashboard /> },
+  { path: "/", element: <Dashboard /> },
   { path: "/profile", element: <Profile /> },
   { path: "/tasks", element: <Tasks /> },
   { path: "/tasks/new", element: <TaskForm /> },

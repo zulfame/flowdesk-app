@@ -219,6 +219,7 @@ export default function Reminders() {
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
+  const [tick, setTick] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -230,7 +231,7 @@ export default function Reminders() {
     } finally {
       setLoading(false);
     }
-  }, [status]);
+  }, [status, tick]);
 
   useEffect(() => {
     load();
@@ -289,7 +290,7 @@ export default function Reminders() {
   const toggleDone = async (r) => {
     try {
       await api.put(`/reminders/${r.id}`, { done: !r.done });
-      load();
+      setTick((t) => t + 1);
     } catch (err) {
       notify.error(apiError(err));
     }

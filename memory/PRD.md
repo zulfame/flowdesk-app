@@ -248,3 +248,23 @@ Fase 3 selesai: seluruh halaman detail/form Member Area kini memakai pola sectio
 - P0: Dashboard, Notifikasi, Tiket Bantuan → design sistem baru.
 - P1: Ekspor Excel untuk datatable (Log Aktivitas, Pengguna, Tugas, dll).
 - P2: Overhaul alur autentikasi (ditunda sampai redesign tuntas).
+
+## Update (2026-08-06, lanjutan 2) — Dashboard baru & Pusat Notifikasi
+**Dashboard** (`pages/Dashboard.jsx`, kini dipasang di route `/`; placeholder `DashboardPage.jsx` DIHAPUS):
+- Kartu sapaan: nama depan + tanggal lengkap + ringkasan "N rapat hari ini", tombol Segarkan & Tugas Baru.
+- 4 KPI card klik-able (→ /tasks): **Tugas Aktif** (Pending+Berjalan+Terlambat), **Terlambat** (angka merah `text-destructive`), **Menunggu Persetujuan** (item ditandai selesai PIC tapi belum disetujui pemilik), **Selesai**.
+- **Tenggat Terdekat**: 6 tugas aktif bertenggat terdekat — badge sisa waktu (Lewat N hari / Hari ini / Besok / N hari lagi), prioritas, PIC, progress bar; footer "Lihat semua tugas".
+- **Rapat Hari Ini** (jam, lokasi, jumlah peserta) + **Rapat Mendatang** (footer → Kalender).
+- **Beban Kerja PIC**, **Aktivitas Terkini** (scroll, footer → Notifikasi), **Tren Mingguan** (recharts pakai token `--muted-foreground`/`--primary`), dan **Tugas Terbaru**.
+- Backend `GET /api/dashboard/stats` ditambah field: `active_tasks`, `awaiting_approval`, `today_meetings`, `due_soon` (`routers/aggregate.py`).
+
+**Pusat Notifikasi** (`pages/Notifications.jsx`): `DataTableCard` mode **SERVER** — pencarian (judul+isi, debounce 300ms), filter **Status** (Semua/Belum Dibaca/Sudah Dibaca) & **Jenis** (Tugas/Rapat/Pengingat/Info), paginasi server, deskripsi kartu menampilkan jumlah belum dibaca, tombol **Tandai Semua Dibaca** (disabled bila 0). Kolom: titik status, judul+pesan (tebal bila belum dibaca), jenis (badge+ikon), waktu, aksi (buka tautan → auto tandai dibaca, toggle dibaca/belum dibaca).
+- Backend `routers/feeds.py`: `GET /api/notifications` sekarang menerima `status`, `type`, `q`, `page`, `page_size` dan mengembalikan `{items,total,unread,page,page_size}`; endpoint baru `PUT /api/notifications/{id}/unread`.
+- Bug diperbaiki: stale closure pada aksi baris (kolom di-memo `[]`) membuat refetch memakai filter lama — kini refetch lewat state `tick` di `Notifications.jsx` dan `Reminders.jsx`.
+- `design-guard.sh`: LEGACY tinggal `HelpTickets, Settings`. Guard exit 0.
+- Verifikasi manual (Playwright): Dashboard render dengan KPI & 2 baris tenggat; Notifikasi — filter Belum Dibaca 3→2 setelah tandai dibaca, pencarian "Tugas" → 2 baris; Pengingat — filter Aktif 2→1 setelah ditandai selesai.
+
+### Berikutnya
+- P0: Tiket Bantuan (fitur baru, menu sudah ada), halaman `Settings.jsx` lama.
+- P1: Ekspor Excel untuk datatable.
+- P2: Overhaul alur autentikasi.
