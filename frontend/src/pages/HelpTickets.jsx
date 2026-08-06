@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Eye,
   Link2,
   LifeBuoy,
   MoreHorizontal,
@@ -53,6 +54,7 @@ const CATEGORIES = [
   "Perangkat Keras",
   "Perangkat Lunak",
   "Jaringan",
+  "Hapus Transaksi",
   "Operasional",
   "Data & Transaksi",
   "Lainnya",
@@ -165,7 +167,7 @@ const buildColumns = ({ onOpen, onDelete }) => [
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-44">
               <DropdownMenuItem onClick={() => onOpen(t)} data-testid={`btn-detail-ticket-${t.id}`}>
-                <LifeBuoy aria-hidden="true" /> {ACTION.detail}
+                <Eye aria-hidden="true" /> {ACTION.detail}
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem

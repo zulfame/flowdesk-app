@@ -38,14 +38,9 @@ export const AREAS = [
     adminOnly: false,
     sections: [
       {
-        label: "Selamat Datang",
-        items: [
-          { title: "Dashboard", to: "/", end: true, icon: LayoutDashboard },
-        ],
-      },
-      {
         label: "Menu Utama",
         items: [
+          { title: "Dashboard", to: "/", end: true, icon: LayoutDashboard },
           { title: "Kalender", to: "/calendar", icon: CalendarDays, perm: "calendar" },
           { title: "Kelola Tugas", to: "/tasks", icon: CheckSquare, perm: "task" },
           { title: "Kelola Rapat", to: "/meetings", icon: Video, perm: "meeting" },

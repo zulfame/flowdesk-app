@@ -37,6 +37,7 @@ const CATEGORIES = [
   "Perangkat Keras",
   "Perangkat Lunak",
   "Jaringan",
+  "Hapus Transaksi",
   "Operasional",
   "Data & Transaksi",
   "Lainnya",

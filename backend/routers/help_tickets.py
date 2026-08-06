@@ -10,7 +10,7 @@ from notifications import create_notification
 
 router = APIRouter(prefix="/help-tickets", tags=["help-tickets"])
 
-CATEGORIES = ["Perangkat Keras", "Perangkat Lunak", "Jaringan", "Operasional", "Data & Transaksi", "Lainnya"]
+CATEGORIES = ["Perangkat Keras", "Perangkat Lunak", "Jaringan", "Hapus Transaksi", "Operasional", "Data & Transaksi", "Lainnya"]
 PRIORITIES = ["Low", "Medium", "High", "Urgent"]
 STATUSES = ["Baru", "Ditugaskan", "Diproses", "Menunggu Info", "Selesai", "Ditutup"]
 OPEN_STATUSES = ["Baru", "Ditugaskan", "Diproses", "Menunggu Info"]
