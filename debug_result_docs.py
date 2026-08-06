@@ -5,7 +5,7 @@ import requests
 import json
 from datetime import datetime
 
-BASE_URL = "https://server-learning.preview.emergentagent.com/api"
+BASE_URL = "https://flowdesk-preview-5.preview.emergentagent.com/api"
 ADMIN_EMAIL = "sa@bprbangunarta.co.id"
 ADMIN_PASSWORD = "SA@4dm1n"
 

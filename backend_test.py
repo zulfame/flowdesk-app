@@ -8,7 +8,7 @@ import json
 import sys
 
 # Base URL from frontend/.env: REACT_APP_BACKEND_URL
-BASE_URL = "https://server-learning.preview.emergentagent.com/api"
+BASE_URL = "https://flowdesk-preview-5.preview.emergentagent.com/api"
 
 # Admin credentials from test_credentials.md
 ADMIN_EMAIL = "sa@bprbangunarta.co.id"

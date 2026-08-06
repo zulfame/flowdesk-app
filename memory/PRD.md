@@ -125,3 +125,10 @@ Backlog (still open): AI meeting summary; encrypted backups; timezone-aware sche
   - Time Schedule: aksen indigo; header=seksi, body=judul+event+deskripsi+"Buka linimasa", footer=rentang tanggal + jumlah kegiatan.
 - Semua data-testid dipertahankan; frontend compile sukses.
 - Catatan: verifikasi visual oleh user (preview sempat menampilkan placeholder inaktivitas platform saat sesi ini; bukan error app — backend & frontend RUNNING, compile OK, bundle app tersaji di localhost:3000).
+
+## Update (2026-08-06) — Sesi lanjutan: pemulihan lingkungan & server berjalan
+- Lingkungan pod baru: `node_modules` belum ada (frontend gagal: `craco: not found`) → `yarn install` di `/app/frontend`; backend deps sudah terpasang (catatan: `pip install -r requirements.txt` gagal resolve `emergentintegrations==0.2.0` vs `litellm 1.80.0`, namun tidak dipakai di kode — backend jalan normal).
+- ✅ backend + frontend + mongodb RUNNING; `GET /api/` → 200; login admin (admin@flowdesk.com / admin123) sukses via UI preview; dashboard, sidebar 3 grup, dan semua menu tampil normal.
+- DB saat ini fresh (hanya user admin; koleksi tasks/meetings/roles kosong). `member@flowdesk.com` belum ada — perlu dibuat manual bila uji RBAC anggota.
+- `memory/test_credentials.md` dibuat ulang (hilang di pod ini).
+- Temuan: halaman **Tiket Bantuan** (`pages/HelpTickets.jsx`, menu `/help-tickets`) masih placeholder "dalam pengembangan" — belum ada backend/router tiket. Kandidat fitur berikutnya.
