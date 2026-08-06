@@ -12,7 +12,7 @@ export default function Login() {
         <CardHeader>
           <CardTitle className="text-2xl">Masuk</CardTitle>
           <CardDescription>
-            Masukkan kredensial Anda untuk melanjutkan.
+            Silakan masuk menggunakan akun Anda dengan email, username atau nomor hp dan kata sandi yang telah terdaftar.
           </CardDescription>
         </CardHeader>
         <LoginForm />

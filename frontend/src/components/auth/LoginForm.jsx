@@ -93,12 +93,12 @@ export const LoginForm = () => {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className="text-sm">Email</FormLabel>
+              <FormLabel className="text-sm">Kredensial</FormLabel>
               <FormControl>
                 <Input
-                  type="email"
-                  autoComplete="email"
-                  placeholder="nama@perusahaan.com"
+                  type="text"
+                  autoComplete="username"
+                  placeholder="Email, Username atau Nomor HP"
                   data-testid={LOGIN.emailInput}
                   {...field}
                 />
@@ -117,7 +117,7 @@ export const LoginForm = () => {
               <FormControl>
                 <PasswordInput
                   autoComplete="current-password"
-                  placeholder="Masukkan kata sandi"
+                  placeholder="•••••••••••••"
                   data-testid={LOGIN.passwordInput}
                   {...field}
                 />
