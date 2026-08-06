@@ -91,6 +91,10 @@ report "TabsList tanpa 'overflow-x-auto' (wajib scroll-x di mobile; dilarang wra
 report "Teks oversized (text-xl/2xl/3xl/4xl...) di halaman fitur — R45; judul cukup 'text-base'" \
   "$(scan_pages 'text-(xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
 
+# 20) FD8 — Label→control gap comes from --item-gap only.
+report "space-y/mt manual pada FormItem/FormLabel (FD8: jarak label ke kontrol hanya dari --item-gap; 'space-y-0' untuk baris checkbox diizinkan)" \
+  "$(scan '(FormItem|FormLabel)[^>]*className=\"[^\"]*(space-y-[1-9]|mt-[1-9]|mb-[1-9])')"
+
 # 17) FD6 — Card header/footer padding is fixed (compact); no per-page override.
 report "Override padding CardHeader/CardFooter (FD6: tinggi Card dikunci px-6 py-3 di primitive)" \
   "$(scan 'Card(Header|Footer)[^>]*className=\"[^\"]*(px-|py-)[0-9]')"

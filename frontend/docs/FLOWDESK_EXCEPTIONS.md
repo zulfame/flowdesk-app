@@ -44,6 +44,19 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
   area aktif mengikuti rute (`areaIdOf`) dan disimpan di `localStorage`.
 - Area tanpa menu menampilkan catatan netral, bukan area kosong tanpa penjelasan.
 
+### FD8 — Jarak label → kontrol = nilai token, tanpa slack (WAJIB)
+- Primitive `ui/label.jsx` memakai **`block`** (bukan inline) + `leading-none`,
+  sehingga kotak label **sama tinggi dengan teksnya** (14px). Sebelumnya label
+  inline menambah *slack* baseline/descender ±3–5px sehingga jarak label→kontrol
+  yang terlihat (±9–11px) TIDAK sama dengan nilai token (6px).
+- Akibatnya jarak label→kontrol sekarang **persis** `--item-gap`:
+  **6px** untuk form normal (`space-y-[var(--item-gap)]` pada `FormItem`) dan
+  **4px** di dalam `.form-dense`.
+- `.form-dense` dinaikkan `0.125rem` → **`0.25rem`** (menyimpang dari angka di
+  R47.7) karena tanpa slack, 2px membuat label menempel ke kontrol.
+- **DILARANG** menyetel `space-y`/margin manual per `FormItem` atau per label
+  untuk mengatur jarak ini — ubah token `--item-gap` bila perlu. Dijaga guard #20.
+
 ### FD6 — Tinggi Card compact (WAJIB)
 - `CardHeader` dan `CardFooter` memakai **`px-6 py-3`** (padding vertikal **12px**),
   `CardHeader` memakai `space-y-1`. `CardContent` tetap `px-6 py-4`.

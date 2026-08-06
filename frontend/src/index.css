@@ -185,9 +185,12 @@ code {
         background-color: hsl(var(--muted) / 0.5);
     }
 
-    /* Compact form density (opt-in via `.form-dense`) — R47.7. */
+    /* Compact form density (opt-in via `.form-dense`) — R47.7 + FD8.
+       FD8: label box kini sama dengan kotak teks (tanpa slack inline ±4px),
+       jadi nilai gap = jarak yang benar-benar terlihat. Dense dinaikkan
+       0.125rem → 0.25rem (4px) agar label tidak menempel ke kontrol. */
     .form-dense {
-        --item-gap: 0.125rem;
+        --item-gap: 0.25rem;
     }
     .form-dense label,
     .form-dense input,
