@@ -1,9 +1,9 @@
 import React, { useRef, useState } from "react";
 import { Loader2, Upload, X } from "lucide-react";
-import { toast } from "sonner";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { notify } from "@/lib/notify";
 
 /** Initials for the avatar fallback. */
 const initialsOf = (name) =>
@@ -30,11 +30,11 @@ export function AvatarUpload({
     event.target.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) {
-      toast.error("Berkas harus berupa gambar.");
+      notify.error("Berkas harus berupa gambar.");
       return;
     }
     if (file.size > maxKB * 1024) {
-      toast.error(`Ukuran gambar maksimal ${maxKB} KB.`);
+      notify.error(`Ukuran gambar maksimal ${maxKB} KB.`);
       return;
     }
     setLoading(true);
@@ -44,7 +44,7 @@ export function AvatarUpload({
       setLoading(false);
     };
     reader.onerror = () => {
-      toast.error("Gagal membaca gambar.");
+      notify.error("Gagal membaca gambar.");
       setLoading(false);
     };
     reader.readAsDataURL(file);

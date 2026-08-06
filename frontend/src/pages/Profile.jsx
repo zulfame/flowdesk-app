@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Info, Loader2, Save } from "lucide-react";
-import { toast } from "sonner";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +25,7 @@ import { Input } from "@/components/ui/input";
 import { AvatarUpload } from "@/components/composite/AvatarUpload";
 import { PasswordInput } from "@/components/composite/PasswordInput";
 import { api, apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { useAuth } from "@/context/AuthContext";
 import { ACTION } from "@/constants/labels";
 import {
@@ -109,11 +109,11 @@ export default function Profile() {
     try {
       const { data } = await api.put("/profile", { ...values, avatar });
       setUser(data);
-      toast.success("Profil diperbarui", {
-        description: "Data terkait ikut disesuaikan agar tetap konsisten.",
-      });
+      notify.success(
+        "Profil diperbarui. Data terkait ikut disesuaikan agar tetap konsisten."
+      );
     } catch (err) {
-      toast.error(apiError(err));
+      notify.error(apiError(err));
     }
   };
 
@@ -124,9 +124,9 @@ export default function Profile() {
         new_password: values.new_password,
       });
       passwordForm.reset(passwordDefaultValues);
-      toast.success("Kata sandi berhasil diperbarui");
+      notify.success("Kata sandi berhasil diperbarui.");
     } catch (err) {
-      toast.error(apiError(err));
+      notify.error(apiError(err));
     }
   };
 

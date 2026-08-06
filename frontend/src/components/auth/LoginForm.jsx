@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { AlertCircle, Loader2, LogIn } from "lucide-react";
-import { toast } from "sonner";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -21,6 +20,7 @@ import {
 import { loginSchema, loginDefaultValues } from "@/lib/validation/authSchema";
 import { useAuth } from "@/context/AuthContext";
 import { apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
 import { LOGIN } from "@/constants/testIds/auth";
 
 const REMEMBER_KEY = "flowdesk.rememberedEmail";
@@ -62,9 +62,7 @@ export const LoginForm = () => {
       } else {
         window.localStorage.removeItem(REMEMBER_KEY);
       }
-      toast.success("Berhasil masuk", {
-        description: `Selamat datang kembali, ${user?.name || email}.`,
-      });
+      notify.success(`Selamat datang kembali, ${user?.name || email}.`);
       navigate("/");
     } catch (err) {
       setFormError(apiError(err) || "Tidak dapat masuk. Silakan coba lagi.");

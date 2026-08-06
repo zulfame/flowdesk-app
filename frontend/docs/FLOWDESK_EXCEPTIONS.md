@@ -11,6 +11,7 @@
 | E3 | R05 — token only | `primary_color` di Kelola Aplikasi **tetap tersimpan** tetapi **tidak lagi menimpa** token `--primary` (UI shell selalu monokrom). Penerapan ulang akan diputuskan saat halaman Kelola Aplikasi dimigrasi. | Menjaga hasil redesign tetap monokrom sesuai keputusan pemilik produk. |
 | E4 | R31 — konten generik | Konten memakai istilah domain FlowDesk (Tugas, Rapat, Pengingat, dst). | FlowDesk adalah aplikasi nyata, bukan template katalog. |
 | E6 | Primitive `ui/alert.jsx` = SSOT upstream | Primitive diubah ke **layout grid** (`grid-cols-[icon_1fr]`, `col-start-2` untuk Title/Description) menggantikan `[&>svg]:absolute` + `[&>svg+div]:translate-y-[-3px]` upstream. | Versi upstream hanya presisi bila ada `AlertTitle`; alert **hanya-deskripsi** ikonnya melenceng vertikal (dilaporkan user). Grid membuat ikon & baris teks pertama selalu sejajar. |
+| E8 | R05 — monochrome token-only | Ditambahkan token **umpan balik** `--success` & `--warning` (+ `hsl` di Tailwind) di samping `--destructive` yang sudah ada. | Status hasil aksi (sukses/peringatan/gagal) harus terbaca instan; monokrom saja membuat semua toast terlihat sama. Warna dipakai **hanya** pada elemen status (aksen & ikon toast, badge status), tidak untuk chrome/dekorasi. |
 | E7 | 2B.8 — `CardHeader`/`CardFooter` `px-6 py-4` + `space-y-1.5` | **`px-6 py-3`** (padding vertikal 12px) dan `CardHeader space-y-1`. `CardContent` tetap `px-6 py-4`. | Permintaan pemilik produk: header & footer kartu terasa terlalu tinggi untuk target UI compact (FD1). Padding vertikal header & footer tetap **seragam 12px** sehingga jarak dari divider konsisten. |
 | E5 | 2C.14 — guard atas seluruh `src` | `design-guard.sh` **mengecualikan modul yang belum dimigrasi** (daftar `LEGACY` di dalam skrip). Daftar itu menyusut setiap fase sampai kosong. | Redesign dilakukan bertahap; guard harus tetap bermakna (exit 0) untuk kode yang sudah dimigrasi. |
 
@@ -42,6 +43,31 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
 - Menu per area didefinisikan **hanya** di `src/config/navigation.js` (R35);
   area aktif mengikuti rute (`areaIdOf`) dan disimpan di `localStorage`.
 - Area tanpa menu menampilkan catatan netral, bukan area kosong tanpa penjelasan.
+
+### FD6 — Tinggi Card compact (WAJIB)
+- `CardHeader` dan `CardFooter` memakai **`px-6 py-3`** (padding vertikal **12px**),
+  `CardHeader` memakai `space-y-1`. `CardContent` tetap `px-6 py-4`.
+- Padding vertikal header & footer **wajib seragam 12px** agar jarak dari divider
+  konsisten di seluruh aplikasi. Hasil: header ≈ 49px, footer ≈ 53px (dengan
+  tombol `h-8`).
+- **DILARANG** menimpa tinggi/padding ini per halaman (mis. `py-4`/`py-6` pada
+  `CardHeader`/`CardFooter`). Mengesampingkan 2B.8 — lihat pengecualian E7.
+- Dijaga guard #17.
+
+### FD7 — Toast: judul baku + warna semantik (WAJIB)
+- Toast **hanya** boleh dibuat lewat helper **`src/lib/notify.js`**. **DILARANG**
+  memanggil `toast()` dari `sonner` langsung di kode fitur (pages/composite/layout/auth).
+- **Judul baku** (tidak boleh dikarang): `notify.success` → **"Sukses"**,
+  `notify.error` → **"Gagal"**, `notify.warning` → **"Peringatan"**,
+  `notify.info` → **"Info"**. Pemanggil hanya mengisi **deskripsi** (apa yang
+  terjadi), mis. `notify.success("Profil diperbarui.")`.
+- **Warna semantik** (aksen kiri `border-l-4` + warna ikon; badan toast tetap
+  monokrom): Sukses = `--success`, Gagal = `--destructive`, Peringatan =
+  `--warning`, Info = `--foreground` (netral). Token `--success`/`--warning`
+  ditambahkan sebagai **token umpan balik** (lihat E8) — bukan warna dekorasi.
+- Deskripsi memakai kalimat lengkap berakhiran titik; jangan mengulang judul.
+- Pilihan Toast vs Inline vs Alert vs Dialog tetap mengikuti matriks 2C.17.
+- Dijaga guard #18/#19.
 
 ### FD5 — Konsistensi teks tombol & letak tombol submit (WAJIB)
 - **Teks tombol wajib memakai leksikon** di `src/constants/labels.js` (`ACTION`):

@@ -91,6 +91,18 @@ report "TabsList tanpa 'overflow-x-auto' (wajib scroll-x di mobile; dilarang wra
 report "Teks oversized (text-xl/2xl/3xl/4xl...) di halaman fitur — R45; judul cukup 'text-base'" \
   "$(scan_pages 'text-(xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
 
+# 17) FD6 — Card header/footer padding is fixed (compact); no per-page override.
+report "Override padding CardHeader/CardFooter (FD6: tinggi Card dikunci px-6 py-3 di primitive)" \
+  "$(scan 'Card(Header|Footer)[^>]*className=\"[^\"]*(px-|py-)[0-9]')"
+
+# 18) FD7 — Toasts must go through lib/notify.js (fixed titles + semantic colour).
+m=$(grep -rnE 'from "sonner"' $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXCLUDE" | grep -vE '//\s*guard-allow')
+report "Import toast langsung dari 'sonner' (FD7: WAJIB lewat notify dari @/lib/notify)" "$m"
+
+# 19) FD7 — No hand-written toast titles.
+report "Judul toast dikarang (FD7: judul baku Sukses/Gagal/Peringatan/Info dari lib/notify.js; pemanggil hanya mengisi deskripsi)" \
+  "$(scan 'toast\.(success|error|warning|info)\s*\(')"
+
 # 15) FD5 — Card actions belong in <CardFooter>, not a hand-rolled save bar.
 report "Save bar manual 'flex justify-end border-t pt-4' (FD5: tombol aksi Card WAJIB di <CardFooter className=\"justify-end gap-2\">)" \
   "$(scan 'justify-end border-t pt-4')"

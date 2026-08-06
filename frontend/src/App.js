@@ -1,6 +1,6 @@
 import React from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
 
 import { AuthProvider } from "@/context/AuthContext";
 import { BrandingProvider } from "@/context/BrandingContext";
