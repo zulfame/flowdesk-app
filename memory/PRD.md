@@ -462,3 +462,12 @@ Sumber: `AUTHTY_API.md` + `AUTHTY_INTEGRATION_GUIDE.md` dari user. Pola: **verif
 - **Migrasi DB dijalankan**: pengguna `admin` → `super_admin` (1 akun), `manager`/`member` → `guest` (0 akun, sudah kosong), anak-peran yang menunjuk peran lama dilepas (`parent_id: null`), lalu 3 peran lama dihapus.
 - Verifikasi: `admin@flowdesk.com` → role `super_admin` izin `['*']`, Menu Admin lengkap tampil; daftar peran 46 tanpa admin/manager/member; pengguna Authty (Kabag TI) ditolak **403** pada `PUT /api/settings`, `GET /api/authty/status`, `PUT /api/role-levels`; halaman Kelola Peranan menampilkan pohon 46 jabatan + Super Admin/Guest. `design-guard.sh` exit 0.
 - **Catatan**: user menghapus sendiri seluruh data demo & akun uji lokal pada 2026-06-08 22:05–22:06 (terlihat di Log Aktivitas) — sisa pengguna: `admin@flowdesk.com` (Super Admin) dan `zulfadlirizal@gmail.com` (Authty, Kabag Teknologi Informasi).
+
+## Update (2026-06-08j) — Izin menu per Level jabatan diatur
+- **Izin baru `help_ticket` (Tiket Bantuan)** ditambah ke `PERMISSION_CATALOG`; menu Tiket Bantuan di `config/navigation.js` sekarang ikut ter-gate (`perm: "help_ticket"`) — sebelumnya tampil untuk semua orang tanpa kecuali.
+- **Izin bawaan per level disimpan** (`PUT /api/role-levels`):
+  - Komisaris / Dirut / Direksi / **Kabag** → Kalender, Kelola Tugas, Kelola Rapat, Time Schedule, Kelola Catatan, Ingatkan Saya, Tiket Bantuan, **Laporan & Ekspor** (8 izin)
+  - **Kasi / Staff** → sama tanpa Laporan & Ekspor (7 izin)
+  - Izin area admin (`user`, `role`, `database`, `notification_config`, `app_config`, `activity`) sengaja TIDAK diberikan lewat level — area Admin hanya untuk Super Admin.
+- **Tombol "Terapkan Bawaan"** (`btn-recommended-levels`) di footer kartu Izin per Level: mengisi matriks dengan rekomendasi di atas (konstanta `RECOMMENDED_LEVEL_PERMS` di `pages/Roles.jsx`), lalu user menekan Simpan.
+- Verifikasi: `GET /api/auth/me` untuk akun SSO (`kabag_teknologi_informasi`) mengembalikan 8 izin hasil warisan level Kabag; UI menampilkan tepat **8 menu** (Dashboard, Kalender, Kelola Tugas, Kelola Rapat, Tiket Bantuan, Time Schedule, Kelola Catatan, Ingatkan Saya) — Laporan belum punya halaman/menu tersendiri. `design-guard.sh` exit 0.

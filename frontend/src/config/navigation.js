@@ -49,7 +49,7 @@ export const AREAS = [
           { title: "Kalender", to: "/calendar", icon: CalendarDays, perm: "calendar" },
           { title: "Kelola Tugas", to: "/tasks", icon: CheckSquare, perm: "task" },
           { title: "Kelola Rapat", to: "/meetings", icon: Video, perm: "meeting" },
-          { title: "Tiket Bantuan", to: "/help-tickets", icon: LifeBuoy },
+          { title: "Tiket Bantuan", to: "/help-tickets", icon: LifeBuoy, perm: "help_ticket" },
           { title: "Time Schedule", to: "/time-schedule", icon: ClipboardList, perm: "time_schedule" },
           { title: "Kelola Catatan", to: "/notes", icon: FileText, perm: "note" },
           { title: "Ingatkan Saya", to: "/reminders", icon: Bell, perm: "reminder" },

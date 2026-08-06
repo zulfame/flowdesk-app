@@ -12,6 +12,7 @@ import {
   Save,
   Trash2,
   Upload,
+  Wand2,
   X,
 } from "lucide-react";
 
@@ -69,6 +70,17 @@ import { ACTION } from "@/constants/labels";
 import { roleSchema } from "@/lib/validation/adminSchema";
 
 const NO_PARENT = "__none__";
+
+/** Izin bawaan yang disarankan per level — Laporan & Ekspor hanya untuk Kabag ke atas. */
+const BASE = ["calendar", "task", "meeting", "time_schedule", "note", "reminder", "help_ticket"];
+const RECOMMENDED_LEVEL_PERMS = {
+  Komisaris: [...BASE, "report"],
+  Dirut: [...BASE, "report"],
+  Direksi: [...BASE, "report"],
+  Kabag: [...BASE, "report"],
+  Kasi: BASE,
+  Staff: BASE,
+};
 
 const slugOf = (label) =>
   label
@@ -218,6 +230,17 @@ export default function Roles() {
       const cur = prev[level] || [];
       return { ...prev, [level]: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key] };
     });
+
+  const applyRecommended = () => {
+    setLevelPerms((prev) => {
+      const next = { ...prev };
+      levels.forEach((lv) => {
+        next[lv] = RECOMMENDED_LEVEL_PERMS[lv] || [];
+      });
+      return next;
+    });
+    notify.info("Izin bawaan diterapkan. Tekan Simpan untuk menyimpan.");
+  };
 
   const saveLevels = async () => {
     setSavingLevels(true);
@@ -441,7 +464,15 @@ export default function Roles() {
             )}
           </div>
         </CardContent>
-        <CardFooter className="justify-end">
+        <CardFooter className="justify-between gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={applyRecommended}
+            data-testid="btn-recommended-levels"
+          >
+            <Wand2 className="size-4" /> Terapkan Bawaan
+          </Button>
           <Button size="sm" onClick={saveLevels} disabled={savingLevels} data-testid="btn-save-levels">
             {savingLevels ? (
               <Loader2 className="size-4 animate-spin" aria-hidden="true" />

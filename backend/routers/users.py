@@ -20,6 +20,7 @@ PERMISSION_CATALOG = [
     {"key": "note", "label": "Kelola Catatan"},
     {"key": "reminder", "label": "Ingatkan Saya"},
     {"key": "calendar", "label": "Kalender"},
+    {"key": "help_ticket", "label": "Tiket Bantuan"},
     {"key": "report", "label": "Laporan & Ekspor"},
     {"key": "user", "label": "Kelola Pengguna"},
     {"key": "role", "label": "Kelola Peranan"},
