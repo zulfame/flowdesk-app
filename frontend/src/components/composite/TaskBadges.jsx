@@ -1,5 +1,5 @@
-import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { StateChip } from "@/components/composite/StateChip";
 
 /**
  * Task status/priority meta.
@@ -22,26 +22,14 @@ export const PRIORITY_META = {
   Low: { label: "Rendah", chip: "--pr-low" },
 };
 
-function StateChip({ meta, fallback, testid }) {
-  const { label, chip } = meta || { label: fallback || "\u2014", chip: "--st-draft" };
-  return (
-    <Badge
-      variant="outline"
-      className="state-chip font-medium"
-      style={{ "--chip": `var(${chip})` }}
-      data-testid={testid}
-    >
-      {label}
-    </Badge>
-  );
-}
-
 export function StatusBadge({ status }) {
-  return <StateChip meta={STATUS_META[status]} fallback={status} testid="status-badge" />;
+  const meta = STATUS_META[status] || { label: status, chip: "--st-draft" };
+  return <StateChip label={meta.label} chip={meta.chip} testid="status-badge" />;
 }
 
 export function PriorityBadge({ priority }) {
-  return <StateChip meta={PRIORITY_META[priority]} fallback={priority} testid="priority-badge" />;
+  const meta = PRIORITY_META[priority] || { label: priority, chip: "--pr-low" };
+  return <StateChip label={meta.label} chip={meta.chip} testid="priority-badge" />;
 }
 
 /** Inline progress indicator for dense table cells. */
