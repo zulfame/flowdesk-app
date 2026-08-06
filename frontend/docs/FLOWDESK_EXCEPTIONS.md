@@ -122,6 +122,7 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
 | 1b | Compact dikunci (FD1, density dihapus), lonceng notifikasi di header (FD2), area switcher Member Area/Administrator (FD3), aksi **Profil** di menu pengguna (FD4) | ✅ Selesai |
 | 2b | Area **Administrator** diaktifkan: grup menu **"Pengaturan"** (7 item) di `config/navigation.js`; **Log Aktivitas** dimigrasi ke `DataTableCard` mode SERVER (cari/filter/paginasi dari API) | ✅ Selesai |
 | 2c | **Kelola Pengguna** (DataTableCard + dialog tambah/ubah/hapus + impor), **Kelola Peranan** (tabel peran + matriks hak akses + dialog izin), **Kelola Aplikasi** (section cards R51/FD5) | ✅ Selesai |
+| 2d | **Kelola Database** (sections R51 + Riwayat Backup DataTable), **Kelola Notifikasi** (3 section cards + tombol Kirim Uji), **Kelola Arsip** (DataTableCard + Pulihkan / Hapus Permanen) | ✅ Selesai |
 | 2 | Halaman list/CRUD (R47) sisanya: Tugas, Rapat, Catatan, Pengingat, Time Schedule, Pengguna, Peranan, Arsip, Log Aktivitas | ⏳ Belum |
 | 2a-1 | Penyempurnaan Profil: tinggi `CardHeader`/`CardFooter` dikecilkan (E7), urutan field sandi (Saat Ini di baris atas sendiri; Baru + Konfirmasi di baris berikutnya), foto profil tampil di footer sidebar & dropdown pengguna | ✅ Selesai |
 | 2a | **Profil Pengguna** (`pages/Profile.jsx`) → pola konfigurasi R51 (section cards + save bar), rhf+zod, `AvatarUpload` composite baru | ✅ Selesai |

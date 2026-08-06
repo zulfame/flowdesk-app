@@ -16,8 +16,9 @@ import { cn } from "@/lib/utils";
 import { ACTION } from "@/constants/labels";
 
 /**
- * ConfirmDeleteDialog — standard destructive confirmation (R40/R47.6).
- * Cancel on the left, destructive action on the right (R50).
+ * ConfirmDeleteDialog — standard confirmation dialog (R40/R47.6).
+ * Cancel on the left, primary/destructive action on the right (R50).
+ * Set `destructive={false}` for reversible actions (e.g. restore).
  */
 export function ConfirmDeleteDialog({
   open,
@@ -25,6 +26,8 @@ export function ConfirmDeleteDialog({
   title = "Hapus data ini?",
   description = "Tindakan ini tidak dapat dibatalkan.",
   confirmLabel = ACTION.delete,
+  destructive = true,
+  icon: Icon = Trash2,
   onConfirm,
   testid = "confirm-delete",
 }) {
@@ -39,10 +42,12 @@ export function ConfirmDeleteDialog({
           <AlertDialogCancel data-testid={`${testid}-cancel`}>{ACTION.cancel}</AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
-            className={cn(buttonVariants({ variant: "destructive", size: "sm" }))}
+            className={cn(
+              buttonVariants({ variant: destructive ? "destructive" : "default", size: "sm" })
+            )}
             data-testid={`${testid}-confirm`}
           >
-            <Trash2 className="size-4" aria-hidden="true" /> {confirmLabel}
+            <Icon className="size-4" aria-hidden="true" /> {confirmLabel}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

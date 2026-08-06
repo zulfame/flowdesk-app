@@ -58,3 +58,68 @@ export const brandingSchema = z.object({
   favicon: z.string().optional(),
   thumbnail: z.string().optional(),
 });
+
+/** Notification channels section. */
+export const channelsSchema = z.object({
+  telegram_enabled: z.boolean(),
+  email_enabled: z.boolean(),
+  browser_enabled: z.boolean(),
+});
+
+/** Email (SMTP) section. */
+export const emailSchema = z.object({
+  smtp_host: z.string().trim().optional(),
+  smtp_port: z.coerce
+    .number({ invalid_type_error: "Port harus berupa angka." })
+    .int("Port harus bilangan bulat.")
+    .min(1, "Port minimal 1.")
+    .max(65535, "Port maksimal 65535."),
+  smtp_user: z.string().trim().optional(),
+  smtp_password: z.string().optional(),
+  from_name: z.string().trim().optional(),
+  from_email: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), {
+      message: "Masukkan alamat email yang valid.",
+    }),
+  notify_email: z
+    .string()
+    .trim()
+    .optional()
+    .refine((v) => !v || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v), {
+      message: "Masukkan alamat email yang valid.",
+    }),
+});
+
+/** Telegram section. */
+export const telegramSchema = z.object({
+  bot_token: z.string().trim().optional(),
+  chat_id: z.string().trim().optional(),
+  thread_id: z.string().trim().optional(),
+});
+
+/** Object storage (S3) section. */
+export const storageSchema = z.object({
+  endpoint: z.string().trim().optional(),
+  bucket: z.string().trim().optional(),
+  access_key: z.string().trim().optional(),
+  secret_key: z.string().optional(),
+  region: z.string().trim().optional(),
+  path: z.string().trim().optional(),
+  max_file_mb: z.coerce
+    .number({ invalid_type_error: "Ukuran harus berupa angka." })
+    .min(1, "Minimal 1 MB.")
+    .max(1024, "Maksimal 1024 MB."),
+  allowed_types: z.string().trim().optional(),
+});
+
+/** Automatic backup schedule. */
+export const autoBackupSchema = z.object({
+  auto_enabled: z.boolean(),
+  frequency: z.string().min(1, "Frekuensi wajib dipilih."),
+  time: z.string().min(1, "Jam wajib diisi."),
+  weekday: z.coerce.number().min(1).max(7),
+  destination: z.string().min(1, "Tujuan wajib dipilih."),
+});

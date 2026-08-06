@@ -19,7 +19,8 @@ import {
 /**
  * Classified empty-state composite (Registry 2C.18).
  * Variants: no-data · no-results · first-time · forbidden · offline · error.
- * Pass `action` (a Button/node) for retry/CTA where relevant.
+ * Pass `action` (a Button/node) for retry/CTA where relevant, and `icon` to
+ * override the variant glyph with a contextual one.
  */
 const VARIANTS = {
   "no-data": {
@@ -56,6 +57,7 @@ const VARIANTS = {
 
 export function EmptyState({
   variant = "no-data",
+  icon,
   title,
   description,
   action,
@@ -63,7 +65,9 @@ export function EmptyState({
   testid,
 }) {
   const preset = VARIANTS[variant] ?? VARIANTS["no-data"];
-  const Icon = preset.icon;
+  // `icon` lets a page show a contextual glyph (e.g. Archive) while keeping the
+  // variant's semantics/testid.
+  const Icon = icon ?? preset.icon;
   return (
     <Empty className={className} data-testid={testid ?? `empty-state-${variant}`}>
       <EmptyHeader>
