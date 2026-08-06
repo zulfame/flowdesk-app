@@ -172,7 +172,7 @@ export default function Dashboard() {
           onClick={() => navigate("/tasks")}
         />
         <KpiCard
-          label="Tiket Terbuka"
+          label="Tiket"
           value={d.open_tickets ?? 0}
           hint={`${myTickets.length} perlu Anda tangani`}
           icon={LifeBuoy}
