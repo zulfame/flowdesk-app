@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 from db import db
 from security import get_current_user
-from helpers import new_id, now_iso, log_activity, is_admin, scope_user_ids
+from helpers import new_id, now_iso, log_activity, is_admin, scope_user_ids, subordinate_users
 from notifications import create_notification
 
 router = APIRouter(prefix="/help-tickets", tags=["help-tickets"])
@@ -80,6 +80,27 @@ def _is_handler(user: dict, t: dict) -> bool:
     return is_admin(user) or (t.get("assignee") or {}).get("user_id") == user.get("id")
 
 
+async def _sub_ids(user: dict) -> set:
+    return {u["id"] for u in await subordinate_users(db, user)}
+
+
+async def _can_reassign(user: dict, t: dict) -> bool:
+    """Pelapor, Super Admin, atau ATASAN penerima tiket dapat memindahkan tujuan tiket."""
+    if is_admin(user) or t.get("created_by") == user.get("id"):
+        return True
+    assignee_id = (t.get("assignee") or {}).get("user_id")
+    return bool(assignee_id) and assignee_id in await _sub_ids(user)
+
+
+def _norm_atts(items) -> list:
+    out = []
+    for a in items or []:
+        a = dict(a)
+        a.setdefault("id", new_id())
+        out.append(a)
+    return out
+
+
 @router.get("/meta")
 async def meta(user: dict = Depends(get_current_user)):
     return {"categories": CATEGORIES, "priorities": PRIORITIES, "statuses": STATUSES}
@@ -103,7 +124,12 @@ async def list_tickets(status: Optional[str] = None, mine: Optional[str] = None,
 @router.get("/{ticket_id}")
 async def get_ticket(ticket_id: str, user: dict = Depends(get_current_user)):
     t = await _get(ticket_id, user)
-    return {**t, "can_handle": _is_handler(user, t)}
+    return {
+        **t,
+        "can_handle": _is_handler(user, t),
+        "can_reassign": await _can_reassign(user, t),
+        "can_edit": is_admin(user) or t.get("created_by") == user.get("id") or _is_handler(user, t),
+    }
 
 
 @router.post("")
@@ -120,7 +146,7 @@ async def create_ticket(body: TicketCreate, user: dict = Depends(get_current_use
         "priority": body.priority if body.priority in PRIORITIES else "Medium",
         "status": "Ditugaskan" if (assignee or {}).get("user_id") else "Baru",
         "assignee": assignee,
-        "attachments": body.attachments,
+        "attachments": _norm_atts(body.attachments),
         "comments": [],
         "resolution": "",
         "resolved_at": None,
@@ -153,10 +179,23 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
         if patch["status"] not in STATUSES:
             raise HTTPException(status_code=400, detail="Status tidak dikenal")
         patch["resolved_at"] = now_iso() if patch["status"] in ("Selesai", "Ditutup") else None
+    if "attachments" in patch:
+        patch["attachments"] = _norm_atts(patch["attachments"])
     if {"title", "description", "category", "priority", "attachments"} & patch.keys() and not (owner or handler):
         raise HTTPException(status_code=403, detail="Hanya pelapor atau penerima yang dapat mengubah tiket")
-    if "assignee" in patch and not owner:
-        raise HTTPException(status_code=403, detail="Hanya pelapor yang dapat mengubah tujuan tiket")
+    if "assignee" in patch:
+        if not await _can_reassign(user, t):
+            raise HTTPException(
+                status_code=403,
+                detail="Hanya pelapor atau atasan penerima tiket yang dapat mengubah tujuan tiket",
+            )
+        new_id_ = (patch["assignee"] or {}).get("user_id")
+        if new_id_ and not owner:
+            if new_id_ not in await _sub_ids(user):
+                raise HTTPException(
+                    status_code=403,
+                    detail="Tiket hanya dapat dialihkan ke pegawai di bawah jabatan Anda",
+                )
     if "assignee" in patch and t.get("status") == "Baru" and (patch["assignee"] or {}).get("user_id"):
         patch["status"] = "Ditugaskan"
 
@@ -175,7 +214,12 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
         await create_notification(new_assignee, "Tiket Bantuan Ditujukan ke Anda",
                                   f"{t.get('number')} · {t.get('title')}", "info",
                                   f"/help-tickets/{ticket_id}")
-    return {**updated, "can_handle": _is_handler(user, updated)}
+    return {
+        **updated,
+        "can_handle": _is_handler(user, updated),
+        "can_reassign": await _can_reassign(user, updated),
+        "can_edit": is_admin(user) or updated.get("created_by") == user.get("id") or _is_handler(user, updated),
+    }
 
 
 @router.delete("/{ticket_id}")

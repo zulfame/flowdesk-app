@@ -123,6 +123,7 @@ const ROUTE_TRAILS = [
   [/^\/meetings\/[^/]+\/edit$/, ["Kelola Rapat", "Ubah Rapat"]],
   [/^\/meetings\/[^/]+$/, ["Kelola Rapat", "Detail Rapat"]],
   [/^\/help-tickets$/, ["Tiket Bantuan"]],
+  [/^\/help-tickets\/[^/]+$/, ["Tiket Bantuan", "Detail Tiket"]],
   [/^\/time-schedule$/, ["Time Schedule"]],
   [/^\/time-schedule\/[^/]+$/, ["Time Schedule", "Linimasa"]],
   [/^\/notes$/, ["Kelola Catatan"]],
