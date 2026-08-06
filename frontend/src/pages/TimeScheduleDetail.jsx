@@ -48,6 +48,7 @@ import {
 import UserSelect from "@/components/UserSelect";
 import { DataTableCard, SortableHeader } from "@/components/composite/DataTableCard";
 import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
+import { DeadlineBadge } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { canManage } from "@/lib/perms";
@@ -144,12 +145,13 @@ const buildColumns = ({ editable, onEdit, onDelete, onOpenTask }) => [
     ),
   },
   {
-    accessorKey: "start_date",
-    header: ({ column }) => <SortableHeader column={column}>Periode</SortableHeader>,
+    accessorKey: "end_date",
+    header: ({ column }) => <SortableHeader column={column}>Tenggat</SortableHeader>,
     cell: ({ row }) => (
-      <span className="text-muted-foreground">
-        {row.original.start_date || "?"} {"\u2013"} {row.original.end_date || "?"}
-      </span>
+      <DeadlineBadge
+        date={row.original.end_date}
+        title={`${row.original.start_date || "?"} \u2013 ${row.original.end_date || "?"}`}
+      />
     ),
   },
   {

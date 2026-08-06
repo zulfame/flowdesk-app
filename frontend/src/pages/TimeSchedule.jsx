@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { CalendarRange, Eye, MoreHorizontal, Pencil, Plus, Save, Trash2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +51,13 @@ const fmtDay = (d) =>
     : "\u2014";
 
 /** Column factory (module scope — no component defined during render). */
+/** Progres jadwal = kegiatan berstatus "Selesai" / total kegiatan (konsep sama seperti Tugas). */
+const scheduleProgress = (s) => {
+  const acts = s.activities || [];
+  const done = acts.filter((a) => a.status === "Selesai").length;
+  return { done, total: acts.length, percent: acts.length ? Math.round((done / acts.length) * 100) : 0 };
+};
+
 const buildColumns = ({ user, onOpen, onEdit, onDelete }) => [
   {
     accessorKey: "title",
@@ -95,6 +103,22 @@ const buildColumns = ({ user, onOpen, onEdit, onDelete }) => [
         {fmtDay(row.original.start_date)} {"\u2013"} {fmtDay(row.original.end_date)}
       </span>
     ),
+  },
+  {
+    id: "progress",
+    accessorFn: (s) => scheduleProgress(s).percent,
+    header: ({ column }) => <SortableHeader column={column}>Progres</SortableHeader>,
+    cell: ({ row }) => {
+      const p = scheduleProgress(row.original);
+      return (
+        <div className="flex items-center gap-2" title={`${p.done}/${p.total} kegiatan selesai`}>
+          <Progress value={p.percent} className="h-1.5 w-16" />
+          <span className="w-8 text-right text-xs tabular-nums text-muted-foreground">
+            {p.percent}%
+          </span>
+        </div>
+      );
+    },
   },
   {
     id: "activities",

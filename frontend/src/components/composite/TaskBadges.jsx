@@ -1,3 +1,4 @@
+import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { StateChip } from "@/components/composite/StateChip";
 
@@ -33,6 +34,38 @@ export function PriorityBadge({ priority }) {
 }
 
 /** Inline progress indicator for dense table cells. */
+const DAY_MS = 86400000;
+
+/** Badge tenggat relatif berwarna ("Besok", "3 hari lagi", "Lewat 2 hari") — dipakai bersama. */
+export function DeadlineBadge({ date, title }) {
+  if (!date) return <span className="text-muted-foreground">{"\u2014"}</span>;
+  const end = new Date(new Date(date).toDateString());
+  if (Number.isNaN(end.getTime())) return <span className="text-muted-foreground">{"\u2014"}</span>;
+  const d = Math.round((end - new Date(new Date().toDateString())) / DAY_MS);
+  const meta =
+    d < 0
+      ? { text: `Lewat ${Math.abs(d)} hari`, chip: "--st-overdue" }
+      : d === 0
+        ? { text: "Hari ini", chip: "--st-overdue" }
+        : d === 1
+          ? { text: "Besok", chip: "--st-pending" }
+          : d <= 3
+            ? { text: `${d} hari lagi`, chip: "--st-pending" }
+            : d <= 7
+              ? { text: `${d} hari lagi`, chip: "--st-progress" }
+              : { text: `${d} hari lagi`, chip: "--st-done" };
+  return (
+    <Badge
+      variant="outline"
+      className="state-chip whitespace-nowrap font-medium"
+      style={{ "--chip": `var(${meta.chip})` }}
+      title={title || new Date(date).toLocaleDateString("id-ID", { dateStyle: "medium" })}
+    >
+      {meta.text}
+    </Badge>
+  );
+}
+
 export function ProgressCell({ value = 0 }) {
   return (
     <div className="flex items-center gap-2">

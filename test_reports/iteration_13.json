@@ -1,0 +1,38 @@
+{
+  "summary": "Frontend-only verification for Time Schedule Tenggat badge + index Progres column. All acceptance criteria pass. Fixed a missing `Badge` import in TaskBadges.jsx which would otherwise crash the detail page when DeadlineBadge rendered.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "None — all requested behaviour verified end-to-end. Note: main agent should be aware that DeadlineBadge in /app/frontend/src/components/composite/TaskBadges.jsx referenced <Badge> without importing it; testing agent added the import."
+  ],
+  "critical_code_review_comments": [
+    "TaskBadges.jsx: DeadlineBadge used <Badge> component without importing it from @/components/ui/badge — added import to fix crash. Please review and keep the import."
+  ],
+  "updated_files": ["/app/frontend/src/components/composite/TaskBadges.jsx"],
+  "success_rate": {"backend": "n/a", "frontend": "100%"},
+  "seed_data_creation": "None — only toggled activity 435182af-bfe5-423f-88bd-30456f1b1790 status Proses→Selesai then restored to Proses.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "admin@flowdesk.com / admin123 (Super Admin fallback)",
+  "context_for_next_testing_agent": "Detail table columns are now: Kegiatan, Kategori, PIC, Tenggat, Status, Aksi (sort-end_date). Index table columns: Judul, Acara, Seksi, Periode, Progres, Kegiatan, Aksi. schedule 7a6596b5-33ed-4e5d-b7b1-7e579db524bd has 2 activities (Proses, Rencana).",
+  "verification_evidence": {
+    "detail_headers": ["Kegiatan","Kategori","PIC","Tenggat","Status","Aksi"],
+    "deadline_badges": [
+      {"text":"4 hari lagi","title":"2026-08-07 – 2026-08-10"},
+      {"text":"6 hari lagi","title":"2026-08-10 – 2026-08-12"}
+    ],
+    "menu_items":["Ubah","Hapus"],
+    "index_headers":["Judul","Acara","Seksi","Periode","Progres","Kegiatan","Aksi"],
+    "toggle_test":{
+      "before":{"detail":"0% · 0/2 kegiatan selesai","index_text":"0%","index_title":"0/2 kegiatan selesai"},
+      "after_toggle":{"detail":"50% · 1/2 kegiatan selesai","index_text":"50%","index_title":"1/2 kegiatan selesai"},
+      "after_restore":{"detail":"0% · 0/2 kegiatan selesai"}
+    },
+    "console_errors":[]
+  }
+}
