@@ -503,3 +503,10 @@ Permintaan user: modul tiket bantuan (judul, deskripsi, kategori, prioritas, lam
 - P1: Ekspor Excel untuk datatable lain (Log Aktivitas, Pengguna, Tugas).
 - P1: Integrasi WhatsApp API untuk broadcast pengingat (kini via email).
 - P2: Migrasi halaman `Settings.jsx` lama; PDF export siap cetak.
+
+## Update (2026-06-08g) — Sinkronisasi dokumentasi sebelum push GitHub
+- **README.md** diperbarui: intro menyebut Time Schedule & Tiket Bantuan; **Fitur Utama** menambah bagian **Tiket Bantuan** (nomor otomatis, lampiran multi, komentar, status, pemantauan berjenjang, reassign oleh atasan penerima), item Admin menambah **Kelola Keamanan (SSO Authty)** + Kelola Aplikasi (SEO/Open Graph) + Kelola Peranan (hierarki jabatan & izin per level); Kelola Tugas tidak lagi menyebut Kanban/PDF (sudah dihapus saat redesign).
+- **Arsitektur & Teknologi**: tambah `cryptography` (enkripsi API key SSO); frontend jadi "Shadcn UI design system compact monokrom, font Geist, TanStack Table" (Poppins/jsPDF dihapus).
+- **Struktur Proyek**: tambah `authty.py`, `crypto.py`, folder `scripts/`, dan router `help_tickets, og, authty`.
+- **Model Hak Akses** ditulis ulang sesuai kondisi nyata: peran admin/manager/member dihapus → **Super Admin**; hierarki jabatan (subtree) + izin menu per level; aturan Tiket Bantuan; catatan & pengingat privat; rapat pribadi per peserta; SSO Authty. Akun default kini `role: super_admin`.
+- **requirements.txt**: TIDAK ada modul Python baru pada modul Tiket Bantuan (hanya memakai dependensi yang sudah ada). Semua paket di requirements.txt diverifikasi terpasang — `pywebpush`, `py-vapid`, `http_ece` sebelumnya hilang di pod ini dan sudah dipasang ulang sesuai versi pin (backend restart OK, `GET /api/` 200). Tidak ada perubahan isi requirements.txt.

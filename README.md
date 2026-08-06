@@ -1,6 +1,6 @@
 # FlowDesk — Sistem Manajemen Kerja Internal
 
-FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas, rapat, catatan, pengingat, kalender, notifikasi, hingga administrasi pengguna & sistem. Dirancang dengan filosofi **"Sederhana untuk Pengguna, Kuat di Balik Layar"** dan antarmuka berbahasa Indonesia.
+FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas, rapat, catatan, pengingat, time schedule, tiket bantuan, kalender, notifikasi, hingga administrasi pengguna & sistem. Dirancang dengan filosofi **"Sederhana untuk Pengguna, Kuat di Balik Layar"** dan antarmuka berbahasa Indonesia.
 
 ---
 
@@ -23,18 +23,19 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 
 ## Fitur Utama
 - **Dashboard** — ringkasan beban kerja, tren, dan rapat mendatang.
-- **Kelola Tugas** — Kanban, checklist berdetail, dokumen bertingkat (Revisi/Final), progres & status otomatis, template, duplikasi, ekspor PDF, @mention.
+- **Kelola Tugas** — daftar (DataTable) + detail sunting-inline, checklist berdetail dengan persetujuan pemilik, dokumen bertingkat (Revisi/Final), progres & status otomatis, template, duplikasi, @mention.
 - **Kelola Rapat** — notulen kaya teks, agenda, keputusan, action item; action item dapat dikonversi menjadi Tugas (tertaut).
 - **Kelola Catatan** — catatan bersama dengan tag & warna.
 - **Time Schedule** — jadwal kegiatan berbasis linimasa (Gantt): kegiatan berwarna kustom, garis "hari ini" & progres otomatis, penanda hari libur/Event, ekspor Excel, dan aksi **Buat Tugas** dari kegiatan (tertaut).
 - **Ingatkan Saya** — pengingat pribadi + broadcast tepat waktu via **Email** atau **WhatsApp** (tautan wa.me ke nomor HP pembuat).
+- **Tiket Bantuan** — pengajuan permintaan bantuan: judul, deskripsi, kategori, prioritas, **lampiran multi** (berkas/URL), tujuan (penerima), **komentar saling membalas**, dan penanganan status (Baru → Ditugaskan → Diproses → Menunggu Info → Selesai → Ditutup) + catatan penyelesaian. Nomor tiket otomatis `TKT-YYYYMM-NNNN`. Pemantauan berjenjang: pelapor, penerima, dan jabatan di atas keduanya dapat melihat; **atasan penerima** dapat mengalihkan tiket ke pegawai di bawah jabatannya.
 - **Kalender** — tampilan gabungan tugas, rapat, pengingat, dan acara.
 - **Notifikasi** — pusat notifikasi + Web Push browser (real, muncul walau tab tertutup).
-- **Admin** — Kelola Aplikasi (branding), Kelola Peranan (RBAC), Kelola Pengguna (impor CSV/XLSX), Kelola Database (konfigurasi S3, backup & restore), Kelola Notifikasi, Kelola Arsip (pemulihan data terhapus), Log Aktivitas.
+- **Admin** — Kelola Aplikasi (identitas, aset merek, SEO & Open Graph), Kelola Keamanan (**SSO Authty** terpusat), Kelola Peranan (hierarki jabatan + izin menu per level), Kelola Pengguna (impor CSV/XLSX), Kelola Database (konfigurasi S3, backup & restore), Kelola Notifikasi, Kelola Arsip (pemulihan data terhapus), Log Aktivitas.
 
 ## Arsitektur & Teknologi
-- **Backend**: FastAPI (Python 3.11), Motor (MongoDB async), JWT (PyJWT) + bcrypt, background loop, pywebpush (VAPID), boto3 (S3 eksternal).
-- **Frontend**: React 19, Tailwind CSS, Shadcn UI, Recharts, jsPDF, font Poppins.
+- **Backend**: FastAPI (Python 3.11), Motor (MongoDB async), JWT (PyJWT) + bcrypt, background loop, pywebpush (VAPID), boto3 (S3 eksternal), cryptography (enkripsi API key SSO).
+- **Frontend**: React 19, Tailwind CSS, Shadcn UI (design system compact monokrom, font Geist), TanStack Table, Recharts.
 - **Basis Data**: MongoDB.
 - **Penyimpanan Lampiran**: Object Storage platform Emergent bila `EMERGENT_LLM_KEY` tersedia; jika tidak (self-host), otomatis memakai **filesystem lokal** (`LOCAL_STORAGE_DIR`). Deploy Docker sudah menyertakan volume khusus lampiran.
 - **Backup Database**: dapat disimpan ke **S3-compatible eksternal** (dikonfigurasi di menu Kelola Database).
@@ -49,12 +50,15 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 │   ├── storage.py           # object storage platform
 │   ├── s3_storage.py        # S3 eksternal (boto3)
 │   ├── webpush.py           # Web Push (VAPID)
+│   ├── authty.py, crypto.py # SSO Authty + enkripsi API key
 │   ├── notifications.py, services.py
 │   ├── seed.py              # seeder / reset data awal
+│   ├── scripts/             # skrip verifikasi (mis. verify_ticket_hierarchy.py)
 │   ├── requirements.txt, .env
 │   └── routers/             # auth, users, roles, tasks, meetings, reminders,
 │                            #   notes, attachments, feeds, aggregate, settings,
-│                            #   profile, database, push, archive, time_schedule
+│                            #   profile, database, push, archive, time_schedule,
+│                            #   help_tickets, og, authty
 ├── frontend
 │   ├── src/                 # pages/, components/, context/, lib/
 │   ├── public/sw.js         # service worker Web Push
@@ -109,19 +113,23 @@ Saat pertama kali dijalankan, sistem membuat satu superadmin:
 ```
 Email    : admin@flowdesk.com   (dari ADMIN_EMAIL)
 Password : admin123             (dari ADMIN_PASSWORD)
-Role     : admin (akses penuh)
+Role     : super_admin (akses penuh, izin `*`)
 ```
 
 **Segera ganti kata sandi** melalui menu **Profil Pengguna** setelah login pertama, dan ubah `ADMIN_PASSWORD` di produksi.
 
 ## Model Hak Akses
-- **Admin & Manajer**: melihat seluruh data.
-- **Anggota**: hanya melihat data yang terkait dirinya (pembuat, atau PIC/pemberi tugas pada tugas, atau peserta pada rapat).
-- **Hapus & ubah info inti**: hanya oleh pembuat data atau Admin.
+Sejak versi hierarki jabatan, peran `admin`/`manager`/`member` **dihapus**. Administrator = **Super Admin** (`super_admin`, izin `*`).
+- **Hierarki jabatan (subtree)**: setiap peran punya `parent_id` & `level` (Komisaris → Dirut → Direksi → Kabag → Kasi → Staff). Pengguna melihat data **dirinya + seluruh bawahannya**; Super Admin melihat semua.
+- **Izin menu per level** diatur di **Kelola Peranan**; frontend menggerbangi menu lewat `lib/perms.js`.
+- **Penugasan**: kandidat PIC/penerima hanya pemegang jabatan **di bawah** jabatan pengguna (`GET /api/users/subordinates`).
+- **Hapus & ubah info inti**: hanya oleh pembuat data atau Super Admin.
 - **PIC tugas** (bukan pembuat): hanya dapat memperbarui status/progres/checklist/dokumen.
-- **Catatan**: dapat dilihat semua (bersama), tetapi hanya pembuat/Admin yang boleh mengubah/menghapus.
-- **Time Schedule**: Admin/Manajer melihat semua; Anggota hanya jadwal yang dibuatnya atau di mana ia menjadi PIC kegiatan. Akses menu diatur lewat izin **Time Schedule** di **Kelola Peranan**.
-- **Pengingat**: privat, hanya milik pembuatnya.
+- **Catatan**: privat — hanya pembuatnya yang melihat & mengubah. **Pengingat**: privat.
+- **Rapat**: shell rapat bersama, tetapi catatan/keputusan/lampiran bersifat pribadi per peserta.
+- **Time Schedule**: pembuat & PIC kegiatan, plus atasannya (subtree).
+- **Tiket Bantuan**: terlihat oleh pelapor, penerima, dan jabatan di atas keduanya. **Status** hanya dapat diubah penerima (atau Super Admin). **Tujuan tiket** dapat dipindahkan oleh pelapor, Super Admin, atau **atasan penerima** — dan bila bukan pelapor, hanya ke pegawai di bawah jabatannya.
+- **Autentikasi**: bila **SSO Authty** aktif (Kelola Keamanan), pengguna masuk lewat Authty; Super Admin lokal tetap punya jalur darurat.
 - Penghapusan bersifat **soft-delete** (dapat dipulihkan di **Kelola Arsip**); penghapusan permanen juga membersihkan berkas lampiran fisik.
 
 ## Menjalankan Secara Lokal (Pengembangan)
