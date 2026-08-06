@@ -327,3 +327,4 @@ Permintaan user + hasil testing agent (`/app/test_reports/iteration_11.json`):
 - P1: Tiket Bantuan (halaman masih placeholder, belum ada backend router).
 - P1: Ekspor Excel untuk datatable (Log Aktivitas, Pengguna, Tugas, dll).
 - P2: Overhaul alur autentikasi (ditunda sampai redesign tuntas).
+- Hapus duplikasi info di Detail Tugas: baris badge Status/Prioritas/Tenggat pada kartu ringkasan dihapus (tetap ada di sidebar "Informasi Tugas"); kartu ringkasan kini hanya judul, deskripsi, tautan rapat induk, dan progres.

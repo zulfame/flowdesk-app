@@ -357,13 +357,6 @@ export default function TaskDetail() {
                 </div>
               ) : (
                 <>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <StatusBadge status={task.status} />
-                    <PriorityBadge priority={task.priority} />
-                    <span className="text-xs text-muted-foreground">
-                      Tenggat {fmtDay(task.deadline)}
-                    </span>
-                  </div>
                   <p className="whitespace-pre-wrap text-muted-foreground">
                     {task.description || "Tanpa deskripsi."}
                   </p>
