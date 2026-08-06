@@ -1,5 +1,5 @@
 import React from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 
 import {
   AlertDialog,
@@ -41,7 +41,9 @@ export function ConfirmDeleteDialog({
           <AlertDialogDescription>{description}</AlertDialogDescription>
         </div>
         <AlertDialogFooter>
-          <AlertDialogCancel data-testid={`${testid}-cancel`}>{ACTION.cancel}</AlertDialogCancel>
+          <AlertDialogCancel data-testid={`${testid}-cancel`}>
+            <X className="size-4" /> {ACTION.cancel}
+          </AlertDialogCancel>
           <AlertDialogAction
             onClick={onConfirm}
             className={cn(

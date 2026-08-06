@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { FileText, MoreHorizontal, Pencil, Pin, PinOff, Plus, Save, Trash2 } from "lucide-react";
+import { FileText, MoreHorizontal, Pencil, Pin, PinOff, Plus, Save, Trash2, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -332,7 +332,7 @@ export default function Notes() {
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-note">
               <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}

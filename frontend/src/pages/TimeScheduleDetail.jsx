@@ -12,6 +12,7 @@ import {
   Plus,
   Settings2,
   Trash2,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -787,7 +788,7 @@ export default function TimeScheduleDetail() {
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setActOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={saveAct} disabled={busy} data-testid="btn-save-activity">
               {busy ? ACTION.saving : ACTION.save}
@@ -845,7 +846,7 @@ export default function TimeScheduleDetail() {
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setConvert(null)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={doConvert} disabled={busy} data-testid="btn-confirm-convert">
               <ClipboardCheck className="size-4" /> Buat Tugas
@@ -949,7 +950,7 @@ export default function TimeScheduleDetail() {
           ) : null}
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setMetaOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={saveMeta} disabled={busy} data-testid="btn-save-meta">
               {busy ? ACTION.saving : ACTION.save}

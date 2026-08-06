@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pencil, Save } from "lucide-react";
+import { Pencil, Save, X } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -65,7 +65,7 @@ export function EditableCard({
             onClick={() => setEditing(false)}
             data-testid={`btn-cancel-${testid}`}
           >
-            {ACTION.cancel}
+            <X className="size-4" /> {ACTION.cancel}
           </Button>
           <Button size="sm" onClick={save} disabled={saving} data-testid={`btn-save-${testid}`}>
             <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}

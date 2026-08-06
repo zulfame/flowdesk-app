@@ -244,7 +244,7 @@ export default function MeetingForm() {
         </CardContent>
         <CardFooter className="justify-between gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">
-            {ACTION.cancel}
+            <X className="size-4" /> {ACTION.cancel}
           </Button>
           <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-meeting">
             <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}

@@ -3,14 +3,11 @@ import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   CalendarDays,
-  ClipboardCheck,
   Clock,
-  ExternalLink,
   Loader2,
   MapPin,
   Megaphone,
   MessageCircle,
-  Plus,
   Save,
   Upload,
   X,
@@ -19,7 +16,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogBody,
@@ -45,15 +41,12 @@ import AttachmentPanel from "@/components/AttachmentPanel";
 import UserSelect from "@/components/UserSelect";
 import { EditableCard } from "@/components/composite/EditableCard";
 import { MEETING_TYPES, MeetingTypeBadge } from "@/components/composite/MeetingBadges";
-import { StatusBadge, PRIORITY_META } from "@/components/composite/TaskBadges";
+import { StatusBadge } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { canManage } from "@/lib/perms";
 import { useAuth } from "@/context/AuthContext";
-import { cn } from "@/lib/utils";
 import { ACTION } from "@/constants/labels";
-
-const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
 
 /** Detail Rapat — satu halaman untuk melihat & menyunting (halaman Ubah dihapus, FD11). */
 export default function MeetingDetail() {
@@ -78,9 +71,6 @@ export default function MeetingDetail() {
   });
   const [participants, setParticipants] = useState([]);
   const [pickerKey, setPickerKey] = useState(0);
-  const [newAction, setNewAction] = useState("");
-  const [convert, setConvert] = useState(null);
-  const [convForm, setConvForm] = useState({ pic: null, priority: "Medium", deadline: "" });
   const [waOpen, setWaOpen] = useState(false);
   const [waLinks, setWaLinks] = useState([]);
   const attachRef = useRef(null);
@@ -133,55 +123,6 @@ export default function MeetingDetail() {
     if (ok) notify.success("Catatan rapat disimpan.");
   };
 
-  const actionItems = meeting?.action_items || [];
-
-  const persistActions = async (list) => {
-    setBusy(true);
-    const ok = await patch({ action_items: list });
-    setBusy(false);
-    return ok;
-  };
-
-  const addAction = async () => {
-    if (!newAction.trim()) return;
-    const ok = await persistActions([...actionItems, { text: newAction.trim(), done: false }]);
-    if (ok) {
-      setNewAction("");
-      notify.success("Item aksi ditambahkan.");
-    }
-  };
-
-  const toggleAction = (itemId) =>
-    persistActions(actionItems.map((i) => (i.id === itemId ? { ...i, done: !i.done } : i)));
-
-  const removeAction = (itemId) => persistActions(actionItems.filter((i) => i.id !== itemId));
-
-  const doConvert = async () => {
-    if (!convForm.pic?.name) {
-      notify.error("PIC pelaksana wajib dipilih.");
-      return;
-    }
-    if (!convForm.deadline) {
-      notify.error("Tenggat tugas wajib diisi.");
-      return;
-    }
-    setBusy(true);
-    try {
-      const { data } = await api.post(`/meetings/${id}/action-items/${convert.id}/convert`, {
-        pic: convForm.pic,
-        priority: convForm.priority,
-        deadline: new Date(convForm.deadline).toISOString(),
-      });
-      notify.success("Item aksi berhasil menjadi tugas.");
-      setConvert(null);
-      navigate(`/tasks/${data.id}`);
-    } catch (err) {
-      notify.error(apiError(err));
-    } finally {
-      setBusy(false);
-    }
-  };
-
   const broadcast = async () => {
     setBusy(true);
     try {
@@ -213,7 +154,6 @@ export default function MeetingDetail() {
 
   const manage = canManage(user, meeting);
   const current = meeting.participants || [];
-  const doneActions = actionItems.filter((i) => i.done).length;
 
   return (
     <div className="form-dense space-y-6" data-testid="meeting-detail-page">
@@ -400,92 +340,6 @@ export default function MeetingDetail() {
             </Card>
           </Tabs>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">
-                Item Aksi ({doneActions}/{actionItems.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              {actionItems.length === 0 ? (
-                <p className="py-6 text-center text-muted-foreground">
-                  Belum ada item aksi. Catat tindak lanjut rapat di sini.
-                </p>
-              ) : (
-                <div className="divide-y">
-                  {actionItems.map((item) => (
-                    <div
-                      key={item.id}
-                      className="flex items-center gap-3 px-6 py-2 transition-colors hover:bg-muted/40"
-                      data-testid={`action-item-${item.id}`}
-                    >
-                      <Checkbox
-                        checked={Boolean(item.done)}
-                        onCheckedChange={() => toggleAction(item.id)}
-                        disabled={busy}
-                        data-testid={`action-check-${item.id}`}
-                      />
-                      <span
-                        className={cn(
-                          "min-w-0 flex-1 truncate text-[13px]",
-                          item.done && "text-muted-foreground line-through"
-                        )}
-                      >
-                        {item.text}
-                      </span>
-                      {item.converted_task_id ? (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-7 shrink-0 text-xs"
-                          onClick={() => navigate(`/tasks/${item.converted_task_id}`)}
-                          data-testid={`action-task-${item.id}`}
-                        >
-                          <ExternalLink className="size-3.5" /> Tugas
-                        </Button>
-                      ) : (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 shrink-0 rounded-md px-2.5 py-0.5 text-xs font-normal"
-                          onClick={() => {
-                            setConvert(item);
-                            setConvForm({ pic: null, priority: "Medium", deadline: meeting.date || "" });
-                          }}
-                          data-testid={`action-convert-${item.id}`}
-                        >
-                          Buat Tugas
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="size-7 shrink-0 text-muted-foreground hover:text-destructive"
-                        aria-label={ACTION.delete}
-                        onClick={() => removeAction(item.id)}
-                        data-testid={`action-remove-${item.id}`}
-                      >
-                        <X className="size-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="gap-2">
-              <Input
-                value={newAction}
-                onChange={(e) => setNewAction(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addAction()}
-                placeholder="Tambah item aksi..."
-                className="flex-1"
-                data-testid="action-input"
-              />
-              <Button size="sm" onClick={addAction} disabled={busy} data-testid="btn-add-action">
-                <Plus className="size-4" /> {ACTION.add}
-              </Button>
-            </CardFooter>
-          </Card>
         </div>
 
         <div className="space-y-6">
@@ -621,67 +475,6 @@ export default function MeetingDetail() {
           ) : null}
         </div>
       </div>
-
-      <Dialog open={Boolean(convert)} onOpenChange={(o) => !o && setConvert(null)}>
-        <DialogContent className="sm:max-w-md" data-testid="convert-action-dialog">
-          <DialogHeader>
-            <DialogTitle>Buat Tugas dari Item Aksi</DialogTitle>
-            <DialogDescription>
-              "{convert?.text}" akan menjadi tugas yang tertaut ke rapat ini.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogBody className="form-dense space-y-[var(--field-gap)]">
-            <div className="space-y-[var(--item-gap)]">
-              <Label>PIC Pelaksana</Label>
-              <UserSelect
-                users={users}
-                value={convForm.pic}
-                onChange={(v) => setConvForm({ ...convForm, pic: v })}
-                placeholder="Pilih pelaksana..."
-                testid="convert-pic-select"
-              />
-            </div>
-            <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
-              <div className="space-y-[var(--item-gap)]">
-                <Label>Prioritas</Label>
-                <Select
-                  value={convForm.priority}
-                  onValueChange={(v) => setConvForm({ ...convForm, priority: v })}
-                >
-                  <SelectTrigger data-testid="convert-priority-select">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PRIORITIES.map((p) => (
-                      <SelectItem key={p} value={p}>
-                        {PRIORITY_META[p].label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-[var(--item-gap)]">
-                <Label htmlFor="conv-deadline">Tenggat</Label>
-                <Input
-                  id="conv-deadline"
-                  type="date"
-                  value={convForm.deadline}
-                  onChange={(e) => setConvForm({ ...convForm, deadline: e.target.value })}
-                  data-testid="convert-deadline-input"
-                />
-              </div>
-            </div>
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setConvert(null)}>
-              {ACTION.cancel}
-            </Button>
-            <Button size="sm" onClick={doConvert} disabled={busy} data-testid="btn-confirm-convert">
-              <ClipboardCheck className="size-4" /> Buat Tugas
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       <Dialog open={waOpen} onOpenChange={setWaOpen}>
         <DialogContent className="sm:max-w-md" data-testid="wa-links-dialog">

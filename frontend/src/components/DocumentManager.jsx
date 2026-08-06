@@ -10,6 +10,7 @@ import {
   Plus,
   Trash2,
   Upload,
+  X,
 } from "lucide-react";
 
 import { api, apiError, fileDownloadUrl } from "@/lib/api";
@@ -406,7 +407,7 @@ const DocumentManager = React.forwardRef(function DocumentManager({
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setUrlOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={addUrlDoc} data-testid={`${idPrefix}-url-save`}>
               {ACTION.add}
@@ -502,7 +503,7 @@ const DocumentManager = React.forwardRef(function DocumentManager({
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setRespOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button
               size="sm"

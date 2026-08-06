@@ -9,6 +9,7 @@ import {
   Plus,
   Save,
   Trash2,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -539,7 +540,7 @@ export default function Reminders() {
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-reminder">
               <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}

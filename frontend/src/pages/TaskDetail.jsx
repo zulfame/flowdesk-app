@@ -20,6 +20,7 @@ import {
   Upload,
   User,
   Video,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -431,11 +432,7 @@ export default function TaskDetail() {
                               >
                                 {item.title}
                               </p>
-                              {item.done ? (
-                                <Badge variant="default" className="shrink-0 font-normal">
-                                  Disetujui
-                                </Badge>
-                              ) : item.pic_done ? (
+                              {!item.done && item.pic_done ? (
                                 <Badge variant="secondary" className="shrink-0 font-normal">
                                   Menunggu persetujuan
                                 </Badge>
@@ -838,7 +835,7 @@ export default function TaskDetail() {
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setTplOpen(false)}>
-              {ACTION.cancel}
+              <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={saveTemplate} data-testid="btn-confirm-template">
               {ACTION.save}

@@ -335,7 +335,7 @@ export default function TaskForm() {
       <Card>
         <CardFooter className="justify-between gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate("/tasks")} data-testid="btn-cancel">
-            {ACTION.cancel}
+            <X className="size-4" /> {ACTION.cancel}
           </Button>
           <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-task">
             <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}
