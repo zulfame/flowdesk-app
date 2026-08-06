@@ -5,7 +5,6 @@ import { Toaster } from "sonner";
 import { AuthProvider } from "@/context/AuthContext";
 import { BrandingProvider } from "@/context/BrandingContext";
 import { ThemeProvider } from "@/components/theme-provider";
-import { DensityProvider } from "@/components/density-provider";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import AppLayout from "@/components/layout/AppLayout";
@@ -70,31 +69,29 @@ const PAGES = [
 function App() {
   return (
     <ThemeProvider>
-      <DensityProvider>
-        <BrandingProvider>
-          <AuthProvider>
-            <ErrorBoundary>
-              <BrowserRouter>
-                <Routes>
-                  <Route path="/login" element={<Login />} />
-                  {PAGES.map((p) => (
-                    <Route
-                      key={p.path}
-                      path={p.path}
-                      element={
-                        <ProtectedRoute>
-                          <AppLayout>{p.element}</AppLayout>
-                        </ProtectedRoute>
-                      }
-                    />
-                  ))}
-                </Routes>
-              </BrowserRouter>
-            </ErrorBoundary>
-            <Toaster position="bottom-right" closeButton />
-          </AuthProvider>
-        </BrandingProvider>
-      </DensityProvider>
+      <BrandingProvider>
+        <AuthProvider>
+          <ErrorBoundary>
+            <BrowserRouter>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                {PAGES.map((p) => (
+                  <Route
+                    key={p.path}
+                    path={p.path}
+                    element={
+                      <ProtectedRoute>
+                        <AppLayout>{p.element}</AppLayout>
+                      </ProtectedRoute>
+                    }
+                  />
+                ))}
+              </Routes>
+            </BrowserRouter>
+          </ErrorBoundary>
+          <Toaster position="bottom-right" closeButton />
+        </AuthProvider>
+      </BrandingProvider>
     </ThemeProvider>
   );
 }

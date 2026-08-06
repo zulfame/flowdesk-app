@@ -15,14 +15,15 @@ import {
   BreadcrumbSeparator,
 } from "@/components/ui/breadcrumb";
 import { AppSidebar } from "@/components/layout/AppSidebar";
+import { NotificationsBell } from "@/components/layout/NotificationsBell";
 import { ModeToggle } from "@/components/mode-toggle";
-import { DensityToggle } from "@/components/density-toggle";
 import { getBreadcrumb } from "@/config/navigation";
 
 /**
  * AppLayout — application shell (R34).
- * Sidebar (collapse-to-icon) + fixed header (trigger + breadcrumb + toggles).
+ * Sidebar (collapse-to-icon) + fixed header (trigger + breadcrumb + actions).
  * Only the content region scrolls; the shell is locked to `h-svh`.
+ * Density is permanently Compact (FD1) — no density switcher in the header.
  */
 export default function AppLayout({ children }) {
   const location = useLocation();
@@ -58,8 +59,8 @@ export default function AppLayout({ children }) {
               })}
             </BreadcrumbList>
           </Breadcrumb>
-          <div className="ml-auto flex items-center gap-2">
-            <DensityToggle />
+          <div className="ml-auto flex items-center gap-1">
+            <NotificationsBell />
             <ModeToggle />
           </div>
         </header>

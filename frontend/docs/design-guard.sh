@@ -91,6 +91,10 @@ report "TabsList tanpa 'overflow-x-auto' (wajib scroll-x di mobile; dilarang wra
 report "Teks oversized (text-xl/2xl/3xl/4xl...) di halaman fitur — R45; judul cukup 'text-base'" \
   "$(scan_pages 'text-(xl|[2-9]xl)' | grep -vE 'Login\.jsx')"
 
+# 14) FD1 — Compact is the ONLY density: no toggle/provider/data-density anywhere.
+m=$(grep -rnE 'DensityToggle|density-provider|density-toggle|data-density' "$SRC" --include=*.jsx --include=*.js --include=*.css 2>/dev/null | grep -vE '//\s*guard-allow')
+report "Mekanisme density ditemukan (FD1: compact WAJIB & satu-satunya \u2014 tanpa toggle/provider/data-density)" "$m"
+
 echo ""
 if [ "$fail" -eq 0 ]; then
   echo "✓ design-guard: clean — tidak ada anti-pattern terdeteksi."

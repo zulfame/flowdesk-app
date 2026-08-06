@@ -38,7 +38,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { EmptyState } from "@/components/composite/EmptyState";
-import { DensityToggle } from "@/components/density-toggle";
 
 /** Standard date/time formatter for table cells. */
 export const fmtDate = (iso) => {
@@ -71,7 +70,7 @@ export function SortableHeader({ column, children, align = "left" }) {
 
 /**
  * DataTableCard — the standard card-wrapped TanStack DataTable used across the
- * app (search, sortable headers, density toggle, pagination, empty states).
+ * app (search, sortable headers, pagination, empty states).
  */
 export function DataTableCard({
   title,
@@ -142,7 +141,6 @@ export function DataTableCard({
                 <FilterX className="size-4" /> Reset
               </Button>
             )}
-            <DensityToggle />
           </div>
         </div>
 

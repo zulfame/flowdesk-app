@@ -158,3 +158,12 @@ Keputusan pemilik produk (terkunci): **bahasa UI Indonesia** (override §6 Engli
 
 ### Fase berikutnya (belum dikerjakan)
 Fase 2 list/CRUD (R47), Fase 3 detail & form, Fase 4 konfigurasi (R51) + Kalender + Dashboard. Setelah redesign selesai: pembahasan perubahan alur autentikasi.
+
+## Update (2026-08-06) — Fase 1b: aturan wajib FlowDesk (FD1–FD4)
+Permintaan user setelah review Fase 1 (uji frontend otomatis DITUNDA, user menguji sendiri):
+- **FD1 — Compact WAJIB & satu-satunya**: `DensityProvider` + `DensityToggle` **dihapus**, blok CSS `:root[data-density="comfortable"]` dihapus, nilai kerapatan dikunci di `:root` (`--ctl-h: 2rem`, `--field-gap: .75rem`, `--item-gap: .375rem`, `--tbl-cell-py: .25rem`). `DataTableCard` tidak lagi menampilkan toggle. Dijaga otomatis: `design-guard.sh` cek #14 menolak `DensityToggle|density-provider|density-toggle|data-density` di seluruh `src`.
+- **FD2 — Aksi header**: selectbox "Kerapatan" diganti **ikon lonceng** `components/layout/NotificationsBell.jsx` (Popover: judul "Notifikasi" + placeholder "Belum ada notifikasi", siap disambungkan saat modul notifikasi dimigrasi). Header kini = SidebarTrigger + Breadcrumb + Lonceng + ModeToggle.
+- **FD3 — Sidebar berbasis AREA**: header sidebar jadi **area switcher** (mengikuti referensi "Areas") dengan 2 area: **Member Area** (pekerjaan harian) & **Administrator** (pengelolaan sistem, hanya role admin). `config/navigation.js` kini berbentuk `AREAS[{id,label,description,icon,adminOnly,sections}]` + helper `getAreas/getArea/firstRouteOf/areaIdOf`; area aktif mengikuti rute & disimpan di `localStorage` (`flowdesk.activeArea`). Area tanpa menu menampilkan catatan netral.
+- **FD4 — Menu pengguna**: dropdown user footer sidebar kini berisi **Profil** (`/profile`) + **Keluar**.
+- Aturan FD1–FD4 dicatat sebagai bagian **Non-Negotiable** di `frontend/docs/FLOWDESK_EXCEPTIONS.md` (bukan hanya catatan) dan status migrasi ditandai Fase 1b selesai.
+- Verifikasi manual: guard exit 0, eslint bersih untuk file baru, compile bersih, area switcher 2 opsi + catatan area kosong tampil, popover lonceng tampil, Profil membuka `/profile`, jumlah `density-toggle-trigger` = 0.

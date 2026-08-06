@@ -75,7 +75,7 @@ code {
         --ring: var(--neutral-950);
         --radius: 0.5rem;
 
-        /* ── Density (Dense = default) ── */
+        /* ── Density — COMPACT IS MANDATORY (FD1): single, non-switchable mode ── */
         --ctl-h: 2rem;          /* control height · h-8 */
         --ctl-h-sm: 1.75rem;    /* small control · h-7 */
         --ctl-h-lg: 2.25rem;    /* large control · h-9 */
@@ -139,14 +139,6 @@ code {
         --sidebar-ring: var(--neutral-300);
     }
 
-    :root[data-density="comfortable"] {
-        --ctl-h: 2.5rem;        /* control height · h-10 */
-        --ctl-h-sm: 2.25rem;    /* small control · h-9 */
-        --ctl-h-lg: 2.75rem;    /* large control · h-11 */
-        --field-gap: 1.25rem;   /* form field-stack · space-y-5 */
-        --item-gap: 0.5rem;     /* label→control · space-y-2 */
-        --tbl-cell-py: 0.75rem; /* table row vertical padding · roomy */
-    }
 }
 
 /* Density-aware table rows (opt-in via `.tbl-density`) — R47.1/R47.8. */
