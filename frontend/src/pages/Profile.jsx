@@ -1,102 +1,315 @@
 import React, { useState } from "react";
-import { api, apiError } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
-import { PageHeader } from "@/components/common";
-import ImageUpload from "@/components/ImageUpload";
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { UserCircle, Save, KeyRound, Loader2, ShieldAlert } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Info, KeyRound, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 
-function Field({ label, children }) {
-  return <div className="space-y-1.5"><Label>{label}</Label>{children}</div>;
-}
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { AvatarUpload } from "@/components/composite/AvatarUpload";
+import { PasswordInput } from "@/components/composite/PasswordInput";
+import { api, apiError } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import {
+  passwordDefaultValues,
+  passwordSchema,
+  profileSchema,
+} from "@/lib/validation/profileSchema";
 
-const ROLE_LABELS = { admin: "Administrator", manager: "Manajer", member: "Anggota" };
+const ROLE_LABELS = {
+  admin: "Administrator",
+  manager: "Manajer",
+  member: "Anggota",
+};
 
+/** Reusable configuration section card (R51.1). */
+const Section = ({ title, description, children, testid }) => (
+  <Card data-testid={testid}>
+    <CardHeader>
+      <CardTitle className="text-base">{title}</CardTitle>
+      {description ? <CardDescription>{description}</CardDescription> : null}
+    </CardHeader>
+    <CardContent className="space-y-4">{children}</CardContent>
+  </Card>
+);
+
+/** Save bar at the end of a section flow (R51.2) — never sticky/floating. */
+const SaveBar = ({ children }) => (
+  <div className="flex justify-end border-t pt-4">{children}</div>
+);
+
+/**
+ * Profile — self-service account page (configuration pattern R51):
+ * stacked section cards, each with its own end-of-flow save bar.
+ */
 export default function Profile() {
   const { user, setUser } = useAuth();
-  const [form, setForm] = useState({
-    name: user?.name || "", email: user?.email || "",
-    phone: user?.phone || "", department: user?.department || "", avatar: user?.avatar || "",
-  });
-  const [pwd, setPwd] = useState({ current_password: "", new_password: "", confirm: "" });
-  const [saving, setSaving] = useState(false);
-  const [savingPwd, setSavingPwd] = useState(false);
+  const [avatar, setAvatar] = useState(user?.avatar || "");
 
-  const saveProfile = async () => {
-    if (!form.name.trim() || !form.email.trim()) { toast.error("Nama dan email wajib diisi"); return; }
-    setSaving(true);
+  const profileForm = useForm({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      name: user?.name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      department: user?.department || "",
+    },
+    mode: "onSubmit",
+  });
+
+  const passwordForm = useForm({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: passwordDefaultValues,
+    mode: "onSubmit",
+  });
+
+  const savingProfile = profileForm.formState.isSubmitting;
+  const savingPassword = passwordForm.formState.isSubmitting;
+
+  const watchedName = profileForm.watch("name");
+  const watchedEmail = profileForm.watch("email");
+
+  const submitProfile = async (values) => {
     try {
-      const { data } = await api.put("/profile", form);
+      const { data } = await api.put("/profile", { ...values, avatar });
       setUser(data);
-      toast.success("Profil diperbarui. Data terkait ikut disesuaikan.");
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSaving(false); }
+      toast.success("Profil diperbarui", {
+        description: "Data terkait ikut disesuaikan agar tetap konsisten.",
+      });
+    } catch (err) {
+      toast.error(apiError(err));
+    }
   };
 
-  const savePassword = async () => {
-    if (pwd.new_password.length < 6) { toast.error("Kata sandi baru minimal 6 karakter"); return; }
-    if (pwd.new_password !== pwd.confirm) { toast.error("Konfirmasi kata sandi tidak cocok"); return; }
-    setSavingPwd(true);
+  const submitPassword = async (values) => {
     try {
-      await api.put("/profile/password", { current_password: pwd.current_password, new_password: pwd.new_password });
+      await api.put("/profile/password", {
+        current_password: values.current_password,
+        new_password: values.new_password,
+      });
+      passwordForm.reset(passwordDefaultValues);
       toast.success("Kata sandi berhasil diperbarui");
-      setPwd({ current_password: "", new_password: "", confirm: "" });
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSavingPwd(false); }
+    } catch (err) {
+      toast.error(apiError(err));
+    }
   };
 
   return (
-    <div>
-      <PageHeader title="Profil Pengguna" subtitle="Kelola informasi diri dan kata sandi Anda." />
-
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="p-6 rounded-lg shadow-soft" data-testid="profile-info-card">
-            <div className="flex items-center gap-2 mb-5"><UserCircle className="h-5 w-5 text-primary" /><h2 className="font-semibold">Informasi Diri</h2></div>
-            <div className="mb-5">
-              <Label className="mb-2 block">Foto Profil</Label>
-              <ImageUpload value={form.avatar} onChange={(v) => setForm({ ...form, avatar: v })} rounded="rounded-full" label="Unggah Foto" testId="avatar" />
-            </div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Nama"><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} data-testid="profile-name" /></Field>
-              <Field label="Email"><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} data-testid="profile-email" /></Field>
-              <Field label="Telepon"><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="08xxxx" data-testid="profile-phone" /></Field>
-              <Field label="Departemen"><Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="mis. Operasional" data-testid="profile-department" /></Field>
-            </div>
-            <div className="flex items-start gap-2 mt-4 text-xs text-muted-foreground bg-secondary/60 rounded-xl p-3">
-              <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5" />
-              <span>Perubahan email atau nomor telepon akan otomatis disinkronkan ke tugas, rapat, dan data terkait lainnya agar tetap konsisten.</span>
-            </div>
-            <div className="mt-5"><Button onClick={saveProfile} disabled={saving} className="rounded-xl" data-testid="btn-save-profile">{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan Perubahan</Button></div>
-          </Card>
-
-          <Card className="p-6 rounded-lg shadow-soft" data-testid="profile-password-card">
-            <div className="flex items-center gap-2 mb-5"><KeyRound className="h-5 w-5 text-primary" /><h2 className="font-semibold">Ubah Kata Sandi</h2></div>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Kata Sandi Saat Ini"><Input type="password" value={pwd.current_password} onChange={(e) => setPwd({ ...pwd, current_password: e.target.value })} data-testid="pwd-current" /></Field>
-              <Field label="Kata Sandi Baru"><Input type="password" value={pwd.new_password} onChange={(e) => setPwd({ ...pwd, new_password: e.target.value })} data-testid="pwd-new" /></Field>
-              <Field label="Konfirmasi"><Input type="password" value={pwd.confirm} onChange={(e) => setPwd({ ...pwd, confirm: e.target.value })} data-testid="pwd-confirm" /></Field>
-            </div>
-            <div className="mt-5"><Button onClick={savePassword} disabled={savingPwd} variant="secondary" className="rounded-xl" data-testid="btn-save-password">{savingPwd ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <KeyRound className="h-4 w-4 mr-2" />} Perbarui Kata Sandi</Button></div>
-          </Card>
+    <div className="space-y-6" data-testid="profile-page">
+      <Section
+        title="Informasi Diri"
+        description="Kelola foto, nama, dan data kontak Anda."
+        testid="profile-info-card"
+      >
+        <div className="flex flex-col gap-4 border-b pb-4 sm:flex-row sm:items-center sm:justify-between">
+          <AvatarUpload
+            value={avatar}
+            onChange={setAvatar}
+            name={watchedName || user?.name}
+            disabled={savingProfile}
+            testid="avatar"
+          />
+          <div className="space-y-1 sm:text-right">
+            <p className="text-sm font-medium" data-testid="profile-summary-name">
+              {watchedName || user?.name || "\u2014"}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {watchedEmail || user?.email || "\u2014"}
+            </p>
+            <Badge variant="secondary" className="font-normal" data-testid="profile-role-badge">
+              {ROLE_LABELS[user?.role] || user?.role || "Anggota"}
+            </Badge>
+          </div>
         </div>
 
-        <Card className="p-6 rounded-lg shadow-soft h-fit" data-testid="profile-summary-card">
-          <div className="flex flex-col items-center text-center">
-            <div className="h-24 w-24 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-3xl font-bold overflow-hidden mb-4">
-              {form.avatar ? <img src={form.avatar} alt="" className="h-full w-full object-cover" /> : (user?.name?.[0] || "?").toUpperCase()}
+        <Form {...profileForm}>
+          <form
+            onSubmit={profileForm.handleSubmit(submitProfile)}
+            className="form-dense space-y-4"
+            noValidate
+          >
+            <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+              <FormField
+                control={profileForm.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nama</FormLabel>
+                    <FormControl>
+                      <Input data-testid="profile-name" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={profileForm.control}
+                name="email"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Email</FormLabel>
+                    <FormControl>
+                      <Input type="email" data-testid="profile-email" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={profileForm.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Telepon</FormLabel>
+                    <FormControl>
+                      <Input placeholder="08xxxxxxxxxx" data-testid="profile-phone" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={profileForm.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Departemen</FormLabel>
+                    <FormControl>
+                      <Input placeholder="mis. Operasional" data-testid="profile-department" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </div>
-            <h3 className="font-semibold text-lg">{form.name || user?.name}</h3>
-            <p className="text-sm text-muted-foreground">{form.email || user?.email}</p>
-            <span className="mt-3 text-xs font-medium px-3 py-1 rounded-full bg-accent text-accent-foreground">{ROLE_LABELS[user?.role] || user?.role}</span>
-            {form.department && <p className="text-sm text-muted-foreground mt-3">{form.department}</p>}
-          </div>
-        </Card>
-      </div>
+
+            <Alert data-testid="profile-sync-note">
+              <Info className="h-4 w-4" aria-hidden="true" />
+              <AlertDescription>
+                Perubahan email atau nomor telepon otomatis disinkronkan ke tugas,
+                rapat, dan data terkait lainnya agar tetap konsisten.
+              </AlertDescription>
+            </Alert>
+
+            <SaveBar>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={savingProfile}
+                data-testid="btn-save-profile"
+              >
+                {savingProfile ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <Save className="size-4" aria-hidden="true" />
+                )}
+                Simpan Perubahan
+              </Button>
+            </SaveBar>
+          </form>
+        </Form>
+      </Section>
+
+      <Section
+        title="Ubah Kata Sandi"
+        description="Gunakan kata sandi minimal 6 karakter."
+        testid="profile-password-card"
+      >
+        <Form {...passwordForm}>
+          <form
+            onSubmit={passwordForm.handleSubmit(submitPassword)}
+            className="form-dense space-y-4"
+            noValidate
+          >
+            <div className="grid grid-cols-1 items-start gap-x-4 gap-y-2 sm:grid-cols-2">
+              <FormField
+                control={passwordForm.control}
+                name="current_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kata Sandi Saat Ini</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        autoComplete="current-password"
+                        data-testid="pwd-current"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={passwordForm.control}
+                name="new_password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Kata Sandi Baru</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        autoComplete="new-password"
+                        data-testid="pwd-new"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={passwordForm.control}
+                name="confirm"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Konfirmasi Kata Sandi</FormLabel>
+                    <FormControl>
+                      <PasswordInput
+                        autoComplete="new-password"
+                        data-testid="pwd-confirm"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            <SaveBar>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={savingPassword}
+                data-testid="btn-save-password"
+              >
+                {savingPassword ? (
+                  <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                ) : (
+                  <KeyRound className="size-4" aria-hidden="true" />
+                )}
+                Perbarui Kata Sandi
+              </Button>
+            </SaveBar>
+          </form>
+        </Form>
+      </Section>
     </div>
   );
 }
