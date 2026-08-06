@@ -15,6 +15,7 @@ export const ACTION = {
   cancel: "Batal",
   close: "Tutup",
   detail: "Detail",
+  duplicate: "Duplikat",
   refresh: "Segarkan",
   reset: "Reset",
   export: "Ekspor",

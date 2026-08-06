@@ -1,124 +1,355 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, apiError } from "@/lib/api";
-import { useAuth } from "@/context/AuthContext";
-import { canManage } from "@/lib/perms";
-import { cn } from "@/lib/utils";
-import { PageHeader, EmptyState, SectionCard } from "@/components/common";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Card } from "@/components/ui/card";
+import { CalendarRange, Eye, MoreHorizontal, Pencil, Plus, Save, Trash2 } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
-import { CalendarRange, Plus, Pencil, Trash2, ListChecks, CalendarClock, ArrowRight } from "lucide-react";
-import { toast } from "sonner";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { DataTableCard, SortableHeader } from "@/components/composite/DataTableCard";
+import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
+import { api, apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { canManage } from "@/lib/perms";
+import { useAuth } from "@/context/AuthContext";
+import { ACTION } from "@/constants/labels";
 
-const empty = { title: "", event_name: "", section: "", description: "", start_date: "", end_date: "" };
+const emptyForm = {
+  title: "",
+  event_name: "",
+  section: "",
+  description: "",
+  start_date: "",
+  end_date: "",
+};
 
-function fmt(d) { return d ? new Date(d + "T00:00:00").toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "-"; }
+const fmtDay = (d) =>
+  d
+    ? new Date(`${d}T00:00:00`).toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : "\u2014";
 
+/** Column factory (module scope — no component defined during render). */
+const buildColumns = ({ user, onOpen, onEdit, onDelete }) => [
+  {
+    accessorKey: "title",
+    header: ({ column }) => <SortableHeader column={column}>Judul</SortableHeader>,
+    cell: ({ row }) => (
+      <button
+        type="button"
+        onClick={() => onOpen(row.original)}
+        className="block max-w-[20rem] truncate text-left font-medium hover:underline"
+        title={row.original.title}
+        data-testid={`schedule-title-${row.original.id}`}
+      >
+        {row.original.title}
+      </button>
+    ),
+  },
+  {
+    accessorKey: "event_name",
+    header: ({ column }) => <SortableHeader column={column}>Acara</SortableHeader>,
+    cell: ({ row }) => (
+      <span className="block max-w-[14rem] truncate text-muted-foreground">
+        {row.original.event_name || "\u2014"}
+      </span>
+    ),
+  },
+  {
+    accessorKey: "section",
+    header: ({ column }) => <SortableHeader column={column}>Seksi</SortableHeader>,
+    cell: ({ row }) =>
+      row.original.section ? (
+        <Badge variant="outline" className="font-normal">
+          {row.original.section}
+        </Badge>
+      ) : (
+        <span className="text-muted-foreground">{"\u2014"}</span>
+      ),
+  },
+  {
+    accessorKey: "start_date",
+    header: ({ column }) => <SortableHeader column={column}>Periode</SortableHeader>,
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {fmtDay(row.original.start_date)} {"\u2013"} {fmtDay(row.original.end_date)}
+      </span>
+    ),
+  },
+  {
+    id: "activities",
+    accessorFn: (s) => (s.activities || []).length,
+    header: ({ column }) => <SortableHeader column={column}>Kegiatan</SortableHeader>,
+    cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()} kegiatan</span>,
+  },
+  {
+    id: "actions",
+    header: () => <span className="sr-only">Aksi</span>,
+    enableSorting: false,
+    cell: ({ row }) => {
+      const s = row.original;
+      const manage = canManage(user, s);
+      return (
+        <div className="flex justify-end">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="Aksi baris"
+                data-testid={`schedule-actions-${s.id}`}
+              >
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => onOpen(s)} data-testid={`btn-detail-schedule-${s.id}`}>
+                <Eye aria-hidden="true" /> {ACTION.detail}
+              </DropdownMenuItem>
+              {manage ? (
+                <>
+                  <DropdownMenuItem onClick={() => onEdit(s)} data-testid={`btn-edit-schedule-${s.id}`}>
+                    <Pencil aria-hidden="true" /> {ACTION.edit}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDelete(s)}
+                    className="text-destructive focus:text-destructive"
+                    data-testid={`btn-delete-schedule-${s.id}`}
+                  >
+                    <Trash2 aria-hidden="true" /> {ACTION.delete}
+                  </DropdownMenuItem>
+                </>
+              ) : null}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      );
+    },
+  },
+];
+
+/** Time Schedule — schedule list (R47); timeline (Gantt) lives on the detail page. */
 export default function TimeSchedule() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [items, setItems] = useState([]);
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [delId, setDelId] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
-    try { const { data } = await api.get("/time-schedules"); setItems(data); }
-    catch (e) { toast.error(apiError(e)); }
-    finally { setLoading(false); }
+    try {
+      const { data } = await api.get("/time-schedules");
+      setRows(data || []);
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setLoading(false);
+    }
   }, []);
-  useEffect(() => { load(); }, [load]);
 
-  const openNew = () => { setEditing(null); setForm(empty); setOpen(true); };
-  const openEdit = (s, e) => { e.stopPropagation(); setEditing(s); setForm({ title: s.title, event_name: s.event_name || "", section: s.section || "", description: s.description || "", start_date: s.start_date || "", end_date: s.end_date || "" }); setOpen(true); };
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const openNew = () => {
+    setEditing(null);
+    setForm(emptyForm);
+    setOpen(true);
+  };
+
+  const openEdit = (s) => {
+    setEditing(s);
+    setForm({
+      title: s.title || "",
+      event_name: s.event_name || "",
+      section: s.section || "",
+      description: s.description || "",
+      start_date: s.start_date || "",
+      end_date: s.end_date || "",
+    });
+    setOpen(true);
+  };
 
   const save = async () => {
-    if (!form.title.trim()) { toast.error("Judul wajib diisi"); return; }
+    if (!form.title.trim()) {
+      notify.error("Judul jadwal wajib diisi.");
+      return;
+    }
     setSaving(true);
     try {
       if (editing) await api.put(`/time-schedules/${editing.id}`, form);
       else await api.post("/time-schedules", form);
-      toast.success("Jadwal disimpan");
-      setOpen(false); load();
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSaving(false); }
+      notify.success("Jadwal disimpan.");
+      setOpen(false);
+      load();
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const remove = async () => { try { await api.delete(`/time-schedules/${delId}`); toast.success("Jadwal dihapus"); setDelId(null); load(); } catch (e) { toast.error(apiError(e)); } };
+  const doDelete = async () => {
+    try {
+      await api.delete(`/time-schedules/${deleting.id}`);
+      notify.success(`Jadwal "${deleting.title}" dihapus.`);
+      setDeleting(null);
+      load();
+    } catch (err) {
+      notify.error(apiError(err));
+    }
+  };
+
+  const columns = useMemo(
+    () =>
+      buildColumns({
+        user,
+        onOpen: (s) => navigate(`/time-schedule/${s.id}`),
+        onEdit: openEdit,
+        onDelete: setDeleting,
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [user, navigate]
+  );
 
   return (
-    <div>
-      <PageHeader title="Time Schedule" subtitle="Rencana kegiatan berbasis linimasa (Gantt) untuk setiap acara.">
-        <Button onClick={openNew} className="rounded-xl" data-testid="btn-add-schedule"><Plus className="h-4 w-4 mr-1.5" /> Jadwal</Button>
-      </PageHeader>
-
-      {loading ? (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{[...Array(6)].map((_, i) => <div key={i} className="h-44 rounded-lg bg-secondary/50 animate-pulse" />)}</div>
-      ) : items.length === 0 ? (
-        <Card className="rounded-lg shadow-soft"><EmptyState icon={CalendarRange} title="Belum ada jadwal" description="Buat time schedule untuk memetakan kegiatan dari awal hingga hari-H." action={<Button onClick={openNew} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Jadwal</Button>} /></Card>
-      ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {items.map((s) => (
-            <SectionCard
-              key={s.id}
-              onClick={() => navigate(`/time-schedule/${s.id}`)}
-              data-testid={`schedule-${s.id}`}
-              className="group cursor-pointer border-l-4 border-l-indigo-500 hover:shadow-soft-lg hover:-translate-y-0.5 transition-all"
-              headerClassName="py-3"
-              header={s.section
-                ? <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300 truncate max-w-[70%]">{s.section}</span>
-                : <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted-foreground"><CalendarRange className="h-3.5 w-3.5" /> Jadwal</span>}
-              headerRight={canManage(user, s) && (
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => openEdit(s, e)} data-testid={`btn-edit-schedule-${s.id}`}><Pencil className="h-3.5 w-3.5" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); setDelId(s.id); }} data-testid={`btn-delete-schedule-${s.id}`}><Trash2 className="h-3.5 w-3.5" /></Button>
-                </div>
-              )}
-              footer={(
-                <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1.5"><CalendarClock className="h-3.5 w-3.5" /> {fmt(s.start_date)} – {fmt(s.end_date)}</span>
-                  <span className="inline-flex items-center gap-1.5 shrink-0"><ListChecks className="h-3.5 w-3.5" /> {(s.activities || []).length} kegiatan</span>
-                </div>
-              )}
-            >
-              <h3 className="font-semibold text-lg leading-snug line-clamp-2 group-hover:text-primary transition-colors">{s.title}</h3>
-              {s.event_name && <p className="text-sm text-muted-foreground mt-1 truncate">{s.event_name}</p>}
-              {s.description && <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{s.description}</p>}
-              <span className="mt-3 text-xs font-medium text-primary inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Buka linimasa <ArrowRight className="h-3.5 w-3.5" /></span>
-            </SectionCard>
-          ))}
-        </div>
-      )}
+    <div className="space-y-6" data-testid="time-schedule-page">
+      <DataTableCard
+        title="Time Schedule"
+        onRefresh={load}
+        refreshTestId="schedules-refresh"
+        headerAction={
+          <Button size="sm" onClick={openNew} data-testid="btn-add-schedule">
+            <Plus className="size-4" /> {ACTION.add}
+          </Button>
+        }
+        columns={columns}
+        data={rows}
+        loading={loading}
+        testid="schedules"
+        emptyIcon={CalendarRange}
+        emptyTitle="Belum ada jadwal"
+        emptyDescription="Buat time schedule untuk memetakan kegiatan dari awal hingga hari-H."
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader><DialogTitle>{editing ? "Ubah Jadwal" : "Jadwal Baru"}</DialogTitle><DialogDescription>Isi informasi umum jadwal. Kegiatan ditambahkan di halaman detail.</DialogDescription></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5"><Label>Judul Jadwal</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="mis. TS Dekorasi & Dokumentasi" data-testid="schedule-title-input" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Nama Acara / Event</Label><Input value={form.event_name} onChange={(e) => setForm({ ...form, event_name: e.target.value })} data-testid="schedule-event-input" /></div>
-              <div className="space-y-1.5"><Label>Seksi / Panitia</Label><Input value={form.section} onChange={(e) => setForm({ ...form, section: e.target.value })} data-testid="schedule-section-input" /></div>
+        <DialogContent className="sm:max-w-lg" data-testid="schedule-dialog">
+          <DialogHeader>
+            <DialogTitle>{editing ? "Ubah Jadwal" : "Jadwal Baru"}</DialogTitle>
+            <DialogDescription>
+              Isi informasi umum jadwal. Kegiatan ditambahkan di halaman linimasa.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogBody className="form-dense space-y-[var(--field-gap)]">
+            <div className="space-y-[var(--item-gap)]">
+              <Label htmlFor="ts-title">Judul Jadwal</Label>
+              <Input
+                id="ts-title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="mis. TS Dekorasi & Dokumentasi"
+                data-testid="schedule-title-input"
+              />
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Tanggal Mulai</Label><Input type="date" value={form.start_date} onChange={(e) => setForm({ ...form, start_date: e.target.value })} data-testid="schedule-start-input" /></div>
-              <div className="space-y-1.5"><Label>Tanggal Selesai</Label><Input type="date" value={form.end_date} onChange={(e) => setForm({ ...form, end_date: e.target.value })} data-testid="schedule-end-input" /></div>
+            <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="ts-event">Nama Acara</Label>
+                <Input
+                  id="ts-event"
+                  value={form.event_name}
+                  onChange={(e) => setForm({ ...form, event_name: e.target.value })}
+                  data-testid="schedule-event-input"
+                />
+              </div>
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="ts-section">Seksi / Panitia</Label>
+                <Input
+                  id="ts-section"
+                  value={form.section}
+                  onChange={(e) => setForm({ ...form, section: e.target.value })}
+                  data-testid="schedule-section-input"
+                />
+              </div>
             </div>
-            <div className="space-y-1.5"><Label>Deskripsi</Label><Textarea rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} data-testid="schedule-desc-input" /></div>
-          </div>
-          <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Batal</Button><Button onClick={save} disabled={saving} data-testid="btn-save-schedule">{saving ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
+            <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="ts-start">Tanggal Mulai</Label>
+                <Input
+                  id="ts-start"
+                  type="date"
+                  value={form.start_date}
+                  onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                  data-testid="schedule-start-input"
+                />
+              </div>
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="ts-end">Tanggal Selesai</Label>
+                <Input
+                  id="ts-end"
+                  type="date"
+                  value={form.end_date}
+                  onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+                  data-testid="schedule-end-input"
+                />
+              </div>
+            </div>
+            <div className="space-y-[var(--item-gap)]">
+              <Label htmlFor="ts-desc">Deskripsi</Label>
+              <Textarea
+                id="ts-desc"
+                rows={2}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                data-testid="schedule-desc-input"
+              />
+            </div>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+              {ACTION.cancel}
+            </Button>
+            <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-schedule">
+              <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog open={!!delId} onOpenChange={(v) => !v && setDelId(null)} title="Hapus jadwal?" description="Jadwal beserta seluruh kegiatannya akan dipindahkan ke Arsip." onConfirm={remove} />
+      <ConfirmDeleteDialog
+        open={Boolean(deleting)}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Hapus jadwal?"
+        description={`"${deleting?.title || ""}" beserta seluruh kegiatannya akan dipindahkan ke Arsip.`}
+        onConfirm={doDelete}
+        testid="schedule-delete-confirm"
+      />
     </div>
   );
 }

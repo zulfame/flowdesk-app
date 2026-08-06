@@ -1,191 +1,558 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { api, apiError } from "@/lib/api";
-import { cn } from "@/lib/utils";
-import { PageHeader, EmptyState, SectionCard } from "@/components/common";
-import { ConfirmDialog } from "@/components/ConfirmDialog";
-import { Card } from "@/components/ui/card";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Bell,
+  CheckCircle2,
+  Circle,
+  Mail,
+  MessageCircle,
+  MoreHorizontal,
+  Plus,
+  Save,
+  Trash2,
+} from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bell, Plus, Trash2, Repeat, Clock, CalendarClock, Mail, MessageCircle, Radio, CheckCircle2, Circle } from "lucide-react";
-import { toast } from "sonner";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { DataTableCard, SortableHeader } from "@/components/composite/DataTableCard";
+import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
+import { api, apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { cn } from "@/lib/utils";
+import { ACTION } from "@/constants/labels";
 
-const TYPE_LABELS = { today: "Hari Ini", tomorrow: "Besok", custom: "Tanggal Khusus", recurring: "Berulang" };
-const TYPE_ACCENT = { today: "border-l-rose-500", tomorrow: "border-l-amber-500", custom: "border-l-indigo-500", recurring: "border-l-emerald-500" };
+const TYPE_LABELS = {
+  today: "Hari Ini",
+  tomorrow: "Besok",
+  custom: "Tanggal Khusus",
+  recurring: "Berulang",
+};
 const RECUR_LABELS = { daily: "Harian", weekly: "Mingguan", monthly: "Bulanan" };
-const emptyForm = { title: "", description: "", remind_type: "custom", date: "", time: "09:00", recurrence: "daily", broadcast: false, channels: [], broadcast_offset: "10m", broadcast_custom_date: "", broadcast_custom_time: "09:00" };
-const OFFSET_LABELS = { "10m": "10 menit sebelum (default)", "1h": "1 jam sebelum", "1d": "1 hari sebelum", "custom": "Waktu khusus" };
+const OFFSET_LABELS = {
+  "10m": "10 menit sebelum (default)",
+  "1h": "1 jam sebelum",
+  "1d": "1 hari sebelum",
+  custom: "Waktu khusus",
+};
+const STATUS_LABELS = { active: "Aktif", done: "Selesai", all: "Semua" };
 
-function fmtDate(d) { return d ? new Date(d).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" }) : "-"; }
+const emptyForm = {
+  title: "",
+  description: "",
+  remind_type: "custom",
+  date: "",
+  time: "09:00",
+  recurrence: "daily",
+  broadcast: false,
+  channels: [],
+  broadcast_offset: "10m",
+  broadcast_custom_date: "",
+  broadcast_custom_time: "09:00",
+};
 
+const fmtDay = (d) =>
+  d
+    ? new Date(d).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
+    : "\u2014";
+
+/** Column factory (module scope — no component defined during render). */
+const buildColumns = ({ onToggle, onDelete }) => [
+  {
+    id: "done",
+    accessorFn: (r) => (r.done ? 1 : 0),
+    header: () => <span className="sr-only">Selesai</span>,
+    enableSorting: false,
+    cell: ({ row }) => {
+      const r = row.original;
+      return (
+        <button
+          type="button"
+          onClick={() => onToggle(r)}
+          aria-label={r.done ? "Tandai belum selesai" : "Tandai selesai"}
+          data-testid={`reminder-toggle-${r.id}`}
+        >
+          {r.done ? (
+            <CheckCircle2 className="size-4 text-success" />
+          ) : (
+            <Circle className="size-4 text-muted-foreground" />
+          )}
+        </button>
+      );
+    },
+  },
+  {
+    accessorKey: "title",
+    header: ({ column }) => <SortableHeader column={column}>Judul</SortableHeader>,
+    cell: ({ row }) => (
+      <div className="min-w-0">
+        <p
+          className={cn(
+            "max-w-[20rem] truncate font-medium",
+            row.original.done && "text-muted-foreground line-through"
+          )}
+          title={row.original.title}
+        >
+          {row.original.title}
+        </p>
+        {row.original.description ? (
+          <p className="max-w-[20rem] truncate text-xs text-muted-foreground">
+            {row.original.description}
+          </p>
+        ) : null}
+      </div>
+    ),
+  },
+  {
+    accessorKey: "remind_type",
+    header: ({ column }) => <SortableHeader column={column}>Jenis</SortableHeader>,
+    cell: ({ row }) => (
+      <Badge variant="outline" className="font-normal">
+        {TYPE_LABELS[row.original.remind_type] || "\u2014"}
+      </Badge>
+    ),
+  },
+  {
+    accessorKey: "date",
+    header: ({ column }) => <SortableHeader column={column}>Tanggal</SortableHeader>,
+    cell: ({ row }) => <span className="text-muted-foreground">{fmtDay(row.original.date)}</span>,
+  },
+  {
+    accessorKey: "time",
+    header: () => <span>Jam</span>,
+    enableSorting: false,
+    cell: ({ row }) => <span className="text-muted-foreground">{row.original.time || "\u2014"}</span>,
+  },
+  {
+    accessorKey: "recurrence",
+    header: () => <span>Pengulangan</span>,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <span className="text-muted-foreground">
+        {RECUR_LABELS[row.original.recurrence] || "\u2014"}
+      </span>
+    ),
+  },
+  {
+    id: "broadcast",
+    accessorFn: (r) => (r.broadcast ? (r.channels || []).join(",") : ""),
+    header: () => <span>Broadcast</span>,
+    enableSorting: false,
+    cell: ({ row }) => {
+      const r = row.original;
+      if (!r.broadcast || !(r.channels || []).length)
+        return <span className="text-muted-foreground">{"\u2014"}</span>;
+      return (
+        <div className="flex items-center gap-1">
+          {r.channels.map((c) => (
+            <Badge key={c} variant="secondary" className="gap-1 font-normal">
+              {c === "email" ? <Mail className="size-3" /> : <MessageCircle className="size-3" />}
+              {c === "email" ? "Email" : "WhatsApp"}
+            </Badge>
+          ))}
+        </div>
+      );
+    },
+  },
+  {
+    id: "actions",
+    header: () => <span className="sr-only">Aksi</span>,
+    enableSorting: false,
+    cell: ({ row }) => (
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="Aksi baris"
+              data-testid={`reminder-actions-${row.original.id}`}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem
+              onClick={() => onDelete(row.original)}
+              className="text-destructive focus:text-destructive"
+              data-testid={`btn-delete-reminder-${row.original.id}`}
+            >
+              <Trash2 aria-hidden="true" /> {ACTION.delete}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    ),
+  },
+];
+
+/** Ingatkan Saya — private reminders list (R47) + create dialog. */
 export default function Reminders() {
-  const [reminders, setReminders] = useState([]);
-  const [tab, setTab] = useState("active");
+  const [rows, setRows] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [status, setStatus] = useState("active");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
-  const [delId, setDelId] = useState(null);
+  const [deleting, setDeleting] = useState(null);
 
   const load = useCallback(async () => {
-    try { const { data } = await api.get("/reminders", { params: { status: tab, page_size: 200 } }); setReminders(data.items); }
-    catch (e) { toast.error(apiError(e)); }
-  }, [tab]);
-  useEffect(() => { load(); }, [load]);
+    setLoading(true);
+    try {
+      const { data } = await api.get("/reminders", { params: { status, page_size: 200 } });
+      setRows(data.items || []);
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [status]);
 
-  const toggleChannel = (c) => setForm((f) => ({ ...f, channels: f.channels.includes(c) ? f.channels.filter((x) => x !== c) : [...f.channels, c] }));
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const toggleChannel = (c) =>
+    setForm((f) => ({
+      ...f,
+      channels: f.channels.includes(c) ? f.channels.filter((x) => x !== c) : [...f.channels, c],
+    }));
 
   const save = async () => {
-    if (!form.title.trim()) { toast.error("Judul wajib diisi"); return; }
+    if (!form.title.trim()) {
+      notify.error("Judul pengingat wajib diisi.");
+      return;
+    }
     let date = form.date;
     const today = new Date();
     if (form.remind_type === "today") date = today.toISOString().slice(0, 10);
-    if (form.remind_type === "tomorrow") { today.setDate(today.getDate() + 1); date = today.toISOString().slice(0, 10); }
-    if ((form.remind_type === "custom" || form.remind_type === "recurring") && !date) { toast.error("Tanggal wajib diisi"); return; }
+    if (form.remind_type === "tomorrow") {
+      today.setDate(today.getDate() + 1);
+      date = today.toISOString().slice(0, 10);
+    }
+    if ((form.remind_type === "custom" || form.remind_type === "recurring") && !date) {
+      notify.error("Tanggal pengingat wajib diisi.");
+      return;
+    }
     setSaving(true);
     try {
       await api.post("/reminders", {
-        title: form.title, description: form.description, remind_type: form.remind_type,
-        date, time: form.time, recurrence: form.remind_type === "recurring" ? form.recurrence : null,
-        broadcast: form.broadcast, channels: form.broadcast ? form.channels : [],
+        title: form.title,
+        description: form.description,
+        remind_type: form.remind_type,
+        date,
+        time: form.time,
+        recurrence: form.remind_type === "recurring" ? form.recurrence : null,
+        broadcast: form.broadcast,
+        channels: form.broadcast ? form.channels : [],
         broadcast_offset: form.broadcast ? form.broadcast_offset : "10m",
-        broadcast_at: form.broadcast && form.broadcast_offset === "custom" && form.broadcast_custom_date
-          ? `${form.broadcast_custom_date}T${form.broadcast_custom_time}:00` : null,
+        broadcast_at:
+          form.broadcast && form.broadcast_offset === "custom" && form.broadcast_custom_date
+            ? `${form.broadcast_custom_date}T${form.broadcast_custom_time}:00`
+            : null,
       });
-      toast.success("Pengingat dibuat");
-      setOpen(false); setForm(emptyForm); load();
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSaving(false); }
+      notify.success("Pengingat dibuat.");
+      setOpen(false);
+      setForm(emptyForm);
+      load();
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const toggleDone = async (r) => { try { await api.put(`/reminders/${r.id}`, { done: !r.done }); load(); } catch (e) { toast.error(apiError(e)); } };
-  const remove = async () => { try { await api.delete(`/reminders/${delId}`); toast.success("Pengingat dihapus"); setDelId(null); load(); } catch (e) { toast.error(apiError(e)); } };
+  const toggleDone = async (r) => {
+    try {
+      await api.put(`/reminders/${r.id}`, { done: !r.done });
+      load();
+    } catch (err) {
+      notify.error(apiError(err));
+    }
+  };
+
+  const doDelete = async () => {
+    try {
+      await api.delete(`/reminders/${deleting.id}`);
+      notify.success(`Pengingat "${deleting.title}" dihapus.`);
+      setDeleting(null);
+      load();
+    } catch (err) {
+      notify.error(apiError(err));
+    }
+  };
+
+  const columns = useMemo(
+    () => buildColumns({ onToggle: toggleDone, onDelete: setDeleting }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
+
+  const filters = (
+    <Select value={status} onValueChange={setStatus}>
+      <SelectTrigger
+        className="h-[var(--ctl-h-sm)] w-full text-xs sm:w-36"
+        data-testid="reminder-status-filter"
+      >
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {Object.entries(STATUS_LABELS).map(([key, label]) => (
+          <SelectItem key={key} value={key}>
+            {label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   return (
-    <div>
-      <PageHeader title="Ingatkan Saya" subtitle="Pengingat pribadi Anda — bisa dikirim ke email atau WhatsApp tepat waktu.">
-        <Button onClick={() => { setForm(emptyForm); setOpen(true); }} className="rounded-xl" data-testid="btn-add-reminder"><Plus className="h-4 w-4 mr-1.5" /> Pengingat</Button>
-      </PageHeader>
-
-      <Tabs value={tab} onValueChange={setTab} className="mb-6">
-        <TabsList className="rounded-xl">
-          <TabsTrigger value="active" className="rounded-lg" data-testid="reminder-tab-active">Aktif</TabsTrigger>
-          <TabsTrigger value="done" className="rounded-lg" data-testid="reminder-tab-done">Selesai</TabsTrigger>
-          <TabsTrigger value="all" className="rounded-lg" data-testid="reminder-tab-all">Semua</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
-      {reminders.length === 0 ? (
-        <Card className="rounded-lg shadow-soft"><EmptyState icon={Bell} title="Belum ada pengingat" description="Buat pengingat agar tidak melewatkan hal penting." action={<Button onClick={() => setOpen(true)} className="rounded-xl"><Plus className="h-4 w-4 mr-1.5" /> Pengingat</Button>} /></Card>
-      ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {reminders.map((r) => {
-            const hasFooter = r.date || r.time || r.recurrence || (r.broadcast && (r.channels || []).length);
-            return (
-              <SectionCard
-                key={r.id}
-                data-testid={`reminder-${r.id}`}
-                className={cn("group border-l-4 hover:shadow-soft-lg transition-all", TYPE_ACCENT[r.remind_type] || "border-l-slate-400", r.done && "opacity-70")}
-                headerClassName="py-3"
-                header={<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-accent text-accent-foreground"><CalendarClock className="h-3 w-3" /> {TYPE_LABELS[r.remind_type]}</span>}
-                headerRight={<button onClick={() => setDelId(r.id)} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" data-testid={`btn-delete-reminder-${r.id}`}><Trash2 className="h-4 w-4" /></button>}
-                footer={hasFooter ? (
-                  <div className="flex flex-wrap items-center gap-2 text-xs">
-                    {r.date && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground">{fmtDate(r.date)}</span>}
-                    {r.time && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Clock className="h-3 w-3" /> {r.time}</span>}
-                    {r.recurrence && <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-secondary text-muted-foreground"><Repeat className="h-3 w-3" /> {RECUR_LABELS[r.recurrence]}</span>}
-                    {r.broadcast && (r.channels || []).map((c) => (
-                      <span key={c} className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary font-medium">
-                        {c === "email" ? <Mail className="h-3 w-3" /> : <MessageCircle className="h-3 w-3" />} {c === "email" ? "Email" : "WhatsApp"}
-                      </span>
-                    ))}
-                  </div>
-                ) : null}
-              >
-                <div className="flex items-start gap-3">
-                  <button onClick={() => toggleDone(r)} className="shrink-0 mt-0.5" data-testid={`reminder-toggle-${r.id}`}>
-                    {r.done ? <CheckCircle2 className="h-5 w-5 text-emerald-500" /> : <Circle className="h-5 w-5 text-muted-foreground hover:text-primary" />}
-                  </button>
-                  <div className="min-w-0 flex-1">
-                    <p className={cn("font-semibold leading-snug", r.done && "line-through text-muted-foreground")}>{r.title}</p>
-                    {r.description && <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">{r.description}</p>}
-                  </div>
-                </div>
-              </SectionCard>
-            );
-          })}
-        </div>
-      )}
+    <div className="space-y-6" data-testid="reminders-page">
+      <DataTableCard
+        title="Ingatkan Saya"
+        onRefresh={load}
+        refreshTestId="reminders-refresh"
+        headerAction={
+          <Button
+            size="sm"
+            onClick={() => {
+              setForm(emptyForm);
+              setOpen(true);
+            }}
+            data-testid="btn-add-reminder"
+          >
+            <Plus className="size-4" /> {ACTION.add}
+          </Button>
+        }
+        filters={filters}
+        columns={columns}
+        data={rows}
+        loading={loading}
+        testid="reminders"
+        emptyIcon={Bell}
+        emptyTitle="Belum ada pengingat"
+        emptyDescription="Buat pengingat agar tidak melewatkan hal penting."
+      />
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Pengingat Baru</DialogTitle></DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5"><Label>Judul</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} data-testid="reminder-title-input" /></div>
-            <div className="space-y-1.5"><Label>Deskripsi</Label><Textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} data-testid="reminder-desc-input" /></div>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+        <DialogContent className="sm:max-w-lg" data-testid="reminder-dialog">
+          <DialogHeader>
+            <DialogTitle>Pengingat Baru</DialogTitle>
+          </DialogHeader>
+          <DialogBody className="form-dense space-y-[var(--field-gap)]">
+            <div className="space-y-[var(--item-gap)]">
+              <Label htmlFor="rm-title">Judul</Label>
+              <Input
+                id="rm-title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                data-testid="reminder-title-input"
+              />
+            </div>
+            <div className="space-y-[var(--item-gap)]">
+              <Label htmlFor="rm-desc">Deskripsi</Label>
+              <Textarea
+                id="rm-desc"
+                rows={2}
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                data-testid="reminder-desc-input"
+              />
+            </div>
+            <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+              <div className="space-y-[var(--item-gap)]">
                 <Label>Jenis</Label>
-                <Select value={form.remind_type} onValueChange={(v) => setForm({ ...form, remind_type: v })}>
-                  <SelectTrigger data-testid="reminder-type-select"><SelectValue /></SelectTrigger>
-                  <SelectContent>{Object.entries(TYPE_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                <Select
+                  value={form.remind_type}
+                  onValueChange={(v) => setForm({ ...form, remind_type: v })}
+                >
+                  <SelectTrigger data-testid="reminder-type-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(TYPE_LABELS).map(([k, v]) => (
+                      <SelectItem key={k} value={k}>
+                        {v}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5"><Label>Waktu</Label><Input type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} data-testid="reminder-time-input" /></div>
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="rm-time">Jam</Label>
+                <Input
+                  id="rm-time"
+                  type="time"
+                  value={form.time}
+                  onChange={(e) => setForm({ ...form, time: e.target.value })}
+                  data-testid="reminder-time-input"
+                />
+              </div>
             </div>
-            {form.remind_type === "custom" && <div className="space-y-1.5"><Label>Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="reminder-date-input" /></div>}
-            {form.remind_type === "recurring" && (
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5"><Label>Mulai Tanggal</Label><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="reminder-date-input" /></div>
-                <div className="space-y-1.5">
-                  <Label>Pengulangan</Label>
-                  <Select value={form.recurrence} onValueChange={(v) => setForm({ ...form, recurrence: v })}>
-                    <SelectTrigger data-testid="reminder-recurrence-select"><SelectValue /></SelectTrigger>
-                    <SelectContent>{Object.entries(RECUR_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
-                  </Select>
+            {form.remind_type === "custom" || form.remind_type === "recurring" ? (
+              <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+                <div className="space-y-[var(--item-gap)]">
+                  <Label htmlFor="rm-date">
+                    {form.remind_type === "recurring" ? "Mulai Tanggal" : "Tanggal"}
+                  </Label>
+                  <Input
+                    id="rm-date"
+                    type="date"
+                    value={form.date}
+                    onChange={(e) => setForm({ ...form, date: e.target.value })}
+                    data-testid="reminder-date-input"
+                  />
                 </div>
-              </div>
-            )}
-            <div className="rounded-xl border border-border p-3 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2"><Radio className="h-4 w-4 text-primary" /><div><p className="text-sm font-medium">Broadcast Pengingat</p><p className="text-xs text-muted-foreground">Kirim otomatis saat waktunya tiba</p></div></div>
-                <Switch checked={form.broadcast} onCheckedChange={(v) => setForm({ ...form, broadcast: v })} data-testid="reminder-broadcast-switch" />
-              </div>
-              {form.broadcast && (
-                <>
-                  <div className="flex gap-2">
-                    {[{ k: "email", label: "Email", icon: Mail }, { k: "whatsapp", label: "WhatsApp", icon: MessageCircle }].map(({ k, label, icon: Icon }) => (
-                      <button key={k} type="button" onClick={() => toggleChannel(k)} className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg border text-sm transition-colors ${form.channels.includes(k) ? "border-primary bg-primary/10 text-primary font-medium" : "border-border text-muted-foreground"}`} data-testid={`reminder-channel-${k}`}>
-                        <Icon className="h-4 w-4" /> {label}
-                      </button>
-                    ))}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="flex items-center gap-1.5 text-xs"><Clock className="h-3.5 w-3.5" /> Kapan broadcast dikirim?</Label>
-                    <Select value={form.broadcast_offset} onValueChange={(v) => setForm({ ...form, broadcast_offset: v })}>
-                      <SelectTrigger data-testid="reminder-broadcast-offset"><SelectValue /></SelectTrigger>
-                      <SelectContent>{Object.entries(OFFSET_LABELS).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
+                {form.remind_type === "recurring" ? (
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label>Pengulangan</Label>
+                    <Select
+                      value={form.recurrence}
+                      onValueChange={(v) => setForm({ ...form, recurrence: v })}
+                    >
+                      <SelectTrigger data-testid="reminder-recurrence-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(RECUR_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>
+                            {v}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
                     </Select>
                   </div>
-                  {form.broadcast_offset === "custom" && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5"><Label className="text-xs">Tanggal Kirim</Label><Input type="date" value={form.broadcast_custom_date} onChange={(e) => setForm({ ...form, broadcast_custom_date: e.target.value })} data-testid="reminder-broadcast-date" /></div>
-                      <div className="space-y-1.5"><Label className="text-xs">Jam Kirim</Label><Input type="time" value={form.broadcast_custom_time} onChange={(e) => setForm({ ...form, broadcast_custom_time: e.target.value })} data-testid="reminder-broadcast-time" /></div>
+                ) : null}
+              </div>
+            ) : null}
+
+            <div className="space-y-3 rounded-md border p-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-medium">Broadcast Pengingat</p>
+                  <p className="text-xs text-muted-foreground">
+                    Kirim otomatis ke email / WhatsApp Anda saat waktunya tiba.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.broadcast}
+                  onCheckedChange={(v) => setForm({ ...form, broadcast: v })}
+                  data-testid="reminder-broadcast-switch"
+                />
+              </div>
+              {form.broadcast ? (
+                <>
+                  <div className="flex gap-2">
+                    {[
+                      { k: "email", label: "Email", icon: Mail },
+                      { k: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+                    ].map(({ k, label, icon: Icon }) => (
+                      <Button
+                        key={k}
+                        type="button"
+                        size="sm"
+                        variant={form.channels.includes(k) ? "default" : "outline"}
+                        className="flex-1"
+                        onClick={() => toggleChannel(k)}
+                        data-testid={`reminder-channel-${k}`}
+                      >
+                        <Icon className="size-4" /> {label}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label>Waktu Kirim Broadcast</Label>
+                    <Select
+                      value={form.broadcast_offset}
+                      onValueChange={(v) => setForm({ ...form, broadcast_offset: v })}
+                    >
+                      <SelectTrigger data-testid="reminder-broadcast-offset">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(OFFSET_LABELS).map(([k, v]) => (
+                          <SelectItem key={k} value={k}>
+                            {v}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {form.broadcast_offset === "custom" ? (
+                    <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+                      <div className="space-y-[var(--item-gap)]">
+                        <Label htmlFor="rm-bc-date">Tanggal Kirim</Label>
+                        <Input
+                          id="rm-bc-date"
+                          type="date"
+                          value={form.broadcast_custom_date}
+                          onChange={(e) =>
+                            setForm({ ...form, broadcast_custom_date: e.target.value })
+                          }
+                          data-testid="reminder-broadcast-date"
+                        />
+                      </div>
+                      <div className="space-y-[var(--item-gap)]">
+                        <Label htmlFor="rm-bc-time">Jam Kirim</Label>
+                        <Input
+                          id="rm-bc-time"
+                          type="time"
+                          value={form.broadcast_custom_time}
+                          onChange={(e) =>
+                            setForm({ ...form, broadcast_custom_time: e.target.value })
+                          }
+                          data-testid="reminder-broadcast-time"
+                        />
+                      </div>
                     </div>
-                  )}
+                  ) : null}
                 </>
-              )}
+              ) : null}
             </div>
-          </div>
-          <DialogFooter><Button variant="ghost" onClick={() => setOpen(false)}>Batal</Button><Button onClick={save} disabled={saving} data-testid="btn-save-reminder">{saving ? "Menyimpan..." : "Simpan"}</Button></DialogFooter>
+          </DialogBody>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+              {ACTION.cancel}
+            </Button>
+            <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-reminder">
+              <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog open={!!delId} onOpenChange={(v) => !v && setDelId(null)} title="Hapus pengingat?" description="Pengingat ini akan dihapus permanen." onConfirm={remove} />
+      <ConfirmDeleteDialog
+        open={Boolean(deleting)}
+        onOpenChange={(o) => !o && setDeleting(null)}
+        title="Hapus pengingat?"
+        description={`"${deleting?.title || ""}" akan dihapus permanen.`}
+        onConfirm={doDelete}
+        testid="reminder-delete-confirm"
+      />
     </div>
   );
 }

@@ -1,4 +1,5 @@
 /* FlowDesk Web Push service worker */
+/* global clients */
 self.addEventListener("push", function (event) {
   let data = {};
   try { data = event.data.json(); } catch (e) { data = { title: "FlowDesk", body: event.data ? event.data.text() : "" }; }
