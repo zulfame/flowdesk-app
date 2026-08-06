@@ -47,6 +47,17 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
   besar hanya untuk layar autentikasi (`Login.jsx`).
 - Konsekuensi: jangan lagi menambal `text-sm` di root halaman — base sudah 14px.
 
+### FD11 — Detail sebagai satu-satunya tempat sunting (WAJIB untuk modul beritem)
+- Modul yang punya sub-item (Tugas) **tidak boleh punya halaman "Ubah" terpisah**: halaman
+  Detail = baca + sunting. Alasan: halaman Ubah lama hanya duplikat Detail dan justru
+  kehilangan fungsi (centang item, persetujuan, dokumen per item).
+- Pola sunting: composite **`EditableCard`** (`components/composite/EditableCard.jsx`).
+  Tombol `Pencil` ghost 28px di header kartu → isi kartu berubah jadi field →
+  `CardFooter` berisi Batal + Simpan. `children` berupa render-prop `(editing) => ...`.
+- Halaman form tersendiri hanya untuk **pembuatan** (`/tasks/new`).
+- Menu aksi baris pada datatable: **Detail · Duplikat · Hapus** (tanpa "Ubah").
+  Menu `⋯` di Detail: Duplikat · Jadikan Template · Cetak · Hapus.
+
 ### FD2 — Aksi header: hanya Notifikasi + Tema
 - Header hanya berisi `SidebarTrigger` + Breadcrumb + (kanan) **ikon lonceng
   Notifikasi** dan **ModeToggle**. Selectbox kerapatan dihapus permanen (FD1).

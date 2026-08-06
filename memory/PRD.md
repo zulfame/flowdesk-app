@@ -284,3 +284,17 @@ Feedback user: daftar item terlihat berantakan (tiap item jadi kotak terpisah, i
 - Input **tenggat item dipindah ke panel Collapsible** (`bg-muted/30`, `border-t`) bersama Dokumen Item, Catatan Tugas, dan Lampiran Catatan — baris utama jadi bersih.
 - Item terlambat ditandai `border-l-2 border-l-destructive` (bukan border penuh).
 - Import `Separator`/`X` yang tak terpakai dibersihkan. Guard exit 0. Diverifikasi visual: baris rapat & sejajar, panel expand berfungsi.
+
+## Update (2026-08-06, lanjutan 5) — Halaman Ubah Tugas dihapus, sunting inline di Detail (FD11)
+Permintaan user: halaman Ubah mirip Detail dan malah kurang fungsi; gabungkan ke Detail. Form Tambah tetap ada.
+- **Route `/tasks/:id/edit` DIHAPUS** (`App.js`) beserta breadcrumb-nya (`navigation.js`).
+- Composite baru **`components/composite/EditableCard.jsx`**: kartu section dengan mode sunting bawaan — tombol `Pencil` 28px di header, render-prop `(editing) => ...`, footer Batal/Simpan otomatis, `onSave` boleh `return false` untuk menahan mode edit. Dicatat sebagai aturan **FD11**.
+- **`TaskDetail.jsx` didesain ulang** (satu halaman baca+sunting):
+  - Kartu ringkasan (`EditableCard` "head"): judul jadi judul kartu; mode baca = badge Status/Prioritas + "Tenggat …" + deskripsi + tautan rapat induk + progress bar; mode sunting = Judul + Deskripsi. Header memuat tombol Kembali + menu `⋯` (Duplikat · Jadikan Template · Cetak · Hapus — item "Ubah" dihapus).
+  - Kartu **Item Tugas** (versi rapi `divide-y` dari iterasi sebelumnya) + penambah item di footer.
+  - Kartu **Komentar**.
+  - Sidebar: **Informasi Tugas** (`EditableCard`: Status, Prioritas, Tenggat; baca = baris `dt/dd` + badge, tambah "Dibuat oleh"), **Pemberi Tugas** (`EditableCard` + `UserSelect`, footer tombol Kirim broadcast), **PIC Pelaksana** (`EditableCard` + `UserSelect`), **Dokumen Sumber**, **Riwayat**.
+  - Komponen `ContactList` & `InfoRow` internal supaya kartu orang/informasi konsisten.
+- **`TaskForm.jsx` kini khusus buat baru** (`/tasks/new`): tanpa cabang edit/status, layout dua kolom tetap.
+- **`Tasks.jsx`**: aksi baris jadi **Detail · Duplikat · Hapus**.
+- Verifikasi manual: menu baris = ['Detail','Duplikat','Hapus']; menu Detail = ['Duplikat','Jadikan Template','Cetak','Hapus']; sunting inline Informasi Tugas (ubah tenggat → tersimpan & tampil 20 Agu, lalu data uji dikembalikan ke 15 Agu via API); mode sunting judul/deskripsi + Batal berfungsi. Guard exit 0.

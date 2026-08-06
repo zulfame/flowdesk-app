@@ -43,7 +43,6 @@ const PAGES = [
   { path: "/tasks", element: <Tasks /> },
   { path: "/tasks/new", element: <TaskForm /> },
   { path: "/tasks/:id", element: <TaskDetail /> },
-  { path: "/tasks/:id/edit", element: <TaskForm /> },
   { path: "/meetings", element: <Meetings /> },
   { path: "/meetings/new", element: <MeetingForm /> },
   { path: "/meetings/:id", element: <MeetingDetail /> },

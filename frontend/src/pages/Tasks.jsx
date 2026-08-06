@@ -6,7 +6,6 @@ import {
   Eye,
   LayoutTemplate,
   MoreHorizontal,
-  Pencil,
   Plus,
   Save,
   Trash2,
@@ -69,7 +68,7 @@ const STATUS_OPTIONS = ["Pending", "On Progress", "Completed", "Overdue", "Draft
 const PRIORITY_OPTIONS = ["Urgent", "High", "Medium", "Low"];
 
 /** Column factory (module scope — no component defined during render). */
-const buildColumns = ({ user, onOpen, onEdit, onDuplicate, onDelete }) => [
+const buildColumns = ({ user, onOpen, onDuplicate, onDelete }) => [
   {
     accessorKey: "title",
     header: ({ column }) => <SortableHeader column={column}>Judul</SortableHeader>,
@@ -143,11 +142,6 @@ const buildColumns = ({ user, onOpen, onEdit, onDuplicate, onDelete }) => [
               <DropdownMenuItem onClick={() => onOpen(task)} data-testid={`btn-detail-${task.id}`}>
                 <Eye aria-hidden="true" /> {ACTION.detail}
               </DropdownMenuItem>
-              {manage ? (
-                <DropdownMenuItem onClick={() => onEdit(task)} data-testid={`btn-edit-${task.id}`}>
-                  <Pencil aria-hidden="true" /> {ACTION.edit}
-                </DropdownMenuItem>
-              ) : null}
               <DropdownMenuItem
                 onClick={() => onDuplicate(task)}
                 data-testid={`btn-duplicate-${task.id}`}
@@ -241,7 +235,6 @@ export default function Tasks() {
       buildColumns({
         user,
         onOpen: (t) => navigate(`/tasks/${t.id}`),
-        onEdit: (t) => navigate(`/tasks/${t.id}/edit`),
         onDuplicate: duplicate,
         onDelete: setDeleting,
       }),

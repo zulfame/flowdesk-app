@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
-import { Building2, Loader2, Mail, Phone, Plus, Save, X } from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Building2, Mail, Phone, Plus, Save, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import UserSelect from "@/components/UserSelect";
 import DocumentManager from "@/components/DocumentManager";
-import { PRIORITY_META, STATUS_META } from "@/components/composite/TaskBadges";
+import { PRIORITY_META } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { useAuth } from "@/context/AuthContext";
@@ -25,9 +25,6 @@ import { cn } from "@/lib/utils";
 import { ACTION } from "@/constants/labels";
 
 const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
-const STATUSES = ["Draft", "Pending", "On Progress", "Completed", "Overdue", "Cancelled", "Archived"];
-
-const itemOverdue = (item) => item.due_date && !item.done && new Date(item.due_date) < new Date();
 
 const genId = () =>
   typeof crypto !== "undefined" && crypto.randomUUID
@@ -60,25 +57,14 @@ function PersonMeta({ person }) {
   );
 }
 
-/** Form Tugas (buat & ubah) — layout dua kolom: info + item di kiri, orang & dokumen di kanan. */
+/** Tambah Tugas — form khusus pembuatan; penyuntingan dilakukan di halaman Detail. */
 export default function TaskForm() {
-  const { id } = useParams();
-  const editing = Boolean(id);
   const navigate = useNavigate();
   const { user } = useAuth();
   const [draftId] = useState(genId);
-  const taskId = editing ? id : draftId;
-
   const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(editing);
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    priority: "Medium",
-    deadline: "",
-    status: "Pending",
-  });
+  const [form, setForm] = useState({ title: "", description: "", priority: "Medium", deadline: "" });
   const [requester, setRequester] = useState(null);
   const [pic, setPic] = useState(null);
   const [items, setItems] = useState([]);
@@ -86,39 +72,15 @@ export default function TaskForm() {
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
 
-  const loadTask = useCallback(async () => {
-    if (!editing) return;
-    try {
-      const { data } = await api.get(`/tasks/${id}`);
-      setForm({
-        title: data.title || "",
-        description: data.description || "",
-        priority: data.priority || "Medium",
-        deadline: data.deadline ? data.deadline.slice(0, 10) : "",
-        status: data.status,
-      });
-      setRequester(data.requester?.name ? data.requester : null);
-      setPic(data.pic?.name ? data.pic : null);
-      setItems(data.items || []);
-      setDocuments(data.documents || []);
-    } catch (err) {
-      notify.error(apiError(err));
-      navigate("/tasks");
-    } finally {
-      setLoading(false);
-    }
-  }, [editing, id, navigate]);
-
   useEffect(() => {
     api
       .get("/users?all=true")
-      .then(({ data }) => setUsers(data.items))
+      .then(({ data }) => setUsers(data.items || []))
       .catch(() => {});
-    loadTask();
-  }, [loadTask]);
+  }, []);
 
   useEffect(() => {
-    if (!editing && user && !requester) {
+    if (user) {
       setRequester({
         user_id: user.id,
         name: user.name,
@@ -127,8 +89,7 @@ export default function TaskForm() {
         email: user.email || "",
       });
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [editing, user]);
+  }, [user]);
 
   const addItem = () => {
     if (!newItem.trim()) return;
@@ -154,43 +115,27 @@ export default function TaskForm() {
       return;
     }
     setSaving(true);
-    const payload = {
-      title: form.title,
-      description: form.description,
-      requester: requester || null,
-      pic: pic || null,
-      priority: form.priority,
-      deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
-      items,
-      documents,
-    };
     try {
-      if (editing) {
-        payload.status = form.status;
-        const { data } = await api.put(`/tasks/${id}`, payload);
-        notify.success("Tugas diperbarui.");
-        if (data.pic_wa_url) window.open(data.pic_wa_url, "_blank");
-        navigate(`/tasks/${id}`);
-      } else {
-        payload.id = draftId;
-        const { data } = await api.post("/tasks", payload);
-        notify.success("Tugas berhasil dibuat.");
-        if (data.pic_wa_url) window.open(data.pic_wa_url, "_blank");
-        navigate(`/tasks/${data.id}`);
-      }
+      const { data } = await api.post("/tasks", {
+        id: draftId,
+        title: form.title,
+        description: form.description,
+        requester: requester || null,
+        pic: pic || null,
+        priority: form.priority,
+        deadline: form.deadline ? new Date(form.deadline).toISOString() : null,
+        items,
+        documents,
+      });
+      notify.success("Tugas berhasil dibuat.");
+      if (data.pic_wa_url) window.open(data.pic_wa_url, "_blank");
+      navigate(`/tasks/${data.id}`);
     } catch (err) {
       notify.error(apiError(err));
     } finally {
       setSaving(false);
     }
   };
-
-  if (loading)
-    return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="size-6 animate-spin text-muted-foreground" />
-      </div>
-    );
 
   return (
     <div className="form-dense space-y-6" data-testid="task-form-page">
@@ -222,7 +167,7 @@ export default function TaskForm() {
                   data-testid="task-desc-input"
                 />
               </div>
-              <div className="grid gap-[var(--field-gap)] sm:grid-cols-3">
+              <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
                 <div className="space-y-[var(--item-gap)]">
                   <Label>Prioritas</Label>
                   <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v })}>
@@ -248,23 +193,6 @@ export default function TaskForm() {
                     data-testid="task-deadline-input"
                   />
                 </div>
-                {editing ? (
-                  <div className="space-y-[var(--item-gap)]">
-                    <Label>Status</Label>
-                    <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v })}>
-                      <SelectTrigger data-testid="task-status-select">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {STATUS_META[s].label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ) : null}
               </div>
             </CardContent>
           </Card>
@@ -282,33 +210,18 @@ export default function TaskForm() {
                   <p className="p-3 text-center text-xs text-muted-foreground">Belum ada item tugas.</p>
                 ) : (
                   items.map((item, idx) => (
-                    <div key={item.id || idx} className="flex items-center gap-2 p-2">
-                      <span
-                        className={cn(
-                          "size-3.5 shrink-0 rounded-sm border",
-                          item.done && "border-primary bg-primary"
-                        )}
-                      />
-                      <span
-                        className={cn(
-                          "min-w-0 flex-1 truncate text-[13px]",
-                          item.done && "text-muted-foreground line-through"
-                        )}
-                      >
-                        {item.title}
-                      </span>
+                    <div key={idx} className="flex items-center gap-2 p-2">
+                      <span className="size-3.5 shrink-0 rounded-sm border" />
+                      <span className="min-w-0 flex-1 truncate text-[13px]">{item.title}</span>
                       {item.due_date ? (
-                        <Badge
-                          variant={itemOverdue(item) ? "destructive" : "outline"}
-                          className="font-normal"
-                        >
+                        <Badge variant="outline" className="font-normal">
                           {fmtDay(item.due_date)}
                         </Badge>
                       ) : null}
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="size-7 text-destructive"
+                        className={cn("size-7 text-muted-foreground hover:text-destructive")}
                         aria-label={ACTION.delete}
                         onClick={() => setItems(items.filter((_, i) => i !== idx))}
                         data-testid={`remove-item-${idx}`}
@@ -382,12 +295,12 @@ export default function TaskForm() {
           </Card>
 
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between gap-2 space-y-0">
+            <CardHeader>
               <CardTitle className="text-base">Dokumen Sumber ({documents.length})</CardTitle>
             </CardHeader>
             <CardContent>
               <DocumentManager
-                taskId={taskId}
+                taskId={draftId}
                 documents={documents}
                 onChange={setDocuments}
                 idPrefix="task"
@@ -400,12 +313,7 @@ export default function TaskForm() {
 
       <Card>
         <CardFooter className="justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(editing ? `/tasks/${id}` : "/tasks")}
-            data-testid="btn-cancel"
-          >
+          <Button variant="outline" size="sm" onClick={() => navigate("/tasks")} data-testid="btn-cancel">
             {ACTION.cancel}
           </Button>
           <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-task">

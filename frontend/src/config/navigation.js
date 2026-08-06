@@ -105,7 +105,6 @@ const ROUTE_TRAILS = [
   [/^\/calendar$/, ["Kalender"]],
   [/^\/tasks$/, ["Kelola Tugas"]],
   [/^\/tasks\/new$/, ["Kelola Tugas", "Tugas Baru"]],
-  [/^\/tasks\/[^/]+\/edit$/, ["Kelola Tugas", "Ubah Tugas"]],
   [/^\/tasks\/[^/]+$/, ["Kelola Tugas", "Detail Tugas"]],
   [/^\/meetings$/, ["Kelola Rapat"]],
   [/^\/meetings\/new$/, ["Kelola Rapat", "Rapat Baru"]],

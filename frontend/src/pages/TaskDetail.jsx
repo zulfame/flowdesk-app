@@ -12,7 +12,6 @@ import {
   Mail,
   Megaphone,
   MoreHorizontal,
-  Pencil,
   Phone,
   Plus,
   Printer,
@@ -46,10 +45,24 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import DocumentManager from "@/components/DocumentManager";
+import UserSelect from "@/components/UserSelect";
 import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
-import { PriorityBadge, StatusBadge } from "@/components/composite/TaskBadges";
+import { EditableCard } from "@/components/composite/EditableCard";
+import {
+  PriorityBadge,
+  StatusBadge,
+  PRIORITY_META,
+  STATUS_META,
+} from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { canManage, isTaskPic } from "@/lib/perms";
@@ -57,10 +70,15 @@ import { useAuth } from "@/context/AuthContext";
 import { cn } from "@/lib/utils";
 import { ACTION } from "@/constants/labels";
 
+const PRIORITIES = ["Low", "Medium", "High", "Urgent"];
+const STATUSES = ["Draft", "Pending", "On Progress", "Completed", "Overdue", "Cancelled", "Archived"];
+
 const itemOverdue = (item) => item.due_date && !item.done && new Date(item.due_date) < new Date();
 
 const fmtDay = (iso) =>
-  iso ? new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" }) : "\u2014";
+  iso
+    ? new Date(iso).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })
+    : "\u2014";
 
 const timeAgo = (iso) => {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -70,12 +88,43 @@ const timeAgo = (iso) => {
   return new Date(iso).toLocaleDateString("id-ID");
 };
 
-/** Detail Tugas — R51-style stacked section cards + item/comment/history panels. */
+const person = (value) => (typeof value === "string" ? { name: value } : value || {});
+
+function ContactList({ data }) {
+  const rows = [
+    { icon: User, value: data.name, strong: true },
+    { icon: Building2, value: data.department },
+    { icon: Phone, value: data.phone },
+    { icon: Mail, value: data.email },
+  ];
+  return (
+    <dl className="space-y-2">
+      {rows.map(({ icon: Icon, value, strong }, i) => (
+        <div key={i} className={cn("flex items-center gap-2", !strong && "text-muted-foreground")}>
+          <Icon className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <span className={cn("truncate", strong && "font-medium")}>{value || "\u2014"}</span>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function InfoRow({ label, children }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="min-w-0 truncate text-right font-medium">{children}</dd>
+    </div>
+  );
+}
+
+/** Detail Tugas — satu halaman untuk melihat & menyunting (halaman Ubah dihapus). */
 export default function TaskDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [task, setTask] = useState(null);
+  const [users, setUsers] = useState([]);
   const [comment, setComment] = useState("");
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
@@ -83,6 +132,10 @@ export default function TaskDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [tplName, setTplName] = useState("");
+  const [head, setHead] = useState({ title: "", description: "" });
+  const [info, setInfo] = useState({ status: "Pending", priority: "Medium", deadline: "" });
+  const [reqDraft, setReqDraft] = useState(null);
+  const [picDraft, setPicDraft] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -98,15 +151,31 @@ export default function TaskDetail() {
     load();
   }, [load]);
 
+  useEffect(() => {
+    api
+      .get("/users?all=true")
+      .then(({ data }) => setUsers(data.items || []))
+      .catch(() => {});
+  }, []);
+
   const patch = async (partial, optimistic) => {
     if (optimistic) setTask((prev) => ({ ...prev, ...optimistic }));
     try {
       const { data } = await api.put(`/tasks/${id}`, partial);
       setTask((prev) => ({ ...data, attachments: prev.attachments }));
+      if (data.pic_wa_url) window.open(data.pic_wa_url, "_blank");
+      return true;
     } catch (err) {
       notify.error(apiError(err));
       load();
+      return false;
     }
+  };
+
+  const saveAnd = async (partial, message) => {
+    const ok = await patch(partial);
+    if (ok) notify.success(message);
+    return ok;
   };
 
   const items = task?.items || [];
@@ -189,7 +258,7 @@ export default function TaskDetail() {
   const duplicate = async () => {
     try {
       const { data } = await api.post(`/tasks/${id}/duplicate`);
-      notify.success("Tugas berhasil diduplikasi.");
+      notify.success("Tugas berhasil disalin.");
       navigate(`/tasks/${data.id}`);
     } catch (err) {
       notify.error(apiError(err));
@@ -218,8 +287,8 @@ export default function TaskDetail() {
       </div>
     );
 
-  const req = typeof task.requester === "string" ? { name: task.requester } : task.requester || {};
-  const pic = typeof task.pic === "string" ? { name: task.pic } : task.pic || {};
+  const req = person(task.requester);
+  const pic = person(task.pic);
   const doneCount = items.filter((i) => i.done).length;
   const isOwner = canManage(user, task);
   const isPic = isTaskPic(user, task);
@@ -230,22 +299,41 @@ export default function TaskDetail() {
     <div className="form-dense space-y-6" data-testid="task-detail-page">
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card>
-            <CardHeader className="flex flex-row items-start justify-between gap-3 space-y-0">
-              <div className="min-w-0">
-                <CardTitle className="text-base">{task.title}</CardTitle>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5">
-                  <StatusBadge status={task.status} />
-                  <PriorityBadge priority={task.priority} />
-                </div>
-              </div>
-              <div className="flex shrink-0 items-center gap-2 no-print">
-                <Button variant="outline" size="sm" onClick={() => navigate("/tasks")} data-testid="btn-back">
+          <EditableCard
+            title={task.title}
+            canEdit={isOwner}
+            testid="head"
+            contentClassName="space-y-4"
+            onEditStart={() => setHead({ title: task.title || "", description: task.description || "" })}
+            onSave={() => {
+              if (!head.title.trim()) {
+                notify.error("Judul tugas wajib diisi.");
+                return false;
+              }
+              return saveAnd(
+                { title: head.title, description: head.description },
+                "Informasi tugas diperbarui."
+              );
+            }}
+            headerExtra={
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/tasks")}
+                  data-testid="btn-back"
+                >
                   <ArrowLeft className="size-4" /> {ACTION.back}
                 </Button>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="size-8" aria-label="Aksi tugas" data-testid="task-detail-actions">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-8"
+                      aria-label="Aksi tugas"
+                      data-testid="task-detail-actions"
+                    >
                       <MoreHorizontal className="size-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -268,9 +356,6 @@ export default function TaskDetail() {
                     {isOwner ? (
                       <>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => navigate(`/tasks/${id}/edit`)} data-testid="btn-edit-task">
-                          <Pencil aria-hidden="true" /> {ACTION.edit}
-                        </DropdownMenuItem>
                         <DropdownMenuItem
                           onClick={() => setDeleteOpen(true)}
                           className="text-destructive focus:text-destructive"
@@ -282,33 +367,67 @@ export default function TaskDetail() {
                     ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {task.description ? (
-                <p className="whitespace-pre-wrap text-muted-foreground">{task.description}</p>
-              ) : null}
-              {task.meeting_id ? (
-                <button
-                  type="button"
-                  onClick={() => navigate(`/meetings/${task.meeting_id}`)}
-                  className="inline-flex items-center gap-2 text-sm font-medium hover:underline"
-                  data-testid="link-parent-meeting"
-                >
-                  <Video className="size-4" /> Dari rapat: {task.meeting_title || "Lihat rapat"}
-                </button>
-              ) : null}
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-3">
-                  <Progress value={task.progress} className="h-1.5 flex-1" />
-                  <span className="w-10 text-right text-sm font-medium">{task.progress}%</span>
+              </>
+            }
+          >
+            {(editing) =>
+              editing ? (
+                <div className="space-y-[var(--field-gap)]">
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label htmlFor="head-title">Judul</Label>
+                    <Input
+                      id="head-title"
+                      value={head.title}
+                      onChange={(e) => setHead({ ...head, title: e.target.value })}
+                      data-testid="head-title-input"
+                    />
+                  </div>
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label htmlFor="head-desc">Deskripsi</Label>
+                    <Textarea
+                      id="head-desc"
+                      rows={4}
+                      value={head.description}
+                      onChange={(e) => setHead({ ...head, description: e.target.value })}
+                      data-testid="head-desc-input"
+                    />
+                  </div>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  {doneCount} dari {items.length} item tugas disetujui
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+              ) : (
+                <>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <StatusBadge status={task.status} />
+                    <PriorityBadge priority={task.priority} />
+                    <span className="text-xs text-muted-foreground">
+                      Tenggat {fmtDay(task.deadline)}
+                    </span>
+                  </div>
+                  <p className="whitespace-pre-wrap text-muted-foreground">
+                    {task.description || "Tanpa deskripsi."}
+                  </p>
+                  {task.meeting_id ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/meetings/${task.meeting_id}`)}
+                      className="inline-flex items-center gap-2 font-medium hover:underline"
+                      data-testid="link-parent-meeting"
+                    >
+                      <Video className="size-4" /> Dari rapat: {task.meeting_title || "Lihat rapat"}
+                    </button>
+                  ) : null}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-3">
+                      <Progress value={task.progress} className="h-1.5 flex-1" />
+                      <span className="w-10 text-right font-medium tabular-nums">{task.progress}%</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {doneCount} dari {items.length} item tugas disetujui
+                    </p>
+                  </div>
+                </>
+              )
+            }
+          </EditableCard>
 
           <Card>
             <CardHeader>
@@ -443,7 +562,7 @@ export default function TaskDetail() {
                                     )
                                   }
                                   className="h-[var(--ctl-h-sm)] w-40"
-                                  data-testid={`item-due-${item.id}`}
+                                  data-testid={`item-due-input-${item.id}`}
                                 />
                               </div>
                             ) : null}
@@ -567,31 +686,97 @@ export default function TaskDetail() {
         </div>
 
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Pemberi Tugas</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <dl className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <User className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="font-medium">{req.name || "\u2014"}</span>
+          <EditableCard
+            title="Informasi Tugas"
+            canEdit={isOwner}
+            testid="info"
+            onEditStart={() =>
+              setInfo({
+                status: task.status,
+                priority: task.priority || "Medium",
+                deadline: task.deadline ? task.deadline.slice(0, 10) : "",
+              })
+            }
+            onSave={() =>
+              saveAnd(
+                {
+                  status: info.status,
+                  priority: info.priority,
+                  deadline: info.deadline ? new Date(info.deadline).toISOString() : null,
+                },
+                "Informasi tugas diperbarui."
+              )
+            }
+          >
+            {(editing) =>
+              editing ? (
+                <div className="space-y-[var(--field-gap)]">
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label>Status</Label>
+                    <Select value={info.status} onValueChange={(v) => setInfo({ ...info, status: v })}>
+                      <SelectTrigger data-testid="info-status-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            {STATUS_META[s].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label>Prioritas</Label>
+                    <Select
+                      value={info.priority}
+                      onValueChange={(v) => setInfo({ ...info, priority: v })}
+                    >
+                      <SelectTrigger data-testid="info-priority-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {PRIORITIES.map((p) => (
+                          <SelectItem key={p} value={p}>
+                            {PRIORITY_META[p].label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label htmlFor="info-deadline">Tenggat</Label>
+                    <Input
+                      id="info-deadline"
+                      type="date"
+                      value={info.deadline}
+                      onChange={(e) => setInfo({ ...info, deadline: e.target.value })}
+                      data-testid="info-deadline-input"
+                    />
+                  </div>
                 </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Building2 className="size-4 shrink-0" />
-                  <span>{req.department || "\u2014"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="size-4 shrink-0" />
-                  <span>{req.phone || "\u2014"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="size-4 shrink-0" />
-                  <span className="truncate">{req.email || "\u2014"}</span>
-                </div>
-              </dl>
-            </CardContent>
-            <CardFooter className="justify-end">
+              ) : (
+                <dl className="space-y-2">
+                  <InfoRow label="Status">
+                    <StatusBadge status={task.status} />
+                  </InfoRow>
+                  <InfoRow label="Prioritas">
+                    <PriorityBadge priority={task.priority} />
+                  </InfoRow>
+                  <InfoRow label="Tenggat">{fmtDay(task.deadline)}</InfoRow>
+                  <InfoRow label="Dibuat oleh">{task.created_by_name || "\u2014"}</InfoRow>
+                </dl>
+              )
+            }
+          </EditableCard>
+
+          <EditableCard
+            title="Pemberi Tugas"
+            canEdit={isOwner}
+            testid="requester"
+            onEditStart={() => setReqDraft(task.requester?.name ? task.requester : null)}
+            onSave={() => saveAnd({ requester: reqDraft }, "Pemberi tugas diperbarui.")}
+            footerExtra={
               <Button
                 variant="outline"
                 size="sm"
@@ -601,54 +786,50 @@ export default function TaskDetail() {
               >
                 <Megaphone className="size-4" /> {ACTION.send}
               </Button>
-            </CardFooter>
-          </Card>
+            }
+          >
+            {(editing) =>
+              editing ? (
+                <UserSelect
+                  users={users}
+                  value={reqDraft}
+                  onChange={setReqDraft}
+                  placeholder="Pilih pemberi tugas..."
+                  testid="requester-select"
+                />
+              ) : (
+                <ContactList data={req} />
+              )
+            }
+          </EditableCard>
+
+          <EditableCard
+            title="PIC Pelaksana"
+            canEdit={isOwner}
+            testid="pic"
+            onEditStart={() => setPicDraft(task.pic?.name ? task.pic : null)}
+            onSave={() => saveAnd({ pic: picDraft }, "PIC pelaksana diperbarui.")}
+          >
+            {(editing) =>
+              editing ? (
+                <UserSelect
+                  users={users}
+                  value={picDraft}
+                  onChange={setPicDraft}
+                  placeholder="Pilih pelaksana..."
+                  testid="pic-select"
+                />
+              ) : (
+                <ContactList data={pic} />
+              )
+            }
+          </EditableCard>
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">PIC Pelaksana</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <dl className="space-y-2">
-                <div className="flex items-center gap-2">
-                  <User className="size-4 shrink-0 text-muted-foreground" />
-                  <span className="font-medium">{pic.name || "\u2014"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Building2 className="size-4 shrink-0" />
-                  <span>{pic.department || "\u2014"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Phone className="size-4 shrink-0" />
-                  <span>{pic.phone || "\u2014"}</span>
-                </div>
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Mail className="size-4 shrink-0" />
-                  <span className="truncate">{pic.email || "\u2014"}</span>
-                </div>
-              </dl>
-              <dl className="space-y-2 border-t pt-3">
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">Prioritas</dt>
-                  <dd>
-                    <PriorityBadge priority={task.priority} />
-                  </dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">Tenggat</dt>
-                  <dd className="font-medium">{fmtDay(task.deadline)}</dd>
-                </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-muted-foreground">Dibuat oleh</dt>
-                  <dd className="font-medium">{task.created_by_name || "\u2014"}</dd>
-                </div>
-              </dl>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Dokumen Sumber</CardTitle>
+              <CardTitle className="text-base">
+                Dokumen Sumber ({(task.documents || []).length})
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <DocumentManager
@@ -679,7 +860,7 @@ export default function TaskDetail() {
                   .map((h, i) => (
                     <div key={i} className="flex items-start gap-2">
                       <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-muted-foreground" />
-                      <div>
+                      <div className="min-w-0">
                         <p className={h.detail ? "" : "capitalize"}>
                           {h.detail || (h.action || "").replace(/_/g, " ")}
                         </p>
