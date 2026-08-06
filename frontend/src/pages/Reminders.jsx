@@ -4,8 +4,8 @@ import {
   CheckCircle2,
   Circle,
   Mail,
-  MessageCircle,
   MoreHorizontal,
+  Pencil,
   Plus,
   Save,
   Trash2,
@@ -82,29 +82,18 @@ const fmtDay = (d) =>
     : "\u2014";
 
 /** Column factory (module scope — no component defined during render). */
-const buildColumns = ({ onToggle, onDelete }) => [
+const buildColumns = ({ onEdit, onToggle, onDelete }) => [
   {
     id: "done",
     accessorFn: (r) => (r.done ? 1 : 0),
     header: () => <span className="sr-only">Selesai</span>,
     enableSorting: false,
-    cell: ({ row }) => {
-      const r = row.original;
-      return (
-        <button
-          type="button"
-          onClick={() => onToggle(r)}
-          aria-label={r.done ? "Tandai belum selesai" : "Tandai selesai"}
-          data-testid={`reminder-toggle-${r.id}`}
-        >
-          {r.done ? (
-            <CheckCircle2 className="size-4 text-success" />
-          ) : (
-            <Circle className="size-4 text-muted-foreground" />
-          )}
-        </button>
-      );
-    },
+    cell: ({ row }) =>
+      row.original.done ? (
+        <CheckCircle2 className="size-4 text-success" aria-label="Selesai" />
+      ) : (
+        <Circle className="size-4 text-muted-foreground" aria-label="Belum selesai" />
+      ),
   },
   {
     accessorKey: "title",
@@ -168,14 +157,9 @@ const buildColumns = ({ onToggle, onDelete }) => [
       if (!r.broadcast || !(r.channels || []).length)
         return <span className="text-muted-foreground">{"\u2014"}</span>;
       return (
-        <div className="flex items-center gap-1">
-          {r.channels.map((c) => (
-            <Badge key={c} variant="secondary" className="gap-1 font-normal">
-              {c === "email" ? <Mail className="size-3" /> : <MessageCircle className="size-3" />}
-              {c === "email" ? "Email" : "WhatsApp"}
-            </Badge>
-          ))}
-        </div>
+        <Badge variant="secondary" className="gap-1 font-normal">
+          <Mail className="size-3" /> Email
+        </Badge>
       );
     },
   },
@@ -197,7 +181,27 @@ const buildColumns = ({ onToggle, onDelete }) => [
               <MoreHorizontal className="size-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-40">
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem
+              onClick={() => onEdit(row.original)}
+              data-testid={`btn-edit-reminder-${row.original.id}`}
+            >
+              <Pencil aria-hidden="true" /> {ACTION.edit}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => onToggle(row.original)}
+              data-testid={`btn-toggle-reminder-${row.original.id}`}
+            >
+              {row.original.done ? (
+                <>
+                  <Circle aria-hidden="true" /> Batalkan Selesai
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 aria-hidden="true" /> Tandai Selesai
+                </>
+              )}
+            </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => onDelete(row.original)}
               className="text-destructive focus:text-destructive"
@@ -219,6 +223,7 @@ export default function Reminders() {
   const [status, setStatus] = useState("active");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(emptyForm);
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(null);
   const [tick, setTick] = useState(0);
@@ -239,12 +244,6 @@ export default function Reminders() {
     load();
   }, [load]);
 
-  const toggleChannel = (c) =>
-    setForm((f) => ({
-      ...f,
-      channels: f.channels.includes(c) ? f.channels.filter((x) => x !== c) : [...f.channels, c],
-    }));
-
   const save = async () => {
     if (!form.title.trim()) {
       notify.error("Judul pengingat wajib diisi.");
@@ -262,24 +261,27 @@ export default function Reminders() {
       return;
     }
     setSaving(true);
+    const payload = {
+      title: form.title,
+      description: form.description,
+      remind_type: form.remind_type,
+      date,
+      time: form.time,
+      recurrence: form.remind_type === "recurring" ? form.recurrence : null,
+      broadcast: form.broadcast,
+      channels: form.broadcast ? ["email"] : [],
+      broadcast_offset: form.broadcast ? form.broadcast_offset : "10m",
+      broadcast_at:
+        form.broadcast && form.broadcast_offset === "custom" && form.broadcast_custom_date
+          ? `${form.broadcast_custom_date}T${form.broadcast_custom_time}:00`
+          : null,
+    };
     try {
-      await api.post("/reminders", {
-        title: form.title,
-        description: form.description,
-        remind_type: form.remind_type,
-        date,
-        time: form.time,
-        recurrence: form.remind_type === "recurring" ? form.recurrence : null,
-        broadcast: form.broadcast,
-        channels: form.broadcast ? form.channels : [],
-        broadcast_offset: form.broadcast ? form.broadcast_offset : "10m",
-        broadcast_at:
-          form.broadcast && form.broadcast_offset === "custom" && form.broadcast_custom_date
-            ? `${form.broadcast_custom_date}T${form.broadcast_custom_time}:00`
-            : null,
-      });
-      notify.success("Pengingat dibuat.");
+      if (editing) await api.put(`/reminders/${editing.id}`, payload);
+      else await api.post("/reminders", payload);
+      notify.success(editing ? "Pengingat diperbarui." : "Pengingat dibuat.");
       setOpen(false);
+      setEditing(null);
       setForm(emptyForm);
       load();
     } catch (err) {
@@ -309,8 +311,26 @@ export default function Reminders() {
     }
   };
 
+  const openEdit = (r) => {
+    setEditing(r);
+    setForm({
+      title: r.title || "",
+      description: r.description || "",
+      remind_type: r.remind_type || "custom",
+      date: r.date || "",
+      time: r.time || "09:00",
+      recurrence: r.recurrence || "daily",
+      broadcast: Boolean(r.broadcast),
+      channels: ["email"],
+      broadcast_offset: r.broadcast_offset || "10m",
+      broadcast_custom_date: (r.broadcast_at || "").slice(0, 10),
+      broadcast_custom_time: (r.broadcast_at || "").slice(11, 16) || "09:00",
+    });
+    setOpen(true);
+  };
+
   const columns = useMemo(
-    () => buildColumns({ onToggle: toggleDone, onDelete: setDeleting }),
+    () => buildColumns({ onEdit: openEdit, onToggle: toggleDone, onDelete: setDeleting }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
@@ -343,6 +363,7 @@ export default function Reminders() {
           <Button
             size="sm"
             onClick={() => {
+              setEditing(null);
               setForm(emptyForm);
               setOpen(true);
             }}
@@ -361,11 +382,17 @@ export default function Reminders() {
         emptyDescription="Buat pengingat agar tidak melewatkan hal penting."
       />
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(o) => {
+          setOpen(o);
+          if (!o) setEditing(null);
+        }}
+      >
         <DialogContent className="sm:max-w-lg" data-testid="reminder-dialog">
           <DialogHeader>
-            <DialogTitle>Pengingat Baru</DialogTitle>
-            <DialogDescription>Atur waktu pengingat dan kanal broadcast bila perlu.</DialogDescription>
+            <DialogTitle>{editing ? "Ubah Pengingat" : "Pengingat Baru"}</DialogTitle>
+            <DialogDescription>Atur waktu pengingat dan broadcast email bila perlu.</DialogDescription>
           </DialogHeader>
           <DialogBody className="form-dense space-y-[var(--field-gap)]">
             <div className="space-y-[var(--item-gap)]">
@@ -459,7 +486,7 @@ export default function Reminders() {
                 <div>
                   <p className="font-medium">Broadcast Pengingat</p>
                   <p className="text-xs text-muted-foreground">
-                    Kirim otomatis ke email / WhatsApp Anda saat waktunya tiba.
+                    Kirim otomatis ke email Anda saat waktunya tiba.
                   </p>
                 </div>
                 <Switch
@@ -470,24 +497,6 @@ export default function Reminders() {
               </div>
               {form.broadcast ? (
                 <>
-                  <div className="flex gap-2">
-                    {[
-                      { k: "email", label: "Email", icon: Mail },
-                      { k: "whatsapp", label: "WhatsApp", icon: MessageCircle },
-                    ].map(({ k, label, icon: Icon }) => (
-                      <Button
-                        key={k}
-                        type="button"
-                        size="sm"
-                        variant={form.channels.includes(k) ? "default" : "outline"}
-                        className="flex-1"
-                        onClick={() => toggleChannel(k)}
-                        data-testid={`reminder-channel-${k}`}
-                      >
-                        <Icon className="size-4" /> {label}
-                      </Button>
-                    ))}
-                  </div>
                   <div className="space-y-[var(--item-gap)]">
                     <Label>Waktu Kirim Broadcast</Label>
                     <Select
@@ -539,7 +548,14 @@ export default function Reminders() {
             </div>
           </DialogBody>
           <DialogFooter>
-            <Button variant="outline" size="sm" onClick={() => setOpen(false)}>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setOpen(false);
+                setEditing(null);
+              }}
+            >
               <X className="size-4" /> {ACTION.cancel}
             </Button>
             <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-reminder">

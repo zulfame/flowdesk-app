@@ -506,7 +506,7 @@ export default function MeetingDetail() {
           </DialogBody>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setWaOpen(false)}>
-              {ACTION.close}
+              <X className="size-4" /> {ACTION.close}
             </Button>
           </DialogFooter>
         </DialogContent>

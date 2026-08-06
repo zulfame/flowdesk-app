@@ -119,6 +119,10 @@ report "Save bar manual 'flex justify-end border-t pt-4' (FD5: tombol aksi Card 
 report "Teks tombol tidak konsisten (FD5: pakai ACTION dari src/constants/labels.js \u2014 mis. 'Simpan', bukan 'Simpan Perubahan')" \
   "$(scan 'Simpan (Perubahan|Data)|Perbarui Kata Sandi|Tambah Baru|Hapus Data')"
 
+# 22) FD13 — Every button carries an icon, including Batal/Tutup (ikon X).
+m=$(grep -rn 'ACTION\.\(cancel\|close\)' $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXCLUDE" | grep -v 'X className' | grep -vE '//\s*guard-allow')
+report "Tombol Batal/Tutup tanpa ikon (FD13: WAJIB <X className=\"size-4\" /> sebelum label)" "$m"
+
 # 14) FD1 — Compact is the ONLY density: no toggle/provider/data-density anywhere.
 m=$(grep -rnE 'DensityToggle|density-provider|density-toggle|data-density' "$SRC" --include=*.jsx --include=*.js --include=*.css 2>/dev/null | grep -vE '//\s*guard-allow')
 report "Mekanisme density ditemukan (FD1: compact WAJIB & satu-satunya \u2014 tanpa toggle/provider/data-density)" "$m"

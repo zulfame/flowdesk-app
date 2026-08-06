@@ -10,6 +10,7 @@ import {
   Save,
   Trash2,
   Video,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -499,7 +500,7 @@ function TemplateDialog({ open, onOpenChange }) {
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
-            {ACTION.close}
+            <X className="size-4" /> {ACTION.close}
           </Button>
           <Button size="sm" onClick={create} disabled={saving} data-testid="btn-save-template">
             <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}

@@ -183,3 +183,17 @@ Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
 | 2a-1 | Penyempurnaan Profil: tinggi `CardHeader`/`CardFooter` dikecilkan (E7), urutan field sandi (Saat Ini di baris atas sendiri; Baru + Konfirmasi di baris berikutnya), foto profil tampil di footer sidebar & dropdown pengguna | ✅ Selesai |
 | 2a | **Profil Pengguna** (`pages/Profile.jsx`) → pola konfigurasi R51 (section cards + save bar), rhf+zod, `AvatarUpload` composite baru | ✅ Selesai |
 | 4 | Halaman konfigurasi (R51) + Kalender + Dashboard | ⏳ Belum |
+
+## FD13 — Setiap tombol wajib berikon, termasuk Batal/Tutup (WAJIB)
+Semua tombol memakai ikon lucide di sebelah kiri label (FD5). Ini **termasuk tombol sekunder**
+`Batal` / `Tutup`, yang WAJIB memakai `<X className="size-4" />`:
+
+```jsx
+<Button variant="outline" size="sm" onClick={...}>
+  <X className="size-4" /> {ACTION.cancel}
+</Button>
+```
+
+Berlaku di `CardFooter`, `DialogFooter`, `AlertDialogFooter` (`AlertDialogCancel`), dan `EditableCard`.
+Dijaga otomatis oleh `design-guard.sh` cek **#22** (menolak `ACTION.cancel` / `ACTION.close`
+tanpa `X className` pada baris yang sama).
