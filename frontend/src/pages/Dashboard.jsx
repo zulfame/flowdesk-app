@@ -44,10 +44,12 @@ const dayDiff = (iso) => {
 
 const dueLabel = (iso) => {
   const d = dayDiff(iso);
-  if (d < 0) return { text: `Lewat ${Math.abs(d)} hari`, variant: "destructive" };
-  if (d === 0) return { text: "Hari ini", variant: "default" };
-  if (d === 1) return { text: "Besok", variant: "secondary" };
-  return { text: `${d} hari lagi`, variant: "outline" };
+  if (d < 0) return { text: `Lewat ${Math.abs(d)} hari`, chip: "--st-overdue" };
+  if (d === 0) return { text: "Hari ini", chip: "--st-overdue" };
+  if (d === 1) return { text: "Besok", chip: "--st-pending" };
+  if (d <= 3) return { text: `${d} hari lagi`, chip: "--st-pending" };
+  if (d <= 7) return { text: `${d} hari lagi`, chip: "--st-progress" };
+  return { text: `${d} hari lagi`, chip: "--st-done" };
 };
 
 const fmtDay = (iso) =>
@@ -214,7 +216,11 @@ export default function Dashboard() {
                   >
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="min-w-0 flex-1 truncate font-medium">{t.title}</span>
-                      <Badge variant={due.variant} className="font-normal">
+                      <Badge
+                        variant="outline"
+                        className={due.chip ? "state-chip font-medium" : "font-normal text-muted-foreground"}
+                        style={due.chip ? { "--chip": `var(${due.chip})` } : undefined}
+                      >
                         {due.text}
                       </Badge>
                       <PriorityBadge priority={t.priority} />

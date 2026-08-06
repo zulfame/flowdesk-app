@@ -1,40 +1,47 @@
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 
-/** Task status → Indonesian label + monochrome/semantic Badge variant. */
+/**
+ * Task status/priority meta.
+ * `chip` = CSS variable hue (E9 exception: badge status & prioritas boleh berwarna).
+ */
 export const STATUS_META = {
-  Draft: { label: "Draf", variant: "outline" },
-  Pending: { label: "Menunggu", variant: "outline" },
-  "On Progress": { label: "Berjalan", variant: "secondary" },
-  Completed: { label: "Selesai", variant: "default" },
-  Overdue: { label: "Terlambat", variant: "destructive" },
-  Cancelled: { label: "Dibatalkan", variant: "outline" },
-  Archived: { label: "Arsip", variant: "outline" },
+  Draft: { label: "Draf", chip: "--st-draft" },
+  Pending: { label: "Menunggu", chip: "--st-pending" },
+  "On Progress": { label: "Berjalan", chip: "--st-progress" },
+  Completed: { label: "Selesai", chip: "--st-done" },
+  Overdue: { label: "Terlambat", chip: "--st-overdue" },
+  Cancelled: { label: "Dibatalkan", chip: "--st-cancelled" },
+  Archived: { label: "Arsip", chip: "--st-archived" },
 };
 
 export const PRIORITY_META = {
-  Urgent: { label: "Mendesak", variant: "destructive" },
-  High: { label: "Tinggi", variant: "default" },
-  Medium: { label: "Sedang", variant: "secondary" },
-  Low: { label: "Rendah", variant: "outline" },
+  Urgent: { label: "Mendesak", chip: "--pr-urgent" },
+  High: { label: "Tinggi", chip: "--pr-high" },
+  Medium: { label: "Sedang", chip: "--pr-medium" },
+  Low: { label: "Rendah", chip: "--pr-low" },
 };
 
-export function StatusBadge({ status }) {
-  const meta = STATUS_META[status] || { label: status || "\u2014", variant: "outline" };
+function StateChip({ meta, fallback, testid }) {
+  const { label, chip } = meta || { label: fallback || "\u2014", chip: "--st-draft" };
   return (
-    <Badge variant={meta.variant} className="font-normal">
-      {meta.label}
+    <Badge
+      variant="outline"
+      className="state-chip font-medium"
+      style={{ "--chip": `var(${chip})` }}
+      data-testid={testid}
+    >
+      {label}
     </Badge>
   );
 }
 
+export function StatusBadge({ status }) {
+  return <StateChip meta={STATUS_META[status]} fallback={status} testid="status-badge" />;
+}
+
 export function PriorityBadge({ priority }) {
-  const meta = PRIORITY_META[priority] || { label: priority || "\u2014", variant: "outline" };
-  return (
-    <Badge variant={meta.variant} className="font-normal">
-      {meta.label}
-    </Badge>
-  );
+  return <StateChip meta={PRIORITY_META[priority]} fallback={priority} testid="priority-badge" />;
 }
 
 /** Inline progress indicator for dense table cells. */

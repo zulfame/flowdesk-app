@@ -298,3 +298,12 @@ Permintaan user: halaman Ubah mirip Detail dan malah kurang fungsi; gabungkan ke
 - **`TaskForm.jsx` kini khusus buat baru** (`/tasks/new`): tanpa cabang edit/status, layout dua kolom tetap.
 - **`Tasks.jsx`**: aksi baris jadi **Detail · Duplikat · Hapus**.
 - Verifikasi manual: menu baris = ['Detail','Duplikat','Hapus']; menu Detail = ['Duplikat','Jadikan Template','Cetak','Hapus']; sunting inline Informasi Tugas (ubah tenggat → tersimpan & tampil 20 Agu, lalu data uji dikembalikan ke 15 Agu via API); mode sunting judul/deskripsi + Batal berfungsi. Guard exit 0.
+
+## Update (2026-08-06, lanjutan 6) — E9: badge Status/Prioritas/Tenggat berwarna + polish Detail Tugas
+Atas persetujuan user (boleh keluar dari monokrom untuk keterbacaan status):
+- **Token hue baru** di `index.css` (light & dark): `--st-draft/-pending/-progress/-done/-overdue/-cancelled/-archived`, `--pr-urgent/-high/-medium/-low`, plus utilitas `.state-chip` (tint 12%, teks solid, border 32%) yang menerima hue via inline `--chip`. Tanpa hex & tanpa kelas warna Tailwind.
+- `composite/TaskBadges.jsx` jadi sumber tunggal: `STATUS_META`/`PRIORITY_META` memakai field `chip`; `StatusBadge`/`PriorityBadge` render `.state-chip`.
+- **Badge Tenggat** (Kelola Tugas + Dashboard) kini relatif & berwarna bertingkat: lewat/hari ini merah, besok–3 hari kuning, 4–7 hari biru, >7 hari hijau; tanggal asli di atribut `title`. Kolom tetap diurutkan pakai tanggal asli.
+- Dicatat sebagai pengecualian **E9** di `FLOWDESK_EXCEPTIONS.md`.
+- Polish Detail Tugas lain (permintaan user berurutan): tombol **Setujui** dikecilkan seukuran badge (h-6, `rounded-md`, `px-2.5 py-0.5`, tanpa ikon); **kartu Riwayat dihapus**; **tombol Kirim** di kartu Pemberi Tugas dihapus (fungsi `broadcast` ikut dibersihkan).
+- Verifikasi visual light & dark mode: badge terbaca di kedua tema, guard exit 0.

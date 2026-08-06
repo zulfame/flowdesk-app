@@ -71,10 +71,12 @@ const dueLabel = (iso) => {
   const end = new Date(new Date(iso).toDateString());
   const d = Math.round((end - start) / 86400000);
   if (Number.isNaN(d)) return null;
-  if (d < 0) return { text: `Lewat ${Math.abs(d)} hari`, variant: "destructive" };
-  if (d === 0) return { text: "Hari ini", variant: "default" };
-  if (d === 1) return { text: "Besok", variant: "secondary" };
-  return { text: `${d} hari lagi`, variant: "outline" };
+  if (d < 0) return { text: `Lewat ${Math.abs(d)} hari`, chip: "--st-overdue" };
+  if (d === 0) return { text: "Hari ini", chip: "--st-overdue" };
+  if (d === 1) return { text: "Besok", chip: "--st-pending" };
+  if (d <= 3) return { text: `${d} hari lagi`, chip: "--st-pending" };
+  if (d <= 7) return { text: `${d} hari lagi`, chip: "--st-progress" };
+  return { text: `${d} hari lagi`, chip: "--st-done" };
 };
 
 const STATUS_OPTIONS = ["Pending", "On Progress", "Completed", "Overdue", "Draft", "Cancelled", "Archived"];
@@ -120,7 +122,12 @@ const buildColumns = ({ user, onOpen, onDuplicate, onDelete }) => [
       const due = dueLabel(row.original.deadline);
       if (!due) return <span className="text-muted-foreground">{"\u2014"}</span>;
       return (
-        <Badge variant={due.variant} className="font-normal" title={fmtDay(row.original.deadline)}>
+        <Badge
+          variant="outline"
+          className={due.chip ? "state-chip font-medium" : "font-normal text-muted-foreground"}
+          style={due.chip ? { "--chip": `var(${due.chip})` } : undefined}
+          title={fmtDay(row.original.deadline)}
+        >
           {due.text}
         </Badge>
       );

@@ -47,6 +47,20 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
   besar hanya untuk layar autentikasi (`Login.jsx`).
 - Konsekuensi: jangan lagi menambal `text-sm` di root halaman — base sudah 14px.
 
+### E9 — Warna pada badge Status, Prioritas & Tenggat (dikecualikan dari monokrom)
+Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
+- Hue disimpan sebagai token di `index.css` (light + dark): `--st-draft`, `--st-pending`,
+  `--st-progress`, `--st-done`, `--st-overdue`, `--st-cancelled`, `--st-archived`,
+  `--pr-urgent`, `--pr-high`, `--pr-medium`, `--pr-low`. **Tidak boleh** memakai kelas
+  warna Tailwind (`bg-red-500`) atau hex di komponen.
+- Render lewat utilitas `.state-chip` (tint 12%, teks solid, garis 32%) dan inline
+  `style={{ "--chip": "var(--st-done)" }}`. Sumber tunggal: `composite/TaskBadges.jsx`
+  (`STATUS_META`, `PRIORITY_META`, `StatusBadge`, `PriorityBadge`).
+- Badge **Tenggat** memakai skala sama: lewat/hari ini = `--st-overdue`, besok–3 hari =
+  `--st-pending`, 4–7 hari = `--st-progress`, >7 hari = `--st-done`. Teks relatif
+  ("9 hari lagi"), tanggal asli ada di `title`.
+- Sisa UI tetap monokrom. Warna lain hanya untuk data buatan pengguna (E2).
+
 ### FD11 — Detail sebagai satu-satunya tempat sunting (WAJIB untuk modul beritem)
 - Modul yang punya sub-item (Tugas) **tidak boleh punya halaman "Ubah" terpisah**: halaman
   Detail = baca + sunting. Alasan: halaman Ubah lama hanya duplikat Detail dan justru

@@ -100,6 +100,20 @@ code {
         --chart-4: var(--hue-chart-4);
         --chart-5: var(--hue-chart-5);
 
+        /* ── State hues (E9) — HANYA untuk badge Status & Prioritas tugas.
+           Dikecualikan dari aturan monokrom agar status cepat terbaca. ── */
+        --st-draft: 220 9% 46%;
+        --st-pending: 32 95% 38%;
+        --st-progress: 217 91% 48%;
+        --st-done: 142 71% 36%;
+        --st-overdue: 0 72% 48%;
+        --st-cancelled: 0 0% 45%;
+        --st-archived: 262 52% 47%;
+        --pr-urgent: 0 72% 48%;
+        --pr-high: 25 95% 42%;
+        --pr-medium: 217 91% 48%;
+        --pr-low: 220 9% 46%;
+
         /* Sidebar semantics (monochrome-first) */
         --sidebar-background: var(--neutral-50);
         --sidebar-foreground: var(--neutral-700);
@@ -143,6 +157,19 @@ code {
         --chart-4: 280 65% 60%;
         --chart-5: 340 75% 55%;
 
+        /* State hues (E9) — versi terang untuk latar gelap */
+        --st-draft: 220 9% 65%;
+        --st-pending: 38 92% 62%;
+        --st-progress: 213 94% 68%;
+        --st-done: 142 62% 55%;
+        --st-overdue: 0 84% 65%;
+        --st-cancelled: 0 0% 63%;
+        --st-archived: 258 90% 74%;
+        --pr-urgent: 0 84% 65%;
+        --pr-high: 27 96% 61%;
+        --pr-medium: 213 94% 68%;
+        --pr-low: 220 9% 65%;
+
         /* Sidebar semantics (dark) */
         --sidebar-background: var(--neutral-900);
         --sidebar-foreground: var(--neutral-100);
@@ -154,6 +181,16 @@ code {
         --sidebar-ring: var(--neutral-300);
     }
 
+}
+
+/* Badge status/prioritas berwarna (E9): tint lembut + teks & garis sewarna.
+   Hue di-set lewat inline `--chip` agar tetap token-based. */
+@layer components {
+    .state-chip {
+        background-color: hsl(var(--chip) / 0.12);
+        color: hsl(var(--chip));
+        border-color: hsl(var(--chip) / 0.32);
+    }
 }
 
 /* Density-aware table rows (opt-in via `.tbl-density`) — R47.1/R47.8. */
