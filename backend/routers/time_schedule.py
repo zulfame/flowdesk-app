@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 
 from db import db
-from helpers import new_id, now_iso, log_activity, is_privileged, can_manage
+from helpers import new_id, now_iso, log_activity, is_privileged, can_manage, schedule_scope_query, scope_user_ids
 from security import get_current_user
 from services import delete_time_schedule
 
@@ -69,17 +69,22 @@ class ConvertBody(BaseModel):
     deadline: Optional[str] = None
 
 
-def _vis(user: dict) -> dict:
-    if is_privileged(user):
-        return {}
+async def _vis(user: dict) -> dict:
+    return await schedule_scope_query(db, user)
+
+
+async def _can_view(user: dict, s: dict) -> bool:
     uid = user.get("id")
-    return {"$or": [{"created_by": uid}, {"activities.pic.user_id": uid}]}
-
-
-def _can_view(user: dict, s: dict) -> bool:
-    if is_privileged(user) or s.get("created_by") == user.get("id"):
+    if s.get("created_by") == uid:
         return True
-    return any((a.get("pic") or {}).get("user_id") == user.get("id") for a in s.get("activities", []))
+    if any((a.get("pic") or {}).get("user_id") == uid for a in s.get("activities", [])):
+        return True
+    ids = await scope_user_ids(db, user)
+    if ids is None:
+        return True
+    return s.get("created_by") in ids or any(
+        (a.get("pic") or {}).get("user_id") in ids for a in s.get("activities", [])
+    )
 
 
 def _norm_activities(acts) -> list:
@@ -97,7 +102,7 @@ def _norm_activities(acts) -> list:
 @router.get("")
 async def list_schedules(user: dict = Depends(get_current_user)):
     return await db.time_schedules.find(
-        {**_vis(user), "is_deleted": {"$ne": True}}, {"_id": 0}
+        {**await _vis(user), "is_deleted": {"$ne": True}}, {"_id": 0}
     ).sort("created_at", -1).to_list(500)
 
 
@@ -121,7 +126,7 @@ async def get_schedule(sid: str, user: dict = Depends(get_current_user)):
     s = await db.time_schedules.find_one({"id": sid, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not s:
         raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
-    if not _can_view(user, s):
+    if not await _can_view(user, s):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke jadwal ini")
     return s
 
@@ -158,7 +163,7 @@ async def convert_activity(sid: str, aid: str, body: ConvertBody, user: dict = D
     s = await db.time_schedules.find_one({"id": sid, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not s:
         raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
-    if not _can_view(user, s):
+    if not await _can_view(user, s):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke jadwal ini")
     act = next((a for a in s.get("activities", []) if a.get("id") == aid), None)
     if not act:
@@ -222,7 +227,7 @@ async def export_schedule(sid: str, user: dict = Depends(get_current_user)):
     s = await db.time_schedules.find_one({"id": sid, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not s:
         raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan")
-    if not _can_view(user, s):
+    if not await _can_view(user, s):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke jadwal ini")
 
     import openpyxl

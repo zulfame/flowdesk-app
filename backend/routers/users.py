@@ -1,11 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends, UploadFile, File
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Dict
 import io
 import csv
+import re
 
 from db import db
-from helpers import new_id, now_iso, log_activity
+from helpers import new_id, now_iso, log_activity, ROLE_LEVELS, guess_role_level, subordinate_users
 from security import hash_password, get_current_user, require_admin
 
 router = APIRouter(tags=["users"])
@@ -29,10 +30,14 @@ PERMISSION_CATALOG = [
 ]
 
 DEFAULT_ROLES = [
-    {"name": "admin", "label": "Administrator", "permissions": ["*"]},
+    {"name": "admin", "label": "Administrator", "permissions": ["*"], "is_system": True},
     {"name": "manager", "label": "Manajer", "permissions": ["task", "meeting", "time_schedule", "reminder", "note", "calendar", "report"]},
     {"name": "member", "label": "Anggota", "permissions": ["task", "meeting", "time_schedule", "reminder", "note", "calendar"]},
 ]
+
+
+def _slug(label: str) -> str:
+    return re.sub(r"^_+|_+$", "", re.sub(r"[^a-z0-9]+", "_", (label or "").lower()))
 
 
 class UserCreate(BaseModel):
@@ -57,6 +62,9 @@ class RoleBody(BaseModel):
     name: str
     label: str
     permissions: List[str] = []
+    parent_id: Optional[str] = None
+    level: Optional[str] = None
+    order: int = 0
 
 
 def _clean(u: dict) -> dict:
@@ -85,6 +93,14 @@ async def list_users(page: int = 1, page_size: int = 20, q: Optional[str] = None
     items = await db.users.find(query, proj).sort("created_at", -1) \
         .skip((page - 1) * page_size).limit(page_size).to_list(page_size)
     return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@router.get("/users/subordinates")
+async def list_subordinates(user: dict = Depends(get_current_user)):
+    """Kandidat PIC: pemegang jabatan DI BAWAH jabatan pengguna (semua turunan)."""
+    items = await subordinate_users(db, user)
+    items.sort(key=lambda u: (u.get("name") or "").lower())
+    return {"items": items, "total": len(items)}
 
 
 @router.get("/permissions")
@@ -205,14 +221,139 @@ async def delete_user(user_id: str, admin: dict = Depends(require_admin)):
     return {"message": "Pengguna dihapus"}
 
 
+def _sort_roles(roles: list) -> list:
+    """Urut hierarkis: induk lalu turunannya, tiap tingkat urut `order` lalu label."""
+    children = {}
+    for r in roles:
+        children.setdefault(r.get("parent_id") or None, []).append(r)
+    for v in children.values():
+        v.sort(key=lambda r: (r.get("order") or 0, (r.get("label") or "").lower()))
+    out = []
+
+    def walk(pid, depth):
+        for r in children.get(pid, []):
+            r["depth"] = depth
+            out.append(r)
+            walk(r["id"], depth + 1)
+
+    walk(None, 0)
+    seen = {r["id"] for r in out}
+    for r in roles:  # peran dengan induk yatim tetap ditampilkan
+        if r["id"] not in seen:
+            r["depth"] = 0
+            out.append(r)
+    return out
+
+
 @router.get("/roles")
 async def list_roles(user: dict = Depends(get_current_user)):
-    roles = await db.roles.find({}, {"_id": 0}).to_list(100)
+    roles = await db.roles.find({}, {"_id": 0}).to_list(500)
     if not roles:
         for r in DEFAULT_ROLES:
             await db.roles.insert_one({"id": new_id(), **r})
-        roles = await db.roles.find({}, {"_id": 0}).to_list(100)
-    return roles
+        roles = await db.roles.find({}, {"_id": 0}).to_list(500)
+    by_id = {r["id"]: r for r in roles}
+    for r in roles:
+        r.setdefault("parent_id", None)
+        r.setdefault("order", 0)
+        r.setdefault("is_system", False)
+        r["level"] = r.get("level") or guess_role_level(r.get("label"))
+        parent = by_id.get(r.get("parent_id"))
+        r["parent_label"] = parent.get("label") if parent else None
+    return _sort_roles(roles)
+
+
+@router.get("/role-levels")
+async def get_role_levels(user: dict = Depends(get_current_user)):
+    """Izin bawaan per level jabatan — diwarisi peran yang izinnya belum ditimpa."""
+    doc = await db.settings.find_one({"key": "app"}, {"_id": 0, "role_levels": 1})
+    saved = (doc or {}).get("role_levels") or {}
+    return {"levels": ROLE_LEVELS, "permissions": {lv: saved.get(lv, []) for lv in ROLE_LEVELS}}
+
+
+class RoleLevelsBody(BaseModel):
+    permissions: Dict[str, List[str]]
+
+
+@router.put("/role-levels")
+async def set_role_levels(body: RoleLevelsBody, admin: dict = Depends(require_admin)):
+    clean = {lv: sorted(set(body.permissions.get(lv) or [])) for lv in ROLE_LEVELS}
+    await db.settings.update_one({"key": "app"}, {"$set": {"role_levels": clean}}, upsert=True)
+    await log_activity(db, admin, "update", "role", None, "Memperbarui izin per level jabatan")
+    return {"permissions": clean}
+
+
+@router.post("/roles/import")
+async def import_roles(file: UploadFile = File(...), admin: dict = Depends(require_admin)):
+    """Impor hierarki jabatan dari Excel/CSV: kolom Name, Parent (atau Parent ID), Level, Order."""
+    raw = await file.read()
+    fname = (file.filename or "").lower()
+    rows = []
+    try:
+        if fname.endswith(".xlsx"):
+            import openpyxl
+            wb = openpyxl.load_workbook(io.BytesIO(raw), read_only=True, data_only=True)
+            data = list(wb.active.iter_rows(values_only=True))
+            if data:
+                headers = [str(h).strip().lower() if h is not None else "" for h in data[0]]
+                rows = [{headers[i]: (r[i] if i < len(r) else None) for i in range(len(headers))} for r in data[1:]]
+        else:
+            text = raw.decode("utf-8-sig")
+            rows = [{(k or "").strip().lower(): v for k, v in row.items()} for row in csv.DictReader(io.StringIO(text))]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Gagal membaca berkas: {e}")
+
+    parsed = []
+    for row in rows:
+        label = str(row.get("name") or row.get("nama") or row.get("label") or "").strip()
+        if not label:
+            continue
+        parsed.append({
+            "ext_id": str(row.get("id") or "").strip() or None,
+            "label": label,
+            "parent_label": str(row.get("parent") or row.get("atasan") or "").strip() or None,
+            "parent_ext_id": str(row.get("parent id") or row.get("parent_id") or "").strip() or None,
+            "level": str(row.get("level") or "").strip() or guess_role_level(label),
+            "order": int(row.get("order") or 0) if str(row.get("order") or "0").strip().isdigit() else 0,
+        })
+    if not parsed:
+        raise HTTPException(status_code=400, detail="Tidak ada baris jabatan yang bisa dibaca")
+
+    created, updated = 0, 0
+    id_by_ext, id_by_label = {}, {}
+    for r in parsed:
+        name = _slug(r["label"])
+        existing = await db.roles.find_one({"name": name}, {"_id": 0})
+        fields = {"label": r["label"], "level": r["level"], "order": r["order"]}
+        if existing:
+            await db.roles.update_one({"name": name}, {"$set": fields})
+            rid = existing["id"]
+            updated += 1
+        else:
+            rid = new_id()
+            system = name in ("super_admin", "guest", "admin")
+            await db.roles.insert_one({"id": rid, "name": name,
+                                       "permissions": ["*"] if name == "super_admin" else [],
+                                       "parent_id": None, "is_system": system, **fields})
+            created += 1
+        if r["ext_id"]:
+            id_by_ext[r["ext_id"]] = rid
+        id_by_label[r["label"].lower()] = rid
+
+    linked = 0
+    for r in parsed:
+        rid = id_by_ext.get(r["ext_id"]) or id_by_label.get(r["label"].lower())
+        parent = None
+        if r["parent_ext_id"]:
+            parent = id_by_ext.get(r["parent_ext_id"])
+        if not parent and r["parent_label"]:
+            parent = id_by_label.get(r["parent_label"].lower())
+        if parent and parent != rid:
+            await db.roles.update_one({"id": rid}, {"$set": {"parent_id": parent}})
+            linked += 1
+
+    await log_activity(db, admin, "create", "role", None, f"Impor {created + updated} jabatan dari berkas")
+    return {"created": created, "updated": updated, "linked": linked, "total": len(parsed)}
 
 
 @router.post("/roles")
@@ -235,7 +376,7 @@ async def update_role(role_id: str, body: RoleBody, admin: dict = Depends(requir
 @router.delete("/roles/{role_id}")
 async def delete_role(role_id: str, admin: dict = Depends(require_admin)):
     role = await db.roles.find_one({"id": role_id})
-    if role and role.get("name") in ("admin", "manager", "member"):
+    if role and (role.get("is_system") or role.get("name") in ("admin", "manager", "member", "super_admin", "guest")):
         raise HTTPException(status_code=400, detail="Role bawaan tidak dapat dihapus")
     await db.roles.delete_one({"id": role_id})
     return {"message": "Role dihapus"}

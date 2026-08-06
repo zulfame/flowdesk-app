@@ -63,6 +63,7 @@ export default function TaskForm() {
   const { user } = useAuth();
   const [draftId] = useState(genId);
   const [users, setUsers] = useState([]);
+  const [picUsers, setPicUsers] = useState([]);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({ title: "", description: "", priority: "Medium", deadline: "" });
   const [requester, setRequester] = useState(null);
@@ -77,6 +78,10 @@ export default function TaskForm() {
     api
       .get("/users?all=true")
       .then(({ data }) => setUsers(data.items || []))
+      .catch(() => {});
+    api
+      .get("/users/subordinates")
+      .then(({ data }) => setPicUsers(data.items || []))
       .catch(() => {});
   }, []);
 
@@ -285,7 +290,7 @@ export default function TaskForm() {
             </CardHeader>
             <CardContent className="space-y-2">
               <UserSelect
-                users={users}
+                users={picUsers}
                 value={pic}
                 onChange={setPic}
                 placeholder="Pilih pelaksana..."

@@ -36,9 +36,17 @@ async def _with_perms(u: dict) -> dict:
     if u.get("role") == "admin" or "*" in own:
         u["permissions"] = ["*"]
         return u
-    role = await db.roles.find_one({"name": u.get("role")}, {"_id": 0, "permissions": 1})
+    role = await db.roles.find_one({"name": u.get("role")}, {"_id": 0})
     if role:
-        own |= set(role.get("permissions") or [])
+        role_perms = set(role.get("permissions") or [])
+        if not role_perms:  # peran mewarisi izin level jabatannya
+            cfg = await db.settings.find_one({"key": "app"}, {"_id": 0, "role_levels": 1})
+            levels = (cfg or {}).get("role_levels") or {}
+            role_perms = set(levels.get(role.get("level") or "") or [])
+        own |= role_perms
+        if "*" in role_perms:
+            u["permissions"] = ["*"]
+            return u
     u["permissions"] = list(own)
     return u
 

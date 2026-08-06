@@ -4,7 +4,7 @@ from typing import Optional, List
 from datetime import datetime, timezone
 
 from db import db
-from helpers import new_id, now_iso, log_activity, is_privileged, is_admin, can_manage, task_visibility_query
+from helpers import new_id, now_iso, log_activity, is_privileged, is_admin, can_manage, task_scope_query, scope_user_ids
 from security import get_current_user
 from services import delete_task
 from notifications import create_notification, get_settings, _send_email, whatsapp_url, dispatch_email
@@ -337,7 +337,7 @@ async def list_tasks(status: Optional[str] = None, pic: Optional[str] = None,
         q["priority"] = priority
     if meeting_id:
         q["meeting_id"] = meeting_id
-    tasks = await db.tasks.find({**q, **task_visibility_query(user), "is_deleted": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(1000)
+    tasks = await db.tasks.find({**q, **(await task_scope_query(db, user)), "is_deleted": {"$ne": True}}, {"_id": 0}).sort("created_at", -1).to_list(1000)
     tasks = [compute(t) for t in tasks]
     if status:
         tasks = [t for t in tasks if t["status"] == status]
@@ -351,12 +351,26 @@ def _related_to_task(user: dict, task: dict) -> bool:
             or (task.get("requester") or {}).get("user_id") == uid)
 
 
+async def _in_scope(user: dict, task: dict) -> bool:
+    """Boleh melihat bila terkait langsung ATAU pemiliknya berada di bawah jabatan pengguna."""
+    if _related_to_task(user, task):
+        return True
+    ids = await scope_user_ids(db, user)
+    if ids is None:
+        return True
+    return any(x in ids for x in [
+        task.get("created_by"),
+        (task.get("pic") or {}).get("user_id"),
+        (task.get("requester") or {}).get("user_id"),
+    ] if x)
+
+
 @router.get("/{task_id}")
 async def get_task(task_id: str, user: dict = Depends(get_current_user)):
     task = await db.tasks.find_one({"id": task_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not task:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
-    if not is_privileged(user) and not _related_to_task(user, task):
+    if not await _in_scope(user, task):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke tugas ini")
     task = compute(task)
     task["attachments"] = await db.files.find(
@@ -551,7 +565,7 @@ async def duplicate_task(task_id: str, user: dict = Depends(get_current_user)):
     src = await db.tasks.find_one({"id": task_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not src:
         raise HTTPException(status_code=404, detail="Tugas tidak ditemukan")
-    if not is_privileged(user) and not _related_to_task(user, src):
+    if not await _in_scope(user, src):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke tugas ini")
     new = dict(src)
     new["id"] = new_id()

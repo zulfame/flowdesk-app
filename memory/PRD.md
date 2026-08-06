@@ -382,3 +382,32 @@ Permintaan user + hasil testing agent (`/app/test_reports/iteration_11.json`):
 - **Backend settings**: section baru `security` = `{authty_enabled, authty_allow_local_superadmin, authty_base_url, authty_timeout, authty_api_key, session_hours}`. `GET /api/settings` **tidak pernah** mengembalikan `authty_api_key` (selalu `""`) melainkan `authty_api_key_hint` (12 bullet + 4 karakter terakhir); `PUT /api/settings` mengabaikan `authty_api_key` kosong agar kunci tersimpan tidak terhapus, dan membuang `authty_api_key_hint`.
 - Verifikasi: simpan kedua kartu sukses (toast "Berhasil"), urutan menu sidebar sesuai abjad, `design-guard.sh` exit 0.
 - **PENDING dari user**: dokumentasi endpoint verifikasi Authty (path/method/request/response), nama field jabatan + pemetaan ke peran, dan API Key.
+
+## Update (2026-06-08g) — Hierarki jabatan (peran) + penugasan & pemantauan berbasis garis komando
+Sumber: Excel `roles_20260806212246.xlsx` (sheet `Roles`, kolom `ID, Name, Parent, Parent ID`, 46 baris) → satu pohon berakar **Dewan Komisaris → Direktur Utama → (Direktur Bisnis / Direktur Kepatuhan / Kabag Audit Intern / Kabag SDM dan Umum / Kabag Teknologi Informasi) → Kabag → Kasi → Staff**, plus 2 peran sistem (`Super Admin`, `Guest`).
+
+**Keputusan user**: PIC = semua turunan di cabang sendiri; monitoring = diri sendiri + seluruh subtree (lintas cabang tidak terlihat); izin diatur **per Level** dan diwarisi jabatan; peran lama (`manager`, `member`) dibiarkan sampai pengguna dipindahkan.
+
+### Backend
+- `roles` doc kini: `{id, name(slug), label, parent_id, level, order, permissions[], is_system}`. `GET /api/roles` mengembalikan urutan hierarkis + `depth` + `parent_label`, dan menebak `level` bila kosong.
+- `helpers.py` baru: `ROLE_LEVELS` (Komisaris, Dirut, Direksi, Kabag, Kasi, Staff), `guess_role_level()`, `sees_all()`, `role_subtree_names()`, `scope_user_ids()`, `subordinate_users()`, `task_scope_query()`, `meeting_scope_query()`, `schedule_scope_query()`. **`is_privileged()` (admin+manager lihat semua) TIDAK lagi dipakai untuk visibilitas** — diganti scope subtree; admin/izin `*` tetap lihat semua.
+- Call sites diperbarui: `routers/tasks.py` (list + `_in_scope()` untuk detail & duplikat), `routers/meetings.py` (`_meeting_visibility`/`_can_see_meeting` jadi async), `routers/time_schedule.py` (`_vis`/`_can_view` async), `routers/aggregate.py` (dashboard, kalender, pencarian global).
+- Endpoint baru: `GET /api/users/subordinates` (kandidat PIC = turunan tanpa diri sendiri; admin dapat semua), `GET/PUT /api/role-levels` (izin per level, disimpan di `settings.role_levels`), `POST /api/roles/import` (xlsx/csv: `Name`, `Parent`/`Parent ID`, `Level`, `Order`; membuat/memperbarui + menautkan atasan; `super_admin` otomatis izin `*`, `super_admin`/`guest`/`admin` ditandai `is_system` dan tak bisa dihapus).
+- `routers/auth.py::_with_perms` — izin efektif: izin jabatan bila ada, kalau kosong **mewarisi izin level**; `*` tetap dipendekkan jadi `["*"]`.
+
+### Frontend
+- `pages/Roles.jsx` ditulis ulang: kartu **Hierarki Jabatan** (tabel indentasi sesuai `depth`, kolom Atasan Langsung/Level/Urutan/Izin, badge "Warisan {Level}" bila izin kosong, tombol **Impor** xlsx/csv & **Ekspor** CSV, area scroll `max-h-[34rem]`) + kartu **Izin per Level Jabatan** (matriks Level × izin dengan Switch, satu tombol Simpan). Matriks per-peran lama dihapus (49 kolom tidak terpakai). Dialog jabatan: Nama, Atasan Langsung, Urutan, Level, Izin Khusus (kosong = warisi level).
+- `TaskForm.jsx` & `TaskDetail.jsx`: PIC memakai `GET /users/subordinates` (state `picUsers`); Pemberi Tugas tetap dari daftar semua pengguna.
+
+### Verifikasi (curl + Playwright)
+- Impor Excel: `{created: 46, updated: 0, linked: 43, total: 46}` → total 49 peran, pohon & level benar.
+- Kabag Kredit: `subordinates` = [Uji Staff Legal]; Staff Analis (cabang lain) = []; izin efektif diwarisi level Kabag.
+- Tugas dibuat Kabag Kredit untuk Staff Legal: Kabag Kredit list 1/terlihat detail 200 · Staff Legal 1/200 · **Staff Analis 0/403** · Admin 4/200.
+- UI: dropdown PIC untuk Kabag Kredit hanya menampilkan Uji Staff Legal. `design-guard.sh` exit 0.
+- Akun uji dicatat di `/app/memory/test_credentials.md`.
+
+### Catatan / sisa pekerjaan
+- Peran `manager`/`member`/`Anggota` masih ada (level ditebak "Staff") — pengguna lama perlu dipindahkan ke jabatan baru lewat Kelola Pengguna.
+- `Guest` belum punya izin apa pun.
+- Kelola Pengguna belum menampilkan dropdown jabatan hierarkis (masih daftar datar) — kandidat perbaikan berikutnya.
+- Integrasi Authty tetap DITUNDA sesuai permintaan user.

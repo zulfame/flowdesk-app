@@ -1,24 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  Check,
+  Download,
+  Info,
   Loader2,
   Lock,
-  Minus,
   MoreHorizontal,
   Pencil,
   Plus,
   Save,
-  ShieldCheck,
   Trash2,
+  Upload,
   X,
 } from "lucide-react";
 
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogBody,
@@ -38,12 +38,20 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import {
   Table,
@@ -60,20 +68,30 @@ import { notify } from "@/lib/notify";
 import { ACTION } from "@/constants/labels";
 import { roleSchema } from "@/lib/validation/adminSchema";
 
-/** Built-in roles that cannot be deleted. */
-const CORE_ROLES = ["admin", "manager", "member"];
+const NO_PARENT = "__none__";
 
-const hasAll = (role) => Boolean(role?.permissions?.includes("*"));
-const grants = (role, key) => hasAll(role) || Boolean(role?.permissions?.includes(key));
+const slugOf = (label) =>
+  label
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "");
+
+const csvCell = (v) => `"${String(v ?? "").replace(/"/g, '""')}"`;
 
 /**
- * Roles — role & permission administration.
- * Card 1: role list (table, R47) · Card 2: read-at-a-glance permission matrix.
+ * Roles — hierarki jabatan (peran) + izin per level.
+ * Card 1: pohon jabatan (indentasi, atasan langsung, level, urutan) + impor/ekspor.
+ * Card 2: izin bawaan per level — diwarisi jabatan yang izinnya belum ditimpa.
  */
 export default function Roles() {
+  const fileRef = useRef(null);
   const [roles, setRoles] = useState([]);
   const [permissions, setPermissions] = useState([]);
+  const [levels, setLevels] = useState([]);
+  const [levelPerms, setLevelPerms] = useState({});
   const [loading, setLoading] = useState(true);
+  const [savingLevels, setSavingLevels] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -85,16 +103,20 @@ export default function Roles() {
     defaultValues: { label: "" },
     mode: "onSubmit",
   });
+  const [meta, setMeta] = useState({ parent_id: NO_PARENT, level: "Staff", order: 0 });
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const [roleRes, permRes] = await Promise.all([
+      const [roleRes, permRes, lvlRes] = await Promise.all([
         api.get("/roles"),
         api.get("/permissions"),
+        api.get("/role-levels"),
       ]);
       setRoles(roleRes.data || []);
       setPermissions(permRes.data || []);
+      setLevels(lvlRes.data?.levels || []);
+      setLevelPerms(lvlRes.data?.permissions || {});
     } catch (err) {
       notify.error(apiError(err));
     } finally {
@@ -106,21 +128,22 @@ export default function Roles() {
     load();
   }, [load]);
 
-  const permLabel = useCallback(
-    (key) => (key === "*" ? "Semua izin" : permissions.find((p) => p.key === key)?.label || key),
-    [permissions]
-  );
-
   const openNew = () => {
     setEditing(null);
     setSelected([]);
+    setMeta({ parent_id: NO_PARENT, level: "Staff", order: 0 });
     form.reset({ label: "" });
     setFormOpen(true);
   };
 
   const openEdit = (role) => {
     setEditing(role);
-    setSelected(hasAll(role) ? permissions.map((p) => p.key) : role.permissions || []);
+    setSelected(role.permissions || []);
+    setMeta({
+      parent_id: role.parent_id || NO_PARENT,
+      level: role.level || "Staff",
+      order: role.order || 0,
+    });
     form.reset({ label: role.label || "" });
     setFormOpen(true);
   };
@@ -129,23 +152,18 @@ export default function Roles() {
     setSelected((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]));
 
   const submit = async (values) => {
-    const isAdminRole = editing?.name === "admin";
-    const permissionList = isAdminRole ? ["*"] : selected;
+    const payload = {
+      name: editing ? editing.name : slugOf(values.label),
+      label: values.label,
+      permissions: editing?.permissions?.includes("*") ? ["*"] : selected,
+      parent_id: meta.parent_id === NO_PARENT ? null : meta.parent_id,
+      level: meta.level,
+      order: Number(meta.order) || 0,
+    };
     try {
-      if (editing) {
-        await api.put(`/roles/${editing.id}`, {
-          name: editing.name,
-          label: values.label,
-          permissions: permissionList,
-        });
-      } else {
-        const name = values.label
-          .toLowerCase()
-          .replace(/[^a-z0-9]+/g, "_")
-          .replace(/^_+|_+$/g, "");
-        await api.post("/roles", { name, label: values.label, permissions: permissionList });
-      }
-      notify.success(`Peran ${values.label} berhasil disimpan.`);
+      if (editing) await api.put(`/roles/${editing.id}`, payload);
+      else await api.post("/roles", payload);
+      notify.success(`Jabatan ${values.label} berhasil disimpan.`);
       setFormOpen(false);
       load();
     } catch (err) {
@@ -156,7 +174,7 @@ export default function Roles() {
   const remove = async () => {
     try {
       await api.delete(`/roles/${deleting.id}`);
-      notify.success(`Peran ${deleting.label} berhasil dihapus.`);
+      notify.success(`Jabatan ${deleting.label} berhasil dihapus.`);
       setDeleting(null);
       load();
     } catch (err) {
@@ -164,8 +182,64 @@ export default function Roles() {
     }
   };
 
-  const permissionCount = useMemo(
-    () => (role) => (hasAll(role) ? permissions.length : (role.permissions || []).length),
+  const onImport = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setImporting(true);
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const { data } = await api.post("/roles/import", fd);
+      notify.success(
+        `Impor selesai: ${data.created} jabatan baru, ${data.updated} diperbarui, ${data.linked} tertaut ke atasan.`
+      );
+      load();
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const onExport = () => {
+    const head = ["ID", "Name", "Parent", "Parent ID", "Level", "Order"];
+    const body = roles.map((r) =>
+      [r.id, r.label, r.parent_label || "", r.parent_id || "", r.level || "", r.order || 0]
+        .map(csvCell)
+        .join(",")
+    );
+    const blob = new Blob([[head.map(csvCell).join(","), ...body].join("\n")], {
+      type: "text/csv;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "jabatan.csv";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const toggleLevelPerm = (level, key) =>
+    setLevelPerms((prev) => {
+      const cur = prev[level] || [];
+      return { ...prev, [level]: cur.includes(key) ? cur.filter((k) => k !== key) : [...cur, key] };
+    });
+
+  const saveLevels = async () => {
+    setSavingLevels(true);
+    try {
+      await api.put("/role-levels", { permissions: levelPerms });
+      notify.success("Izin per level berhasil disimpan.");
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setSavingLevels(false);
+    }
+  };
+
+  const permCount = useMemo(
+    () => (role) => (role.permissions?.includes("*") ? permissions.length : (role.permissions || []).length),
     [permissions.length]
   );
 
@@ -173,46 +247,108 @@ export default function Roles() {
     <div className="space-y-6" data-testid="roles-page">
       <Card data-testid="roles-list-card">
         <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle className="text-base">Kelola Peranan</CardTitle>
-          <Button size="sm" onClick={openNew} data-testid="btn-add-role">
-            <Plus className="size-4" /> {ACTION.add}
-          </Button>
+          <CardTitle className="flex items-center gap-2 text-base">
+            Hierarki Jabatan
+            <Badge variant="secondary" className="font-normal tabular-nums">
+              {roles.length}
+            </Badge>
+          </CardTitle>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              ref={fileRef}
+              type="file"
+              accept=".xlsx,.csv"
+              onChange={onImport}
+              className="hidden"
+              data-testid="role-import-input"
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fileRef.current?.click()}
+              disabled={importing}
+              data-testid="btn-import-roles"
+            >
+              {importing ? (
+                <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+              ) : (
+                <Upload className="size-4" aria-hidden="true" />
+              )}
+              Impor
+            </Button>
+            <Button variant="outline" size="sm" onClick={onExport} data-testid="btn-export-roles">
+              <Download className="size-4" /> Ekspor
+            </Button>
+            <Button size="sm" onClick={openNew} data-testid="btn-add-role">
+              <Plus className="size-4" /> {ACTION.add}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <Alert>
+            <Info className="h-4 w-4" aria-hidden="true" />
+            <AlertDescription>
+              Penugasan &amp; pemantauan mengikuti garis komando: pemberi tugas hanya dapat memilih
+              PIC dari jabatan di bawahnya, dan hanya melihat data dirinya beserta seluruh
+              bawahannya. Impor menerima kolom <code>Name</code>, <code>Parent</code>,{" "}
+              <code>Parent ID</code>, <code>Level</code>, <code>Order</code>.
+            </AlertDescription>
+          </Alert>
+          <div className="mt-4 rounded-md border">
             {loading ? (
               <div className="space-y-2 p-4" data-testid="roles-loading">
-                {Array.from({ length: 3 }).map((_, i) => (
+                {Array.from({ length: 5 }).map((_, i) => (
                   <Skeleton key={i} className="h-9 w-full" />
                 ))}
               </div>
             ) : (
-              <Table className="tbl-density [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
-                <TableHeader>
-                  <TableRow className="bg-muted/50 hover:bg-muted/50">
-                    <TableHead>Peran</TableHead>
-                    <TableHead>Kode</TableHead>
-                    <TableHead>Jumlah Izin</TableHead>
-                    <TableHead>Jenis</TableHead>
-                    <TableHead />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {roles.map((role) => {
-                    const isCore = CORE_ROLES.includes(role.name);
-                    return (
+              <div className="thin-scroll max-h-[34rem] overflow-auto">
+                <Table className="tbl-density [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap">
+                  <TableHeader>
+                    <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      <TableHead>Jabatan</TableHead>
+                      <TableHead>Atasan Langsung</TableHead>
+                      <TableHead>Level</TableHead>
+                      <TableHead>Urutan</TableHead>
+                      <TableHead>Izin</TableHead>
+                      <TableHead />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {roles.map((role) => (
                       <TableRow key={role.id} data-testid={`role-row-${role.name}`}>
-                        <TableCell className="font-medium">{role.label}</TableCell>
-                        <TableCell className="text-muted-foreground">{role.name}</TableCell>
-                        <TableCell>
-                          <Badge variant={hasAll(role) ? "default" : "secondary"} className="font-normal">
-                            {hasAll(role) ? "Semua izin" : `${permissionCount(role)} izin`}
-                          </Badge>
+                        <TableCell className="font-medium">
+                          <span
+                            className="flex items-center gap-1.5"
+                            style={{ paddingLeft: `${(role.depth || 0) * 16}px` }}
+                          >
+                            {role.is_system ? (
+                              <Lock className="size-3 text-muted-foreground" aria-label="Bawaan" />
+                            ) : null}
+                            {role.label}
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {role.parent_label || "—"}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="gap-1 font-normal">
-                            {isCore ? <Lock className="size-3" aria-hidden="true" /> : null}
-                            {isCore ? "Bawaan" : "Kustom"}
+                          <Badge variant="outline" className="font-normal">
+                            {role.level}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="tabular-nums text-muted-foreground">
+                          {role.order || 0}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={role.permissions?.includes("*") ? "default" : "secondary"}
+                            className="font-normal"
+                          >
+                            {role.permissions?.includes("*")
+                              ? "Semua izin"
+                              : permCount(role) === 0
+                                ? `Warisan ${role.level}`
+                                : `${permCount(role)} izin`}
                           </Badge>
                         </TableCell>
                         <TableCell>
@@ -236,7 +372,7 @@ export default function Roles() {
                                 >
                                   <Pencil aria-hidden="true" /> {ACTION.edit}
                                 </DropdownMenuItem>
-                                {isCore ? null : (
+                                {role.is_system ? null : (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
@@ -253,25 +389,25 @@ export default function Roles() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             )}
           </div>
         </CardContent>
       </Card>
 
-      <Card data-testid="roles-matrix-card">
+      <Card data-testid="role-levels-card">
         <CardHeader>
-          <CardTitle className="text-base">Matriks Hak Akses</CardTitle>
+          <CardTitle className="text-base">Izin per Level Jabatan</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <Alert>
-            <ShieldCheck className="h-4 w-4" aria-hidden="true" />
+            <Info className="h-4 w-4" aria-hidden="true" />
             <AlertDescription>
-              Tanda centang berarti peran tersebut memiliki izin pada baris itu. Administrator
-              selalu memegang seluruh izin.
+              Jabatan yang izinnya masih kosong otomatis mewarisi izin level di bawah ini. Isi izin
+              pada jabatan tertentu bila ingin menimpanya.
             </AlertDescription>
           </Alert>
           <div className="rounded-md border">
@@ -284,35 +420,29 @@ export default function Roles() {
             ) : (
               <Table
                 className="tbl-density [&_td]:whitespace-nowrap [&_th]:whitespace-nowrap"
-                data-testid="permission-matrix"
+                data-testid="level-matrix"
               >
                 <TableHeader>
                   <TableRow className="bg-muted/50 hover:bg-muted/50">
                     <TableHead>Izin</TableHead>
-                    {roles.map((role) => (
-                      <TableHead key={role.id} className="text-center">
-                        {role.label}
+                    {levels.map((lv) => (
+                      <TableHead key={lv} className="text-center">
+                        {lv}
                       </TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {permissions.map((perm) => (
-                    <TableRow key={perm.key} data-testid={`matrix-row-${perm.key}`}>
+                    <TableRow key={perm.key} data-testid={`level-row-${perm.key}`}>
                       <TableCell className="font-medium">{perm.label}</TableCell>
-                      {roles.map((role) => (
-                        <TableCell key={role.id} className="text-center">
-                          {grants(role, perm.key) ? (
-                            <Check
-                              className="mx-auto size-4 text-success"
-                              aria-label="Diizinkan"
-                            />
-                          ) : (
-                            <Minus
-                              className="mx-auto size-4 text-muted-foreground/50"
-                              aria-label="Tidak diizinkan"
-                            />
-                          )}
+                      {levels.map((lv) => (
+                        <TableCell key={lv} className="text-center">
+                          <Switch
+                            checked={(levelPerms[lv] || []).includes(perm.key)}
+                            onCheckedChange={() => toggleLevelPerm(lv, perm.key)}
+                            data-testid={`level-switch-${lv}-${perm.key}`}
+                          />
                         </TableCell>
                       ))}
                     </TableRow>
@@ -322,6 +452,16 @@ export default function Roles() {
             )}
           </div>
         </CardContent>
+        <CardFooter className="justify-end">
+          <Button size="sm" onClick={saveLevels} disabled={savingLevels} data-testid="btn-save-levels">
+            {savingLevels ? (
+              <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Save className="size-4" aria-hidden="true" />
+            )}
+            {savingLevels ? ACTION.saving : ACTION.save}
+          </Button>
+        </CardFooter>
       </Card>
 
       <Dialog open={formOpen} onOpenChange={setFormOpen}>
@@ -329,9 +469,10 @@ export default function Roles() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(submit)} noValidate>
               <DialogHeader>
-                <DialogTitle>{editing ? "Ubah Peran" : "Peran Baru"}</DialogTitle>
+                <DialogTitle>{editing ? "Ubah Jabatan" : "Jabatan Baru"}</DialogTitle>
                 <DialogDescription>
-                  Tentukan nama peran dan izin yang dimilikinya.
+                  Tentukan nama jabatan, atasan langsungnya, level, dan izin bila ingin menimpa
+                  warisan level.
                 </DialogDescription>
               </DialogHeader>
               <DialogBody className="form-dense">
@@ -340,38 +481,97 @@ export default function Roles() {
                   name="label"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Nama Peran</FormLabel>
+                      <FormLabel>Nama Jabatan</FormLabel>
                       <FormControl>
-                        <Input placeholder="mis. Supervisor" data-testid="role-label-input" {...field} />
+                        <Input
+                          placeholder="mis. Kasi Kredit"
+                          data-testid="role-label-input"
+                          {...field}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {editing?.name === "admin" ? (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5 sm:col-span-2">
+                    <FormLabel>Atasan Langsung</FormLabel>
+                    <Select
+                      value={meta.parent_id}
+                      onValueChange={(v) => setMeta((m) => ({ ...m, parent_id: v }))}
+                    >
+                      <SelectTrigger data-testid="role-parent-select">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value={NO_PARENT}>— Tanpa atasan (puncak) —</SelectItem>
+                        {roles
+                          .filter((r) => r.id !== editing?.id)
+                          .map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <FormLabel>Urutan</FormLabel>
+                    <Input
+                      type="number"
+                      value={meta.order}
+                      onChange={(e) => setMeta((m) => ({ ...m, order: e.target.value }))}
+                      data-testid="role-order-input"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <FormLabel>Level</FormLabel>
+                  <Select
+                    value={meta.level}
+                    onValueChange={(v) => setMeta((m) => ({ ...m, level: v }))}
+                  >
+                    <SelectTrigger data-testid="role-level-select">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {levels.map((lv) => (
+                        <SelectItem key={lv} value={lv}>
+                          {lv}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>
+                    Menentukan izin warisan bila izin jabatan dibiarkan kosong.
+                  </FormDescription>
+                </div>
+
+                {editing?.permissions?.includes("*") ? (
                   <Alert>
                     <Lock className="h-4 w-4" aria-hidden="true" />
                     <AlertDescription>
-                      Administrator memiliki seluruh izin secara permanen dan tidak dapat diubah.
+                      Jabatan ini memegang seluruh izin secara permanen dan tidak dapat diubah.
                     </AlertDescription>
                   </Alert>
                 ) : (
                   <div className="space-y-1.5">
-                    <p className="text-sm font-medium">
-                      Hak Akses{" "}
+                    <p className="font-medium">
+                      Izin Khusus{" "}
                       <span className="font-normal text-muted-foreground">
-                        ({selected.length}/{permissions.length} dipilih)
+                        ({selected.length}/{permissions.length} dipilih — kosong = warisi level)
                       </span>
                     </p>
-                    <div className="max-h-64 divide-y overflow-y-auto rounded-md border">
+                    <div className="thin-scroll max-h-56 divide-y overflow-y-auto rounded-md border">
                       {permissions.map((perm) => (
                         <div
                           key={perm.key}
                           className="flex items-center justify-between gap-3 px-3 py-2"
                           data-testid={`perm-row-${perm.key}`}
                         >
-                          <span className="text-sm">{perm.label}</span>
+                          <span>{perm.label}</span>
                           <Switch
                             checked={selected.includes(perm.key)}
                             onCheckedChange={() => togglePermission(perm.key)}
@@ -409,8 +609,8 @@ export default function Roles() {
       <ConfirmDeleteDialog
         open={Boolean(deleting)}
         onOpenChange={(open) => !open && setDeleting(null)}
-        title="Hapus peran?"
-        description={`Peran "${deleting?.label || ""}" akan dihapus.`}
+        title="Hapus jabatan?"
+        description={`Jabatan "${deleting?.label || ""}" akan dihapus.`}
         onConfirm={remove}
         testid="role-delete-confirm"
       />

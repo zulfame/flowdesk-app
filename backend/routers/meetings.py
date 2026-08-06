@@ -7,19 +7,22 @@ from helpers import new_id, now_iso, log_activity
 from security import get_current_user
 from services import delete_meeting
 from notifications import create_notification, whatsapp_url, get_settings, _send_email, _send_telegram
-from helpers import is_privileged, can_manage
+from helpers import is_privileged, can_manage, meeting_scope_query, scope_user_ids
 
 router = APIRouter(prefix="/meetings", tags=["meetings"])
 
 
-def _meeting_visibility(user: dict) -> dict:
-    if is_privileged(user):
-        return {}
-    return {"$or": [{"created_by": user["id"]}, {"member_ids": user["id"]}]}
+async def _meeting_visibility(user: dict) -> dict:
+    return await meeting_scope_query(db, user)
 
 
-def _can_see_meeting(user: dict, m: dict) -> bool:
-    return is_privileged(user) or m.get("created_by") == user["id"] or user["id"] in (m.get("member_ids") or [])
+async def _can_see_meeting(user: dict, m: dict) -> bool:
+    if m.get("created_by") == user["id"] or user["id"] in (m.get("member_ids") or []):
+        return True
+    ids = await scope_user_ids(db, user)
+    if ids is None:
+        return True
+    return m.get("created_by") in ids or any(x in ids for x in (m.get("member_ids") or []))
 
 
 async def _resolve_member_ids(participants: list, creator_id: str) -> list:
@@ -86,7 +89,7 @@ def _norm_items(items) -> list:
 
 @router.get("")
 async def list_meetings(user: dict = Depends(get_current_user)):
-    meetings = await db.meetings.find({**_meeting_visibility(user), "is_deleted": {"$ne": True}}, {"_id": 0, "entries": 0}).sort("date", -1).to_list(1000)
+    meetings = await db.meetings.find({**await _meeting_visibility(user), "is_deleted": {"$ne": True}}, {"_id": 0, "entries": 0}).sort("date", -1).to_list(1000)
     return meetings
 
 
@@ -95,7 +98,7 @@ async def get_meeting(meeting_id: str, user: dict = Depends(get_current_user)):
     m = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not m:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
-    if not _can_see_meeting(user, m):
+    if not await _can_see_meeting(user, m):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
     # Konten pribadi milik pengguna yang login
     entry = (m.get("entries") or {}).get(user["id"], {})
@@ -146,7 +149,7 @@ async def update_meeting(meeting_id: str, body: MeetingUpdate, user: dict = Depe
     existing = await db.meetings.find_one({"id": meeting_id}, {"_id": 0})
     if not existing:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
-    if not _can_see_meeting(user, existing):
+    if not await _can_see_meeting(user, existing):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
 
     is_owner = can_manage(user, existing)
@@ -204,7 +207,7 @@ async def convert_action_item(meeting_id: str, item_id: str, body: ConvertBody =
     meeting = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not meeting:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
-    if not _can_see_meeting(user, meeting):
+    if not await _can_see_meeting(user, meeting):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
     item = next((i for i in meeting.get("action_items", []) if i.get("id") == item_id), None)
     if not item:
@@ -258,7 +261,7 @@ async def broadcast_meeting(meeting_id: str, body: MeetingBroadcastBody, user: d
     m = await db.meetings.find_one({"id": meeting_id, "is_deleted": {"$ne": True}}, {"_id": 0})
     if not m:
         raise HTTPException(status_code=404, detail="Rapat tidak ditemukan")
-    if not _can_see_meeting(user, m):
+    if not await _can_see_meeting(user, m):
         raise HTTPException(status_code=403, detail="Anda tidak memiliki akses ke rapat ini")
 
     # Ikuti pengaturan kanal dari "Kelola Notifikasi"

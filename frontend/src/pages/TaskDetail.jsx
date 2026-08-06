@@ -125,6 +125,7 @@ export default function TaskDetail() {
   const { user } = useAuth();
   const [task, setTask] = useState(null);
   const [users, setUsers] = useState([]);
+  const [picUsers, setPicUsers] = useState([]);
   const [comment, setComment] = useState("");
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
@@ -155,6 +156,10 @@ export default function TaskDetail() {
     api
       .get("/users?all=true")
       .then(({ data }) => setUsers(data.items || []))
+      .catch(() => {});
+    api
+      .get("/users/subordinates")
+      .then(({ data }) => setPicUsers(data.items || []))
       .catch(() => {});
   }, []);
 
@@ -757,7 +762,7 @@ export default function TaskDetail() {
             {(editing) =>
               editing ? (
                 <UserSelect
-                  users={users}
+                  users={picUsers}
                   value={picDraft}
                   onChange={setPicDraft}
                   placeholder="Pilih pelaksana..."
