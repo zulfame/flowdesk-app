@@ -19,8 +19,9 @@ SRC="$SCRIPT_DIR/../src"
 # Directories of authored feature code (exclude ui/ primitives).
 DIRS="$SRC/pages $SRC/components/composite $SRC/components/layout $SRC/components/auth"
 
-# Not-yet-migrated modules + old shared components (phase-scoped exclusions).
-LEGACY='/(Settings)\.jsx'
+# Semua modul sudah dimigrasi — tidak ada pengecualian LEGACY lagi.
+# (Pola di bawah sengaja tidak akan cocok dengan berkas apa pun.)
+LEGACY='/__NO_LEGACY__\.jsx'
 EXCLUDE="$LEGACY"
 
 scan() { grep -rnE "$1" $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXCLUDE" | grep -vE '//\s*guard-allow'; }

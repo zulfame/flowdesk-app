@@ -510,3 +510,12 @@ Permintaan user: modul tiket bantuan (judul, deskripsi, kategori, prioritas, lam
 - **Struktur Proyek**: tambah `authty.py`, `crypto.py`, folder `scripts/`, dan router `help_tickets, og, authty`.
 - **Model Hak Akses** ditulis ulang sesuai kondisi nyata: peran admin/manager/member dihapus → **Super Admin**; hierarki jabatan (subtree) + izin menu per level; aturan Tiket Bantuan; catatan & pengingat privat; rapat pribadi per peserta; SSO Authty. Akun default kini `role: super_admin`.
 - **requirements.txt**: TIDAK ada modul Python baru pada modul Tiket Bantuan (hanya memakai dependensi yang sudah ada). Semua paket di requirements.txt diverifikasi terpasang — `pywebpush`, `py-vapid`, `http_ece` sebelumnya hilang di pod ini dan sudah dipasang ulang sesuai versi pin (backend restart OK, `GET /api/` 200). Tidak ada perubahan isi requirements.txt.
+
+## Update (2026-06-08h) — Pembersihan berkas mati (pra-push GitHub)
+Audit seluruh repo (impor silang untuk frontend, daftar router untuk backend). Dihapus:
+- **Frontend (sisa desain lama, 0 referensi)**: `pages/Settings.jsx`, `components/common.jsx`, `components/Layout.jsx`, `context/ThemeContext.jsx`, `components/Modal.jsx`, `components/ConfirmDialog.jsx`, `components/ImageUpload.jsx`.
+- **Root/artefak uji**: `backend_test.py`, `debug_result_docs.py`, `.screenshots/`, `.ruff_cache/`, `tests/` (kosong), `backend/tests/` (uji lama yang sudah tidak valid karena peran admin/manager/member dihapus).
+- **DIPERTAHANKAN**: `components/ui/*` (primitive shadcn, pustaka design system), `composite/{DatePicker,Combobox,sortable-table}.jsx` (SSOT guideline), `test_reports/`, `memory/`, `frontend/docs/`, `deploy/local/`, `design_guidelines.json`, `test_result.md`.
+- `design-guard.sh`: daftar `LEGACY` kini **kosong** (pola `__NO_LEGACY__`) → guard mengawasi SELURUH kode fitur; exit 0. `docs/FLOWDESK_EXCEPTIONS.md`: E5 diperbarui + status migrasi Fase 5 & 5b ditandai selesai.
+- Verifikasi pasca-hapus: tidak ada referensi tersisa (grep bersih), frontend restart & compile sukses (`localhost:3000` 200), halaman Profil + Tiket Bantuan render normal.
+- **Ubah Kata Sandi ↔ Authty (hasil pemeriksaan)**: `PUT /api/profile/password` SUDAH terhubung — user `auth_source: "authty"` + SSO aktif → panggil Authty `POST /api/user-password`, sinkron `upsert_user`, hash lokal diperbarui; gagal → 400 (pesan Authty) / 503 (server tak terjangkau, sandi lokal tidak diubah). Akun lokal tetap jalur bcrypt. Catatan: UI belum memberi keterangan bahwa akun SSO diarahkan ke Authty (belum diminta user).

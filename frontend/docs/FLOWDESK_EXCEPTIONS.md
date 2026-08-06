@@ -13,7 +13,7 @@
 | E6 | Primitive `ui/alert.jsx` = SSOT upstream | Primitive diubah ke **layout grid** (`grid-cols-[icon_1fr]`, `col-start-2` untuk Title/Description) menggantikan `[&>svg]:absolute` + `[&>svg+div]:translate-y-[-3px]` upstream. | Versi upstream hanya presisi bila ada `AlertTitle`; alert **hanya-deskripsi** ikonnya melenceng vertikal (dilaporkan user). Grid membuat ikon & baris teks pertama selalu sejajar. |
 | E8 | R05 — monochrome token-only | Ditambahkan token **umpan balik** `--success` & `--warning` (juga dipakai untuk centang "diizinkan" pada Matriks Hak Akses) (+ `hsl` di Tailwind) di samping `--destructive` yang sudah ada. | Status hasil aksi (sukses/peringatan/gagal) harus terbaca instan; monokrom saja membuat semua toast terlihat sama. Warna dipakai **hanya** pada elemen status (aksen & ikon toast, badge status), tidak untuk chrome/dekorasi. |
 | E7 | 2B.8 — `CardHeader`/`CardFooter` `px-6 py-4` + `space-y-1.5` | **`px-6 py-3`** (padding vertikal 12px) dan `CardHeader space-y-1`. `CardContent` tetap `px-6 py-4`. | Permintaan pemilik produk: header & footer kartu terasa terlalu tinggi untuk target UI compact (FD1). Padding vertikal header & footer tetap **seragam 12px** sehingga jarak dari divider konsisten. |
-| E5 | 2C.14 — guard atas seluruh `src` | `design-guard.sh` **mengecualikan modul yang belum dimigrasi** (daftar `LEGACY` di dalam skrip). Daftar itu menyusut setiap fase sampai kosong. | Redesign dilakukan bertahap; guard harus tetap bermakna (exit 0) untuk kode yang sudah dimigrasi. |
+| E5 | 2C.14 — guard atas seluruh `src` | Daftar `LEGACY` di `design-guard.sh` kini **KOSONG** — guard mengawasi seluruh kode fitur (`pages`, `composite`, `layout`, `auth`). Hanya `components/ui/*` (primitive shadcn) yang tetap dikecualikan. | Redesign sudah tuntas; pengecualian bertahap tidak lagi diperlukan. |
 
 ## Aturan Wajib Tambahan FlowDesk (Non-Negotiable)
 
@@ -179,7 +179,8 @@ Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
 | 2 | Halaman list/CRUD (R47) sisanya: **Kelola Tugas**, **Kelola Rapat**, **Kelola Catatan**, **Ingatkan Saya**, **Time Schedule** → semuanya `DataTableCard` mode KLIEN + dialog tambah/ubah + `ConfirmDeleteDialog` | ✅ Selesai |
 | 3 | Halaman detail & form: TaskDetail/TaskForm, MeetingDetail/MeetingForm, TimeScheduleDetail (Gantt monokrom) | ✅ Selesai |
 | 4 | Dashboard (KPI + tenggat terdekat + rapat hari ini) & Pusat Notifikasi (DataTableCard mode SERVER) | ✅ Selesai |
-| 5 | Sisa: Tiket Bantuan (fitur belum dibuat), Settings (halaman lama) | ⏳ Belum |
+| 5 | **Tiket Bantuan** dibangun penuh (daftar `DataTableCard` + dialog tambah + halaman detail: Penanganan/Ditujukan/Informasi/Komentar/Lampiran); halaman `Settings.jsx` lama **DIHAPUS** (tidak lagi dipakai) | ✅ Selesai |
+| 5b | Pembersihan sisa desain lama: `components/{Layout,Modal,ConfirmDialog,ImageUpload,common}.jsx` & `context/ThemeContext.jsx` dihapus; daftar `LEGACY` di `design-guard.sh` **kosong** (guard kini mengawasi SELURUH kode fitur) | ✅ Selesai |
 | 2a-1 | Penyempurnaan Profil: tinggi `CardHeader`/`CardFooter` dikecilkan (E7), urutan field sandi (Saat Ini di baris atas sendiri; Baru + Konfirmasi di baris berikutnya), foto profil tampil di footer sidebar & dropdown pengguna | ✅ Selesai |
 | 2a | **Profil Pengguna** (`pages/Profile.jsx`) → pola konfigurasi R51 (section cards + save bar), rhf+zod, `AvatarUpload` composite baru | ✅ Selesai |
 | 4 | Halaman konfigurasi (R51) + Kalender + Dashboard | ⏳ Belum |
