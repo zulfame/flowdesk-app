@@ -113,6 +113,21 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
     PR_ORDER = {"Urgent": 0, "High": 1, "Medium": 2, "Low": 3}
     my_tickets.sort(key=lambda t: (PR_ORDER.get(t.get("priority"), 9), t.get("created_at") or ""))
 
+    scoped_tickets = await db.help_tickets.find(
+        {"is_deleted": {"$ne": True}, **(await ticket_visibility(user))},
+        {"_id": 0, "category": 1, "priority": 1, "status": 1},
+    ).to_list(5000)
+    cat_count, pr_count = {}, {}
+    for tk in scoped_tickets:
+        cat_count[tk.get("category") or "Lainnya"] = cat_count.get(tk.get("category") or "Lainnya", 0) + 1
+        pr_count[tk.get("priority") or "Medium"] = pr_count.get(tk.get("priority") or "Medium", 0) + 1
+    tickets_by_category = sorted(
+        [{"label": k, "count": v} for k, v in cat_count.items()], key=lambda x: -x["count"]
+    )
+    tickets_by_priority = [
+        {"label": p, "count": pr_count.get(p, 0)} for p in ("Urgent", "High", "Medium", "Low")
+    ]
+
     return {
         "total_tasks": len(tasks),
         "tasks_by_status": by_status,
@@ -133,6 +148,8 @@ async def dashboard_stats(user: dict = Depends(get_current_user)):
         "trend": trend,
         "open_tickets": open_tickets,
         "my_tickets": my_tickets,
+        "tickets_by_category": tickets_by_category,
+        "tickets_by_priority": tickets_by_priority,
     }
 
 

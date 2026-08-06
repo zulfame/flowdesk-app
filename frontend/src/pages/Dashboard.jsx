@@ -14,14 +14,14 @@ import {
   Users,
   Video,
 } from "lucide-react";
-import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { Bar, BarChart, Cell, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { PriorityBadge } from "@/components/composite/TaskBadges";
+import { PriorityBadge, PRIORITY_META } from "@/components/composite/TaskBadges";
 import { api, apiError } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { cn } from "@/lib/utils";
@@ -80,6 +80,17 @@ function KpiCard({ label, value, hint, icon: Icon, tone, testid, onClick }) {
   );
 }
 
+/** Tooltip grafik bertoken (dipakai grafik tiket). */
+function ChartTip({ active, payload, label }) {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-md border bg-card px-2.5 py-1.5 text-xs text-card-foreground shadow-sm">
+      <p className="font-medium">{label}</p>
+      <p className="text-muted-foreground">{payload[0].value} tiket</p>
+    </div>
+  );
+}
+
 /** Baris daftar padat — tetap rapi walau isinya ratusan (divide-y + area scroll). */
 function ListShell({ children, empty, emptyText, testid }) {
   if (empty)
@@ -134,6 +145,13 @@ export default function Dashboard() {
   const upcoming = d.upcoming_meetings || [];
   const dueSoon = d.due_soon || [];
   const myTickets = d.my_tickets || [];
+  const byCategory = d.tickets_by_category || [];
+  const byPriority = (d.tickets_by_priority || []).map((p) => ({
+    ...p,
+    label: PRIORITY_META[p.label]?.label || p.label,
+    chip: PRIORITY_META[p.label]?.chip || "--pr-low",
+  }));
+  const totalTickets = byCategory.reduce((a, b) => a + b.count, 0);
 
   return (
     <div className="space-y-6" data-testid="dashboard-page">
@@ -443,6 +461,79 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </CardContent>
       </Card>
+
+      <div className="grid items-start gap-6 lg:grid-cols-2">
+        <Card data-testid="card-tickets-category">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              Tiket Kategori
+              <Badge variant="secondary" className="font-normal tabular-nums">
+                {totalTickets}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {byCategory.length ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={byCategory} layout="vertical" margin={{ left: 8, right: 16 }}>
+                  <XAxis
+                    type="number"
+                    allowDecimals={false}
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="label"
+                    width={110}
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                  />
+                  <Tooltip content={<ChartTip />} cursor={{ fill: "hsl(var(--muted-foreground))", fillOpacity: 0.08 }} />
+                  <Bar
+                    dataKey="count"
+                    name="Tiket"
+                    fill="hsl(var(--muted-foreground))"
+                    radius={[0, 3, 3, 0]}
+                    barSize={14}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="flex h-[220px] items-center justify-center text-muted-foreground">Belum ada data tiket.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-tickets-priority">
+          <CardHeader>
+            <CardTitle className="text-base">Tiket Prioritas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {totalTickets ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={byPriority} margin={{ left: 0, right: 8 }}>
+                  <XAxis dataKey="label" tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
+                  <YAxis
+                    allowDecimals={false}
+                    tick={{ fontSize: 11 }}
+                    stroke="hsl(var(--muted-foreground))"
+                    width={22}
+                  />
+                  <Tooltip content={<ChartTip />} cursor={{ fill: "hsl(var(--muted-foreground))", fillOpacity: 0.08 }} />
+                  <Bar dataKey="count" name="Tiket" radius={[3, 3, 0, 0]} barSize={36}>
+                    {byPriority.map((p) => (
+                      <Cell key={p.label} fill={`hsl(var(${p.chip}))`} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <p className="flex h-[220px] items-center justify-center text-muted-foreground">Belum ada data tiket.</p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
