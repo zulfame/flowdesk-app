@@ -6,6 +6,8 @@ import {
   Mail,
   MoreHorizontal,
   Pencil,
+  Pin,
+  PinOff,
   Plus,
   Save,
   Trash2,
@@ -31,6 +33,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -82,18 +85,29 @@ const fmtDay = (d) =>
     : "\u2014";
 
 /** Column factory (module scope — no component defined during render). */
-const buildColumns = ({ onEdit, onToggle, onDelete }) => [
+const buildColumns = ({ onEdit, onToggle, onTogglePin, onDelete }) => [
   {
     id: "done",
     accessorFn: (r) => (r.done ? 1 : 0),
     header: () => <span className="sr-only">Selesai</span>,
     enableSorting: false,
-    cell: ({ row }) =>
-      row.original.done ? (
-        <CheckCircle2 className="size-4 text-success" aria-label="Selesai" />
-      ) : (
-        <Circle className="size-4 text-muted-foreground" aria-label="Belum selesai" />
-      ),
+    cell: ({ row }) => {
+      const r = row.original;
+      return (
+        <button
+          type="button"
+          onClick={() => onToggle(r)}
+          aria-label={r.done ? "Tandai belum selesai" : "Tandai selesai"}
+          data-testid={`reminder-toggle-${r.id}`}
+        >
+          {r.done ? (
+            <CheckCircle2 className="size-4 text-success" />
+          ) : (
+            <Circle className="size-4 text-muted-foreground" />
+          )}
+        </button>
+      );
+    },
   },
   {
     accessorKey: "title",
@@ -102,12 +116,15 @@ const buildColumns = ({ onEdit, onToggle, onDelete }) => [
       <div className="min-w-0">
         <p
           className={cn(
-            "max-w-[20rem] truncate font-medium",
+            "flex max-w-[20rem] items-center gap-1.5 truncate font-medium",
             row.original.done && "text-muted-foreground line-through"
           )}
           title={row.original.title}
         >
-          {row.original.title}
+          {row.original.pinned ? (
+            <Pin className="size-3.5 shrink-0 text-muted-foreground" aria-label="Tersemat" />
+          ) : null}
+          <span className="truncate">{row.original.title}</span>
         </p>
         {row.original.description ? (
           <p className="max-w-[20rem] truncate text-xs text-muted-foreground">
@@ -189,19 +206,13 @@ const buildColumns = ({ onEdit, onToggle, onDelete }) => [
               <Pencil aria-hidden="true" /> {ACTION.edit}
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => onToggle(row.original)}
-              data-testid={`btn-toggle-reminder-${row.original.id}`}
+              onClick={() => onTogglePin(row.original)}
+              data-testid={`btn-pin-reminder-${row.original.id}`}
             >
-              {row.original.done ? (
-                <>
-                  <Circle aria-hidden="true" /> Batalkan Selesai
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 aria-hidden="true" /> Tandai Selesai
-                </>
-              )}
+              {row.original.pinned ? <PinOff aria-hidden="true" /> : <Pin aria-hidden="true" />}
+              {row.original.pinned ? "Lepas Sematan" : "Sematkan"}
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => onDelete(row.original)}
               className="text-destructive focus:text-destructive"
@@ -300,6 +311,15 @@ export default function Reminders() {
     }
   };
 
+  const togglePin = async (r) => {
+    try {
+      await api.put(`/reminders/${r.id}`, { pinned: !r.pinned });
+      setTick((t) => t + 1);
+    } catch (err) {
+      notify.error(apiError(err));
+    }
+  };
+
   const doDelete = async () => {
     try {
       await api.delete(`/reminders/${deleting.id}`);
@@ -330,7 +350,12 @@ export default function Reminders() {
   };
 
   const columns = useMemo(
-    () => buildColumns({ onEdit: openEdit, onToggle: toggleDone, onDelete: setDeleting }),
+    () => buildColumns({
+        onEdit: openEdit,
+        onToggle: toggleDone,
+        onTogglePin: togglePin,
+        onDelete: setDeleting,
+      }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );

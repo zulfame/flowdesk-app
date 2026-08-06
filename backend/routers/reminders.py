@@ -43,6 +43,7 @@ class ReminderCreate(BaseModel):
     broadcast_offset: str = "10m"  # 10m | 1h | 1d | custom
     broadcast_at: Optional[str] = None  # used when offset == custom
     done: bool = False
+    pinned: bool = False
 
 
 class ReminderUpdate(BaseModel):
@@ -57,6 +58,7 @@ class ReminderUpdate(BaseModel):
     broadcast_offset: Optional[str] = None
     broadcast_at: Optional[str] = None
     done: Optional[bool] = None
+    pinned: Optional[bool] = None
 
 
 @router.get("")
@@ -69,7 +71,7 @@ async def list_reminders(page: int = 1, page_size: int = 50, status: Optional[st
         query["done"] = True
     total = await db.reminders.count_documents(query)
     page = max(1, page); page_size = min(max(1, page_size), 200)
-    items = await db.reminders.find(query, {"_id": 0}).sort("remind_at", 1) \
+    items = await db.reminders.find(query, {"_id": 0}).sort([("pinned", -1), ("remind_at", 1)]) \
         .skip((page - 1) * page_size).limit(page_size).to_list(page_size)
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
