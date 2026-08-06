@@ -22,6 +22,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -377,6 +378,9 @@ const DocumentManager = React.forwardRef(function DocumentManager({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Tambah Dokumen URL</DialogTitle>
+            <DialogDescription>
+              Tautkan dokumen yang tersimpan di luar aplikasi, mis. Google Drive.
+            </DialogDescription>
           </DialogHeader>
           <DialogBody className="form-dense space-y-[var(--field-gap)]">
             <div className="space-y-[var(--item-gap)]">
@@ -415,6 +419,9 @@ const DocumentManager = React.forwardRef(function DocumentManager({
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Dokumen Balasan</DialogTitle>
+            <DialogDescription>
+              Lampirkan hasil revisi atau versi final untuk dokumen ini.
+            </DialogDescription>
           </DialogHeader>
           <DialogBody className="form-dense space-y-[var(--field-gap)]">
             <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
@@ -513,6 +520,7 @@ const DocumentManager = React.forwardRef(function DocumentManager({
         <DialogContent className="sm:max-w-3xl">
           <DialogHeader>
             <DialogTitle className="truncate pr-6">{preview?.title}</DialogTitle>
+            <DialogDescription className="sr-only">Pratinjau dokumen</DialogDescription>
           </DialogHeader>
           <DialogBody>
             {preview?.type === "image" ? (

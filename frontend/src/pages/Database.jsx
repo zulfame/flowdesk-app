@@ -601,7 +601,7 @@ export default function DatabasePage() {
             simpan ke object storage (S3).
           </p>
         </CardContent>
-        <CardFooter className="justify-end gap-2">
+        <CardFooter className="justify-between gap-2">
           <Button
             variant="outline"
             size="sm"

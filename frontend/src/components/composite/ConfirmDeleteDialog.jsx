@@ -17,7 +17,7 @@ import { ACTION } from "@/constants/labels";
 
 /**
  * ConfirmDeleteDialog — standard confirmation dialog (R40/R47.6).
- * Cancel on the left, primary/destructive action on the right (R50).
+ * Judul di header, penjelasan di body, aksi di footer kiri-kanan (FD12).
  * Set `destructive={false}` for reversible actions (e.g. restore).
  */
 export function ConfirmDeleteDialog({
@@ -36,8 +36,10 @@ export function ConfirmDeleteDialog({
       <AlertDialogContent data-testid={testid}>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
-          <AlertDialogDescription>{description}</AlertDialogDescription>
         </AlertDialogHeader>
+        <div className="px-6 py-4">
+          <AlertDialogDescription>{description}</AlertDialogDescription>
+        </div>
         <AlertDialogFooter>
           <AlertDialogCancel data-testid={`${testid}-cancel`}>{ACTION.cancel}</AlertDialogCancel>
           <AlertDialogAction

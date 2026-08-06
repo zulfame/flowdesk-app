@@ -9,6 +9,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -277,6 +278,7 @@ export default function Notes() {
         <DialogContent className="sm:max-w-lg" data-testid="note-dialog">
           <DialogHeader>
             <DialogTitle>{editing ? "Ubah Catatan" : "Catatan Baru"}</DialogTitle>
+            <DialogDescription>Catatan bersifat pribadi, hanya Anda yang melihatnya.</DialogDescription>
           </DialogHeader>
           <DialogBody className="form-dense space-y-[var(--field-gap)]">
             <div className="space-y-[var(--item-gap)]">

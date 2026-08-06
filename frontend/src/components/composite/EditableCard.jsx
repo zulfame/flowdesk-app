@@ -58,7 +58,7 @@ export function EditableCard({
       </CardHeader>
       <CardContent className={contentClassName}>{children(editing)}</CardContent>
       {editing ? (
-        <CardFooter className="justify-end gap-2">
+        <CardFooter className="justify-between gap-2">
           <Button
             variant="outline"
             size="sm"

@@ -242,7 +242,7 @@ export default function MeetingForm() {
             </div>
           </div>
         </CardContent>
-        <CardFooter className="justify-end gap-2">
+        <CardFooter className="justify-between gap-2">
           <Button variant="outline" size="sm" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">
             {ACTION.cancel}
           </Button>

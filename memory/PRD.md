@@ -307,3 +307,12 @@ Atas persetujuan user (boleh keluar dari monokrom untuk keterbacaan status):
 - Dicatat sebagai pengecualian **E9** di `FLOWDESK_EXCEPTIONS.md`.
 - Polish Detail Tugas lain (permintaan user berurutan): tombol **Setujui** dikecilkan seukuran badge (h-6, `rounded-md`, `px-2.5 py-0.5`, tanpa ikon); **kartu Riwayat dihapus**; **tombol Kirim** di kartu Pemberi Tugas dihapus (fungsi `broadcast` ikut dibersihkan).
 - Verifikasi visual light & dark mode: badge terbaca di kedua tema, guard exit 0.
+
+## Update (2026-08-06, lanjutan 7) — FD12 (aksi footer kiri-kanan), aksi Detail Tugas, dialog hapus, fix jarak body
+Permintaan user + hasil testing agent (`/app/test_reports/iteration_11.json`):
+- **BUG jarak konten body kartu Dokumen Sumber**: input file tersembunyi adalah anak PERTAMA dari container `space-y-2`, sehingga daftar dokumen mendapat `margin-top` 8px ekstra → padding atas/bawah tidak simetris. Fix: input dipindah menjadi anak TERAKHIR (`DocumentManager.jsx`). **Diverifikasi testing agent: padding-top 16px = padding-bottom 16px, gap anak pertama/terakhir 16px : 16px** di `/tasks/:id` dan `/tasks/new`.
+- **FD12 (aturan baru)**: dua tombol di `CardFooter`/`DialogFooter`/`AlertDialogFooter` → **kiri & kanan** (`justify-between`), sekunder kiri, utama kanan; satu tombol tetap kanan; judul di header, penjelasan di body, aksi di footer. Diterapkan: `TaskForm`, `MeetingForm`, `Database`, `EditableCard` (`justify-end` → `justify-between`). `DialogFooter`/`AlertDialogFooter` memang sudah `sm:justify-between`.
+- **`ConfirmDeleteDialog`**: kalimat penjelasan dipindah dari header ke **body** (`div px-6 py-4`), header hanya judul.
+- **Menu `⋯` Detail Tugas** kini hanya **Duplikat · Jadikan Template**; item Cetak & Hapus dihapus (hapus dilakukan dari daftar) — fungsi `remove`, state `deleteOpen`, dan `ConfirmDeleteDialog` di halaman detail ikut dibersihkan.
+- Perbaikan dua temuan minor testing agent: (1) URL lama `/tasks/:id/edit` menampilkan halaman kosong → ditambahkan route catch-all `path="*"` → `Navigate to="/"`; (2) warning aksesibilitas `Missing Description for DialogContent` → `DialogDescription` ditambahkan pada dialog URL/Balasan/Pratinjau (DocumentManager), Jadikan Template, Catatan, dan Pengingat.
+- Guard exit 0. Data uji milik user dikembalikan ke nilai semula oleh testing agent (tenggat 2026-08-15).

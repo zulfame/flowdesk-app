@@ -13,7 +13,6 @@ import {
   MoreHorizontal,
   Phone,
   Plus,
-  Printer,
   RotateCcw,
   Send,
   Trash2,
@@ -31,6 +30,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -39,7 +39,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
@@ -55,7 +54,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import DocumentManager from "@/components/DocumentManager";
 import UserSelect from "@/components/UserSelect";
-import { ConfirmDeleteDialog } from "@/components/composite/ConfirmDeleteDialog";
 import { EditableCard } from "@/components/composite/EditableCard";
 import {
   PriorityBadge,
@@ -129,7 +127,6 @@ export default function TaskDetail() {
   const [newItem, setNewItem] = useState("");
   const [newItemDue, setNewItemDue] = useState("");
   const [showDocsFor, setShowDocsFor] = useState({});
-  const [deleteOpen, setDeleteOpen] = useState(false);
   const [tplOpen, setTplOpen] = useState(false);
   const [tplName, setTplName] = useState("");
   const [head, setHead] = useState({ title: "", description: "" });
@@ -234,16 +231,6 @@ export default function TaskDetail() {
     }
   };
 
-  const remove = async () => {
-    try {
-      await api.delete(`/tasks/${id}`);
-      notify.success("Tugas dihapus.");
-      navigate("/tasks");
-    } catch (err) {
-      notify.error(apiError(err));
-    }
-  };
-
   const duplicate = async () => {
     try {
       const { data } = await api.post(`/tasks/${id}/duplicate`);
@@ -339,21 +326,6 @@ export default function TaskDetail() {
                     >
                       <LayoutTemplate aria-hidden="true" /> Jadikan Template
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => window.print()} data-testid="btn-print-task">
-                      <Printer aria-hidden="true" /> {ACTION.print}
-                    </DropdownMenuItem>
-                    {isOwner ? (
-                      <>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={() => setDeleteOpen(true)}
-                          className="text-destructive focus:text-destructive"
-                          data-testid="btn-delete-task"
-                        >
-                          <Trash2 aria-hidden="true" /> {ACTION.delete}
-                        </DropdownMenuItem>
-                      </>
-                    ) : null}
                   </DropdownMenuContent>
                 </DropdownMenu>
               </>
@@ -852,6 +824,9 @@ export default function TaskDetail() {
         <DialogContent className="sm:max-w-md" data-testid="task-template-dialog">
           <DialogHeader>
             <DialogTitle>Jadikan Template</DialogTitle>
+            <DialogDescription>
+              Simpan struktur tugas ini agar bisa dipakai ulang lewat menu Template.
+            </DialogDescription>
           </DialogHeader>
           <DialogBody className="form-dense">
             <div className="space-y-[var(--item-gap)]">
@@ -875,14 +850,6 @@ export default function TaskDetail() {
         </DialogContent>
       </Dialog>
 
-      <ConfirmDeleteDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Hapus tugas?"
-        description="Tugas akan dipindahkan ke Arsip dan masih bisa dipulihkan."
-        onConfirm={remove}
-        testid="task-detail-delete-confirm"
-      />
     </div>
   );
 }

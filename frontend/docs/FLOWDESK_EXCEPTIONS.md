@@ -47,6 +47,18 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
   besar hanya untuk layar autentikasi (`Login.jsx`).
 - Konsekuensi: jangan lagi menambal `text-sm` di root halaman — base sudah 14px.
 
+### FD12 — Penempatan aksi di footer (WAJIB)
+- **Dua tombol** di `CardFooter` / `DialogFooter` / `AlertDialogFooter` → **kiri & kanan**
+  (`justify-between`): aksi sekunder (Batal/Tutup) di KIRI, aksi utama (Simpan/Hapus/
+  Tambah) di KANAN. Jangan menumpuk keduanya di kanan.
+- **Satu tombol** → tetap kanan (`justify-end`).
+- **Tiga tombol atau lebih** → kelompokkan: sekunder di kiri, sisanya rata kanan.
+- `DialogFooter` & `AlertDialogFooter` sudah `sm:justify-between` secara default; jangan
+  menimpanya dengan `justify-end` saat ada dua tombol.
+- **AlertDialog/Dialog**: judul singkat di header, **penjelasan di body**, aksi di footer.
+  Contoh: `ConfirmDeleteDialog` — "Hapus tugas?" (header), kalimat penjelasan (body),
+  Batal · Hapus (footer kiri-kanan).
+
 ### E9 — Warna pada badge Status, Prioritas & Tenggat (dikecualikan dari monokrom)
 Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
 - Hue disimpan sebagai token di `index.css` (light + dark): `--st-draft`, `--st-pending`,
@@ -70,7 +82,7 @@ Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
   `CardFooter` berisi Batal + Simpan. `children` berupa render-prop `(editing) => ...`.
 - Halaman form tersendiri hanya untuk **pembuatan** (`/tasks/new`).
 - Menu aksi baris pada datatable: **Detail · Duplikat · Hapus** (tanpa "Ubah").
-  Menu `⋯` di Detail: Duplikat · Jadikan Template · Cetak · Hapus.
+  Menu `⋯` di Detail: **Duplikat · Jadikan Template** (hapus dilakukan dari daftar).
 
 ### FD2 — Aksi header: hanya Notifikasi + Tema
 - Header hanya berisi `SidebarTrigger` + Breadcrumb + (kanan) **ikon lonceng

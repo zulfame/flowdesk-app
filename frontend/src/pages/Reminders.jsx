@@ -21,6 +21,7 @@ import {
   Dialog,
   DialogBody,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -363,6 +364,7 @@ export default function Reminders() {
         <DialogContent className="sm:max-w-lg" data-testid="reminder-dialog">
           <DialogHeader>
             <DialogTitle>Pengingat Baru</DialogTitle>
+            <DialogDescription>Atur waktu pengingat dan kanal broadcast bila perlu.</DialogDescription>
           </DialogHeader>
           <DialogBody className="form-dense space-y-[var(--field-gap)]">
             <div className="space-y-[var(--item-gap)]">
