@@ -2,13 +2,7 @@ import React from "react";
 
 import { AuthLayout } from "@/components/layout/AuthLayout";
 import { LoginForm } from "@/components/auth/LoginForm";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 /** Login page — AuthLayout + Card (header/body) + LoginForm. */
 export default function Login() {
@@ -21,9 +15,7 @@ export default function Login() {
             Masukkan kredensial Anda untuk melanjutkan.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <LoginForm />
-        </CardContent>
+        <LoginForm />
       </Card>
     </AuthLayout>
   );

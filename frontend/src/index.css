@@ -249,7 +249,9 @@ code {
     .form-dense {
         --item-gap: 0.25rem;
     }
-    .form-dense label,
+    /* `:where(label)` menjaga specificity tetap 1 class agar utilitas
+       ukuran teks (mis. `text-sm` pada label Login) masih bisa menimpanya. */
+    .form-dense :where(label),
     .form-dense input,
     .form-dense textarea,
     .form-dense [role="combobox"] {

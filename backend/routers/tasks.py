@@ -658,7 +658,7 @@ async def broadcast_task(task_id: str, body: BroadcastBody, user: dict = Depends
         await dispatch_email(f"Pemberitahuan Tugas: {task['title']}", message, to_override=req["email"])
         result["email_sent"] = True
 
-    await create_notification(None, "Broadcast Tugas", f"Pemberitahuan tugas '{task['title']}' dikirim ke pemberi tugas", "task", f"/tasks/{task_id}")
+    await create_notification(user["id"], "Broadcast Tugas", f"Pemberitahuan tugas '{task['title']}' dikirim ke pemberi tugas", "task", f"/tasks/{task_id}", dispatch=False)
     await log_activity(db, user, "update", "task", task_id, f"Mengirim broadcast pemberitahuan untuk '{task['title']}'")
     return result
 

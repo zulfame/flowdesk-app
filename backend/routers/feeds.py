@@ -42,13 +42,17 @@ async def list_notifications(status: Optional[str] = None, type: Optional[str] =
 
 @router.put("/notifications/{notif_id}/read")
 async def mark_read(notif_id: str, user: dict = Depends(get_current_user)):
-    await db.notifications.update_one({"id": notif_id}, {"$set": {"is_read": True}})
+    await db.notifications.update_one(
+        {"id": notif_id, "$or": [{"user_id": user["id"]}, {"user_id": None}]}, {"$set": {"is_read": True}}
+    )
     return {"message": "Ditandai dibaca"}
 
 
 @router.put("/notifications/{notif_id}/unread")
 async def mark_unread(notif_id: str, user: dict = Depends(get_current_user)):
-    await db.notifications.update_one({"id": notif_id}, {"$set": {"is_read": False}})
+    await db.notifications.update_one(
+        {"id": notif_id, "$or": [{"user_id": user["id"]}, {"user_id": None}]}, {"$set": {"is_read": False}}
+    )
     return {"message": "Ditandai belum dibaca"}
 
 

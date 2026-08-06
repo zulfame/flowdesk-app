@@ -6,6 +6,7 @@ import { AlertCircle, Loader2, LogIn } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { CardContent, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/composite/PasswordInput";
@@ -75,9 +76,10 @@ export const LoginForm = () => {
     <Form {...form}>
       <form
         onSubmit={form.handleSubmit(onSubmit)}
-        className="space-y-[var(--field-gap)]"
+        className="form-dense"
         noValidate
       >
+        <CardContent className="space-y-[var(--field-gap)]">
         {formError ? (
           <Alert variant="destructive" data-testid="login-error-alert">
             <AlertCircle className="h-4 w-4" aria-hidden="true" />
@@ -91,7 +93,7 @@ export const LoginForm = () => {
           name="email"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Email</FormLabel>
+              <FormLabel className="text-sm">Email</FormLabel>
               <FormControl>
                 <Input
                   type="email"
@@ -111,7 +113,7 @@ export const LoginForm = () => {
           name="password"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Kata Sandi</FormLabel>
+              <FormLabel className="text-sm">Kata Sandi</FormLabel>
               <FormControl>
                 <PasswordInput
                   autoComplete="current-password"
@@ -137,13 +139,15 @@ export const LoginForm = () => {
                   data-testid="login-remember-checkbox"
                 />
               </FormControl>
-              <FormLabel className="font-normal text-muted-foreground">
+              <FormLabel className="text-sm font-normal text-muted-foreground">
                 Ingat email saya
               </FormLabel>
             </FormItem>
           )}
         />
 
+        </CardContent>
+        <CardFooter>
         <Button
           type="submit"
           className="w-full"
@@ -161,6 +165,7 @@ export const LoginForm = () => {
             </>
           )}
         </Button>
+        </CardFooter>
       </form>
     </Form>
   );
