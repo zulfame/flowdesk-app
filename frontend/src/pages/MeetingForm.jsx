@@ -1,28 +1,44 @@
-import React, { useEffect, useState, useCallback } from "react";
-import { useParams, useNavigate } from "react-router-dom";
-import { api, apiError } from "@/lib/api";
-import { SectionCard } from "@/components/common";
+import React, { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { Loader2, Save, X } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import UserSelect from "@/components/UserSelect";
-import { ArrowLeft, Save, Loader2, Video, X } from "lucide-react";
-import { toast } from "sonner";
+import { api, apiError } from "@/lib/api";
+import { notify } from "@/lib/notify";
+import { ACTION } from "@/constants/labels";
 
 const TYPES = ["Internal", "Eksternal", "Online", "Klien", "Review"];
-const empty = { title: "", date: "", start_time: "", end_time: "", location: "", meeting_type: "Internal", participants: [], agenda: "" };
+const emptyForm = {
+  title: "",
+  date: "",
+  start_time: "",
+  end_time: "",
+  location: "",
+  meeting_type: "Internal",
+  participants: [],
+  agenda: "",
+};
 
-function Field({ label, children, required }) {
-  return <div className="space-y-1.5"><Label>{label}{required && <span className="text-destructive"> *</span>}</Label>{children}</div>;
-}
-
+/** Form Rapat (buat & ubah) — satu section card + aksi di CardFooter (FD5). */
 export default function MeetingForm() {
   const { id } = useParams();
+  const editing = Boolean(id);
   const navigate = useNavigate();
-  const editing = !!id;
-  const [form, setForm] = useState(empty);
+  const [form, setForm] = useState(emptyForm);
   const [users, setUsers] = useState([]);
   const [pickerKey, setPickerKey] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -31,91 +47,210 @@ export default function MeetingForm() {
   const load = useCallback(async () => {
     try {
       const { data } = await api.get(`/meetings/${id}`);
-      setForm({ title: data.title || "", date: data.date || "", start_time: data.start_time || "", end_time: data.end_time || "",
-        location: data.location || "", meeting_type: data.meeting_type || "Internal", participants: data.participants || [], agenda: data.agenda || "" });
-    } catch (e) { toast.error(apiError(e)); navigate("/meetings"); }
-    finally { setLoading(false); }
+      setForm({
+        title: data.title || "",
+        date: data.date || "",
+        start_time: data.start_time || "",
+        end_time: data.end_time || "",
+        location: data.location || "",
+        meeting_type: data.meeting_type || "Internal",
+        participants: data.participants || [],
+        agenda: data.agenda || "",
+      });
+    } catch (err) {
+      notify.error(apiError(err));
+      navigate("/meetings");
+    } finally {
+      setLoading(false);
+    }
   }, [id, navigate]);
-  useEffect(() => { if (editing) load(); }, [editing, load]);
-  useEffect(() => { api.get("/users?all=true").then(({ data }) => setUsers(data.items)).catch(() => {}); }, []);
+
+  useEffect(() => {
+    if (editing) load();
+  }, [editing, load]);
+
+  useEffect(() => {
+    api
+      .get("/users?all=true")
+      .then(({ data }) => setUsers(data.items || []))
+      .catch(() => {});
+  }, []);
 
   const addParticipant = (u) => {
-    if (u && u.name && !form.participants.includes(u.name)) {
+    if (u?.name && !form.participants.includes(u.name)) {
       setForm((f) => ({ ...f, participants: [...f.participants, u.name] }));
     }
     setPickerKey((k) => k + 1);
   };
 
+  const cancelTo = editing ? `/meetings/${id}` : "/meetings";
+
   const save = async () => {
-    if (!form.title.trim()) { toast.error("Judul rapat wajib diisi"); return; }
+    if (!form.title.trim()) {
+      notify.error("Judul rapat wajib diisi.");
+      return;
+    }
     setSaving(true);
     try {
-      if (editing) { await api.put(`/meetings/${id}`, form); toast.success("Rapat diperbarui"); navigate(`/meetings/${id}`); }
-      else { const { data } = await api.post("/meetings", form); toast.success("Rapat dibuat"); navigate(`/meetings/${data.id}`); }
-    } catch (e) { toast.error(apiError(e)); }
-    finally { setSaving(false); }
+      if (editing) {
+        await api.put(`/meetings/${id}`, form);
+        notify.success("Rapat diperbarui.");
+        navigate(`/meetings/${id}`);
+      } else {
+        const { data } = await api.post("/meetings", form);
+        notify.success("Rapat berhasil dibuat.");
+        navigate(`/meetings/${data.id}`);
+      }
+    } catch (err) {
+      notify.error(apiError(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (loading)
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="size-6 animate-spin text-muted-foreground" />
+      </div>
+    );
 
   return (
-    <div>
-      <button onClick={() => navigate(editing ? `/meetings/${id}` : "/meetings")} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-5 transition-colors" data-testid="btn-back">
-        <ArrowLeft className="h-4 w-4" /> Kembali
-      </button>
-
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-lg bg-accent flex items-center justify-center"><Video className="h-5 w-5 text-primary" /></div>
-          <h1 className="text-2xl font-bold tracking-tight">{editing ? "Ubah Rapat" : "Rapat Baru"}</h1>
-        </div>
-        <div className="hidden sm:flex gap-2">
-          <Button variant="ghost" onClick={() => navigate(editing ? `/meetings/${id}` : "/meetings")} className="rounded-xl">Batal</Button>
-          <Button onClick={save} disabled={saving} className="rounded-xl" data-testid="btn-save-meeting">{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan</Button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-6">
-          <SectionCard title="Informasi Rapat" bodyClassName="space-y-4">
-            <Field label="Judul Rapat" required><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Contoh: Rapat Mingguan Tim" data-testid="meeting-title-input" /></Field>
-            <div className="grid sm:grid-cols-2 gap-4">
-              <Field label="Jenis Rapat">
-                <Select value={form.meeting_type} onValueChange={(v) => setForm({ ...form, meeting_type: v })}>
-                  <SelectTrigger data-testid="meeting-type-select"><SelectValue /></SelectTrigger>
-                  <SelectContent>{TYPES.map((t) => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+    <div className="space-y-6" data-testid="meeting-form-page">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">{editing ? "Ubah Rapat" : "Rapat Baru"}</CardTitle>
+        </CardHeader>
+        <CardContent className="form-dense space-y-4">
+          <div className="space-y-[var(--field-gap)]">
+            <div className="space-y-[var(--item-gap)]">
+              <Label htmlFor="meeting-title">Judul Rapat</Label>
+              <Input
+                id="meeting-title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
+                placeholder="Contoh: Rapat Mingguan Tim"
+                data-testid="meeting-title-input"
+              />
+            </div>
+            <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+              <div className="space-y-[var(--item-gap)]">
+                <Label>Jenis Rapat</Label>
+                <Select
+                  value={form.meeting_type}
+                  onValueChange={(v) => setForm({ ...form, meeting_type: v })}
+                >
+                  <SelectTrigger data-testid="meeting-type-select">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPES.map((t) => (
+                      <SelectItem key={t} value={t}>
+                        {t}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
                 </Select>
-              </Field>
-              <Field label="Lokasi / Tautan"><Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Ruang rapat / link meeting" data-testid="meeting-location-input" /></Field>
+              </div>
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="meeting-location">Lokasi / Tautan</Label>
+                <Input
+                  id="meeting-location"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  placeholder="Ruang rapat atau tautan meeting"
+                  data-testid="meeting-location-input"
+                />
+              </div>
             </div>
-            <Field label="Agenda"><Textarea value={form.agenda} onChange={(e) => setForm({ ...form, agenda: e.target.value })} rows={5} placeholder="Poin-poin agenda rapat..." data-testid="meeting-agenda-input" /></Field>
-          </SectionCard>
-        </div>
-
-        <div className="space-y-6">
-          <SectionCard title="Jadwal" bodyClassName="space-y-4">
-            <Field label="Tanggal"><Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} data-testid="meeting-date-input" /></Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Mulai"><Input type="time" value={form.start_time} onChange={(e) => setForm({ ...form, start_time: e.target.value })} data-testid="meeting-start-input" /></Field>
-              <Field label="Selesai"><Input type="time" value={form.end_time} onChange={(e) => setForm({ ...form, end_time: e.target.value })} data-testid="meeting-end-input" /></Field>
+            <div className="grid gap-[var(--field-gap)] sm:grid-cols-3">
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="meeting-date">Tanggal</Label>
+                <Input
+                  id="meeting-date"
+                  type="date"
+                  value={form.date}
+                  onChange={(e) => setForm({ ...form, date: e.target.value })}
+                  data-testid="meeting-date-input"
+                />
+              </div>
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="meeting-start">Mulai</Label>
+                <Input
+                  id="meeting-start"
+                  type="time"
+                  value={form.start_time}
+                  onChange={(e) => setForm({ ...form, start_time: e.target.value })}
+                  data-testid="meeting-start-input"
+                />
+              </div>
+              <div className="space-y-[var(--item-gap)]">
+                <Label htmlFor="meeting-end">Selesai</Label>
+                <Input
+                  id="meeting-end"
+                  type="time"
+                  value={form.end_time}
+                  onChange={(e) => setForm({ ...form, end_time: e.target.value })}
+                  data-testid="meeting-end-input"
+                />
+              </div>
             </div>
-          </SectionCard>
-
-          <SectionCard title="Peserta" bodyClassName="space-y-3">
-            <UserSelect key={pickerKey} users={users} value={null} onChange={addParticipant} placeholder="Pilih peserta dari pengguna..." testid="meeting-participant-select" />
-            <div className="flex flex-wrap gap-2">
-              {form.participants.map((p, i) => (
-                <span key={i} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-secondary text-xs font-medium" data-testid={`participant-chip-${i}`}>
-                  {p}<button onClick={() => setForm({ ...form, participants: form.participants.filter((_, j) => j !== i) })} className="hover:text-destructive"><X className="h-3 w-3" /></button>
-                </span>
-              ))}
-              {form.participants.length === 0 && <p className="text-xs text-muted-foreground">Belum ada peserta.</p>}
+            <div className="space-y-[var(--item-gap)]">
+              <Label htmlFor="meeting-agenda">Agenda</Label>
+              <Textarea
+                id="meeting-agenda"
+                rows={4}
+                value={form.agenda}
+                onChange={(e) => setForm({ ...form, agenda: e.target.value })}
+                placeholder="Poin-poin agenda rapat..."
+                data-testid="meeting-agenda-input"
+              />
             </div>
-          </SectionCard>
+          </div>
 
-          <Button onClick={save} disabled={saving} className="w-full rounded-xl sm:hidden" data-testid="btn-save-meeting-mobile">{saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />} Simpan</Button>
-        </div>
-      </div>
+          <Separator />
+
+          <div className="space-y-2">
+            <Label>Peserta ({form.participants.length})</Label>
+            <UserSelect
+              key={pickerKey}
+              users={users}
+              value={null}
+              onChange={addParticipant}
+              placeholder="Pilih peserta dari pengguna..."
+              testid="meeting-participant-select"
+            />
+            <div className="flex flex-wrap gap-1.5">
+              {form.participants.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Belum ada peserta.</p>
+              ) : (
+                form.participants.map((p, i) => (
+                  <Badge key={i} variant="secondary" className="gap-1 font-normal" data-testid={`participant-chip-${i}`}>
+                    {p}
+                    <button
+                      type="button"
+                      aria-label={`Hapus ${p}`}
+                      onClick={() =>
+                        setForm({ ...form, participants: form.participants.filter((_, j) => j !== i) })
+                      }
+                    >
+                      <X className="size-3" />
+                    </button>
+                  </Badge>
+                ))
+              )}
+            </div>
+          </div>
+        </CardContent>
+        <CardFooter className="justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => navigate(cancelTo)} data-testid="btn-cancel">
+            {ACTION.cancel}
+          </Button>
+          <Button size="sm" onClick={save} disabled={saving} data-testid="btn-save-meeting">
+            <Save className="size-4" /> {saving ? ACTION.saving : ACTION.save}
+          </Button>
+        </CardFooter>
+      </Card>
     </div>
   );
 }

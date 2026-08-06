@@ -124,7 +124,8 @@ sifatnya dengan R-rules: wajib, dan sebagian dijaga otomatis oleh `design-guard.
 | 2c | **Kelola Pengguna** (DataTableCard + dialog tambah/ubah/hapus + impor), **Kelola Peranan** (tabel peran + matriks hak akses + dialog izin), **Kelola Aplikasi** (section cards R51/FD5) | ✅ Selesai |
 | 2d | **Kelola Database** (sections R51 + Riwayat Backup DataTable), **Kelola Notifikasi** (3 section cards + tombol Kirim Uji), **Kelola Arsip** (DataTableCard + Pulihkan / Hapus Permanen) | ✅ Selesai |
 | 2 | Halaman list/CRUD (R47) sisanya: **Kelola Tugas**, **Kelola Rapat**, **Kelola Catatan**, **Ingatkan Saya**, **Time Schedule** → semuanya `DataTableCard` mode KLIEN + dialog tambah/ubah + `ConfirmDeleteDialog` | ✅ Selesai |
-| 3 | Halaman detail & form (TaskDetail/Form, MeetingDetail/Form, TimeScheduleDetail) | ⏳ Belum |
+| 3 | Halaman detail & form: TaskDetail/TaskForm, MeetingDetail/MeetingForm, TimeScheduleDetail (Gantt monokrom) | ✅ Selesai |
+| 4 | Sisa halaman: Dashboard, Notifikasi, Tiket Bantuan, Settings | ⏳ Belum |
 | 2a-1 | Penyempurnaan Profil: tinggi `CardHeader`/`CardFooter` dikecilkan (E7), urutan field sandi (Saat Ini di baris atas sendiri; Baru + Konfirmasi di baris berikutnya), foto profil tampil di footer sidebar & dropdown pengguna | ✅ Selesai |
 | 2a | **Profil Pengguna** (`pages/Profile.jsx`) → pola konfigurasi R51 (section cards + save bar), rhf+zod, `AvatarUpload` composite baru | ✅ Selesai |
 | 4 | Halaman konfigurasi (R51) + Kalender + Dashboard | ⏳ Belum |

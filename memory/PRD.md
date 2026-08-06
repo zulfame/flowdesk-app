@@ -233,3 +233,18 @@ Semua halaman list di **Member Area** kini memakai pola R47 (`DataTableCard` mod
 
 ### Berikutnya (P0)
 Fase 3 — halaman detail & form: `TaskDetail.jsx` + `TaskForm.jsx`, `MeetingDetail.jsx` + `MeetingForm.jsx`, `TimeScheduleDetail.jsx` (Gantt). Lalu Dashboard, Notifikasi, Tiket Bantuan. Setelah redesign selesai: pembahasan perubahan alur autentikasi (P2, ditunda atas permintaan user).
+
+## Update (2026-08-06, lanjutan) — Migrasi halaman Detail & Form
+Fase 3 selesai: seluruh halaman detail/form Member Area kini memakai pola section card (R51) + `CardFooter` untuk aksi simpan (FD5), tanpa warna hardcode.
+- **Detail Tugas** (`TaskDetail.jsx`): kartu ringkasan (judul + StatusBadge/PriorityBadge + progres) dengan tombol Kembali dan menu `⋯` (Duplikat, Jadikan Template — sekarang dialog, bukan `window.prompt`, Cetak, Ubah, Hapus); kartu **Item Tugas** (Checkbox PIC → tombol Setujui pemilik, tenggat inline, badge Disetujui/Menunggu persetujuan/Terlambat, `Collapsible` berisi Dokumen Item + Catatan Tugas + Lampiran Catatan) dengan penambah item di CardFooter; kartu **Komentar**; sidebar: Pemberi Tugas (+ tombol broadcast), Informasi, Dokumen Sumber, Riwayat (scroll `thin-scroll`).
+- **Form Tugas** (`TaskForm.jsx`): satu card "Tugas Baru/Ubah Tugas" dengan subseksi dipisah `Separator` (info → pemberi/PIC via `UserSelect` → item tugas → dokumen sumber), aksi Batal/Simpan di CardFooter. Validasi: judul wajib, minimal 1 item.
+- **Detail Rapat** (`MeetingDetail.jsx`): kartu header (jenis, tanggal, jam, lokasi) + menu `⋯`; kartu Tabs **Catatan / Keputusan / Agenda** (`RichTextEditor`, tombol Simpan di CardFooter); kartu **Item Aksi** BARU (checkbox selesai, tambah item, hapus, dan **Buat Tugas** lewat dialog PIC+Prioritas+Tenggat → `POST /meetings/{id}/action-items/{itemId}/convert`); sidebar Lampiran pribadi, Peserta + broadcast (dialog tautan WhatsApp), Tugas Turunan.
+- **Form Rapat** (`MeetingForm.jsx`): satu card + peserta sebagai chip `Badge` yang bisa dihapus.
+- **Linimasa Time Schedule** (`TimeScheduleDetail.jsx`): Gantt dirombak monokrom — kategori memakai `bg-foreground/70` (Pelaksanaan), `bg-foreground` (Event), `bg-muted-foreground/40` (Hari Libur); akhir pekan/libur `bg-muted`, hari Event `bg-accent`, garis "hari ini" `border-primary`, bar masa depan `opacity-40`. Warna kustom per kegiatan tetap inline style (E2). Legenda ada di CardHeader. Daftar kegiatan kini `DataTableCard` (Kegiatan/Kategori/PIC/Periode/Status/Progres + aksi Buat Tugas·Ubah·Hapus). Dialog: Kegiatan, Buat Tugas, Pengaturan Jadwal (rentang tanggal, hari libur, hari Event).
+- `design-guard.sh`: LEGACY tinggal `Dashboard, HelpTickets, Notifications, Settings`. Guard exit 0.
+- Verifikasi manual (Playwright): Detail Tugas render + tambah item + komentar OK; Form Tugas baru render; Detail Rapat render + tambah item aksi (2 item) + dialog Buat Tugas terbuka; Linimasa render + tambah kegiatan → bar Gantt & baris tabel muncul; Form Rapat (ubah) terisi data.
+
+### Berikutnya (P0/P1)
+- P0: Dashboard, Notifikasi, Tiket Bantuan → design sistem baru.
+- P1: Ekspor Excel untuk datatable (Log Aktivitas, Pengguna, Tugas, dll).
+- P2: Overhaul alur autentikasi (ditunda sampai redesign tuntas).
