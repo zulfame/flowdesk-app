@@ -8,12 +8,12 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 1. [Fitur Utama](#fitur-utama)
 2. [Arsitektur & Teknologi](#arsitektur--teknologi)
 3. [Struktur Proyek](#struktur-proyek)
-4. [Variabel Lingkungan](#variabel-lingkungan)
+4. [Environment Variables](#environment-variables)
 5. [Akun Default (Superadmin)](#akun-default-superadmin)
 6. [Model Hak Akses](#model-hak-akses)
 7. [Menjalankan Secara Lokal (Pengembangan)](#menjalankan-secara-lokal-pengembangan)
 8. [Seeder / Reset Data Awal](#seeder--reset-data-awal)
-9. [Deploy Lokal dengan Docker](#deploy-lokal-dengan-docker)
+9. [Deploy via Control Panel (Nexus Panel / Docker)](#deploy-via-control-panel-nexus-panel--docker)
 10. [Deploy di Server Produksi (Ubuntu 22.04 LTS)](#deploy-di-server-produksi-ubuntu-2204-lts)
 11. [Deploy dengan Cloudflare Tunnel (Zero Trust)](#deploy-dengan-cloudflare-tunnel-zero-trust)
 12. [Backup & Restore](#backup--restore)
@@ -54,7 +54,7 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 │   ├── notifications.py, services.py
 │   ├── seed.py              # seeder / reset data awal
 │   ├── scripts/             # skrip verifikasi (mis. verify_ticket_hierarchy.py)
-│   ├── requirements.txt, .env
+│   ├── requirements.txt, .env, .env.example
 │   └── routers/             # auth, users, roles, tasks, meetings, reminders,
 │                            #   notes, attachments, feeds, aggregate, settings,
 │                            #   profile, database, push, archive, time_schedule,
@@ -62,48 +62,28 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 ├── frontend
 │   ├── src/                 # pages/, components/, context/, lib/
 │   ├── public/sw.js         # service worker Web Push
-│   ├── Dockerfile, nginx.conf, package.json, .env
-├── deploy/local/            # skrip deploy lokal opsional: start.sh, stop.sh,
-│                            #   seed.sh, deploy.sh, docker-compose.yml, .env.example
+│   ├── package.json, .env, .env.example
+│   └── docs/                # dokumen design system + design-guard.sh
 └── README.md
 ```
-> Catatan: Dockerfile/`docker-compose.yml` di root **sengaja tidak disertakan** — panel/deployer Anda (mis. Nexus Panel) yang menghasilkannya. Folder `deploy/local/` bersifat opsional untuk uji coba lokal manual.
-
-## Variabel Lingkungan
-### Backend (`backend/.env`)
-| Kunci | Deskripsi |
-|------|-----------|
-| `MONGO_URL` | URL koneksi MongoDB (mis. `mongodb://localhost:27017`) |
-| `DB_NAME` | Nama database (mis. `flowdesk`) |
-| `CORS_ORIGINS` | Origin yang diizinkan, dipisah koma (mis. `https://app.domain.com`) |
-| `JWT_SECRET` | Secret acak untuk menandatangani token JWT (**wajib kuat di produksi**) |
-| `ADMIN_EMAIL` | Email superadmin yang di-seed saat startup |
-| `ADMIN_PASSWORD` | Kata sandi superadmin awal |
-| `EMERGENT_LLM_KEY` | (Opsional) kunci integrasi Emergent; bila ada, lampiran memakai Object Storage Emergent. Bila kosong, lampiran otomatis disimpan ke filesystem lokal. |
-| `LOCAL_STORAGE_DIR` | (Opsional, self-host) folder penyimpanan lampiran di server. Bila di-set, lampiran selalu disimpan ke filesystem ini (mis. `/opt/flowdesk/data/uploads`). |
-
-### Frontend (`frontend/.env`)
-| Kunci | Deskripsi |
-|------|-----------|
-| `REACT_APP_BACKEND_URL` | Base URL backend (tanpa `/api`) |
-
-> Jangan menaruh nilai default rahasia di `.env` produksi. Ganti `JWT_SECRET` dan `ADMIN_PASSWORD`.
+> Catatan: repo **tidak memuat Dockerfile/`docker-compose.yml` sama sekali** — panel/deployer Anda (mis. Nexus Panel) yang menghasilkannya saat build.
 
 ## Environment Variables
-Tabel lengkap seluruh variabel yang dibaca aplikasi (backend & frontend). Hanya variabel bertanda **Required** yang wajib disediakan; sisanya memiliki nilai default yang aman.
+Tabel lengkap seluruh variabel yang dibaca aplikasi (backend & frontend). Hanya variabel bertanda **Required** yang wajib disediakan; sisanya memiliki nilai default yang aman. Contoh siap pakai: `backend/.env.example` dan `frontend/.env.example`.
 
 | Variable | Required/Optional | Default Value | Description |
 |----------|-------------------|---------------|-------------|
 | `MONGO_URL` | Required | - | MongoDB connection string (mis. `mongodb://localhost:27017`). |
-| `DB_NAME` | Required | - | Nama database MongoDB. |
+| `DB_NAME` | Optional | `flowdesk` | Nama database MongoDB. |
 | `JWT_SECRET` | Required | - | Kunci rahasia untuk menandatangani & memverifikasi token JWT. |
 | `REACT_APP_BACKEND_URL` | Required | - | Base URL backend saat build frontend, **tanpa** `/api` (mis. `https://app.example.com`). |
 | `ADMIN_EMAIL` | Optional | `admin@flowdesk.com` | Email superadmin yang di-seed saat startup (idempoten). |
 | `ADMIN_PASSWORD` | Optional | `admin123` | Kata sandi superadmin awal (disimpan ter-hash). Ganti di produksi. |
 | `CORS_ORIGINS` | Optional | `*` | Daftar origin yang diizinkan, dipisah koma. |
 | `LOCAL_STORAGE_DIR` | Optional | `/app/data` | Folder berkas persisten: lampiran (`/uploads`) & backup DB lokal (`/backups`). |
+| `APP_ENCRYPTION_KEY` | Optional | - | Kunci Fernet (base64 32-byte) untuk mengenkripsi API key pihak ketiga (mis. Authty) di database. Bila kosong, nilai disimpan apa adanya dan API key terenkripsi lama tidak dapat dibaca. |
 | `EMERGENT_LLM_KEY` | Optional | - | Kunci integrasi Emergent. Bila diisi, lampiran memakai Object Storage Emergent; bila kosong, lampiran disimpan di filesystem lokal di `LOCAL_STORAGE_DIR`. |
-| `DISABLE_ESLINT_PLUGIN` | Optional | `false` | Flag build frontend. Set `true` agar `yarn build` tetap sukses walau ada peringatan ESLint. |
+| `DISABLE_ESLINT_PLUGIN` | Optional | `true` | Flag build frontend. Skrip `yarn build` sudah memaksa `DISABLE_ESLINT_PLUGIN=true CI=false` agar build tetap sukses walau ada peringatan ESLint. |
 | `WDS_SOCKET_PORT` | Optional | - | (Hanya dev) port websocket dev-server CRA. Tidak dipakai pada build produksi. |
 | `ENABLE_HEALTH_CHECK` | Optional | `false` | (Hanya dev) flag internal preview; tidak dipakai logika aplikasi. |
 
@@ -161,38 +141,6 @@ python seed.py --force    # tanpa konfirmasi (CI/otomatis)
 Kredensial superadmin diambil dari `ADMIN_EMAIL` / `ADMIN_PASSWORD`.
 
 > ⚠️ **PERINGATAN**: `seed.py` menghapus SELURUH data (tugas, rapat, catatan, pengingat, lampiran, log, backup, dst.). Gunakan hanya untuk lingkungan uji coba.
-
-## Deploy Lokal dengan Docker
-Prasyarat: Docker & Docker Compose.
-
-Gunakan skrip di `deploy/local/` (mendukung banyak project di 1 mesin tanpa bentrok port/volume):
-```bash
-cd deploy/local
-./start.sh                # WIZARD: pilih nama project + port (setup awal)
-./start.sh --reconfigure  # jalankan wizard lagi (ganti port/nama)
-./start.sh -y             # non-interaktif: pakai port default
-./stop.sh                 # hentikan stack (data aman di volume)
-./seed.sh                 # reset data (superadmin saja) — ketik YA / ./seed.sh -y
-./deploy.sh               # pull commit terbaru + rebuild kondisional
-```
-
-Wizard menyimpan pilihan ke `deploy/local/.env`:
-- `COMPOSE_PROJECT_NAME` → prefiks unik container/volume/network (mis. `projectb_mongodb`, `projectb_mongo_data`).
-- `FRONTEND_PORT` / `BACKEND_PORT` / `MONGO_PORT` / `MONGO_EXPRESS_PORT` → port host yang dipakai.
-
-> Menjalankan >1 project Emergent di satu mesin? Cukup beri **nama project berbeda** dan **port berbeda** di wizard tiap project — container, volume MongoDB, dan network otomatis terpisah sehingga tidak ada konflik.
-
-Perintah berguna (dari `deploy/local`):
-```bash
-docker compose logs -f backend      # lihat log
-docker compose down                 # hentikan
-docker compose down -v              # hentikan + hapus data MongoDB
-./seed.sh -y                        # reset data awal
-```
-
-Konfigurasi disimpan di `deploy/local/.env` (dibuat oleh wizard `start.sh`). Ganti `JWT_SECRET` & `ADMIN_PASSWORD` untuk penggunaan nyata. Bila mengubah `BACKEND_PORT`/`REACT_APP_BACKEND_URL`, build ulang frontend: `docker compose up -d --build frontend`.
-
-> Catatan penyimpanan lampiran: deploy Docker menyimpan lampiran ke **filesystem** (volume `<project>_uploads_data` via `LOCAL_STORAGE_DIR=/data/uploads`) sehingga **tidak memerlukan** Object Storage Emergent. Menu **Kelola Database** (S3 eksternal) khusus untuk **backup database**, bukan lampiran.
 
 ## Deploy via Control Panel (Nexus Panel / Docker)
 Panel meng-clone repo lalu membangun backend & frontend dengan Docker yang ia hasilkan sendiri — **tidak ada Dockerfile/compose di root**.

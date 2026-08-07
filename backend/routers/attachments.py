@@ -60,8 +60,8 @@ async def list_attachments(parent_id: Optional[str] = None, module: Optional[str
 @router.get("/attachments/{file_id}/download")
 async def download_attachment(file_id: str, authorization: str = Header(None), auth: str = Query(None)):
     # auth via header or query token (for <img>/<a> tags)
-    from security import get_current_user as _
-    import jwt as _jwt, os
+    from security import _secret
+    import jwt as _jwt
     token = None
     if authorization and authorization.startswith("Bearer "):
         token = authorization[7:]
@@ -70,7 +70,7 @@ async def download_attachment(file_id: str, authorization: str = Header(None), a
     if not token:
         raise HTTPException(status_code=401, detail="Tidak terautentikasi")
     try:
-        _jwt.decode(token, os.environ["JWT_SECRET"], algorithms=["HS256"])
+        _jwt.decode(token, _secret(), algorithms=["HS256"])
     except Exception:
         raise HTTPException(status_code=401, detail="Token tidak valid")
 

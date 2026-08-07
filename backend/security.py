@@ -22,7 +22,13 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 
 def _secret() -> str:
-    return os.environ["JWT_SECRET"]
+    secret = os.environ.get("JWT_SECRET")
+    if not secret:
+        raise RuntimeError(
+            "JWT_SECRET belum diset. Isi variabel JWT_SECRET di backend/.env atau di panel "
+            "deploy Anda dengan string acak panjang (mis. hasil `openssl rand -hex 48`)."
+        )
+    return secret
 
 
 def create_token(user_id: str, email: str, hours: int | None = None) -> str:
