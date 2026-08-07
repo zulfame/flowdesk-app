@@ -595,3 +595,17 @@ Catatan: judul/deskripsi OG hanya ikut dinamis bila snippet Nginx dipasang; tanp
 3. **Komentar berlampiran**: `POST /api/help-tickets/{id}/comments` menerima `attachments` (komentar boleh hanya lampiran tanpa teks; kosong total → 400). Composer punya tombol **Lampiran** (unggah berkas) & **URL**, daftar lampiran tampil sebelum dikirim, dan setiap komentar menampilkan chip lampiran (`AttachmentChip`, tautan unduh/buka).
 4. **Anti-duplikasi & loading**: tombol Kirim komentar kini `disabled` + spinner "Mengirim..." selama proses, input dinonaktifkan, guard `if (sending) return`, serta tombol hapus komentar punya spinner sendiri (`deletingId`) dan guard anti-klik ganda. Refresh detail di-`await` sebelum tombol aktif kembali.
 Verifikasi: skrip baru `backend/scripts/verify_ticket_permissions.py` → 10 skenario lolos (penerima ubah judul/prioritas/lampiran = 403; penerima ubah status + bukti = 200; pelapor unggah bukti = 403; pelapor ubah judul = 200; komentar hanya lampiran = 200; komentar kosong = 400). UI: screenshot memastikan Penanganan (y≈254) di atas Komentar (y≈548), komentar terkirim **satu kali** dengan tombol non-aktif saat proses. Data uji & tiket demo dihapus. `design-guard.sh` exit 0.
+
+## Update (2026-06-08r) — Penguncian tiket Selesai/Ditutup (anti-hapus bukti)
+Aturan baru (backend `routers/help_tickets.py`): `LOCKED_STATUSES = ("Selesai", "Ditutup")` → `_is_locked(t)`.
+- **Semua mutasi ditolak saat terkunci KECUALI perubahan `status` oleh penerima** (403: "Tiket berstatus X terkunci. Penerima tiket harus mengubah status lebih dulu…"). Ini menutup celah: pelapor mengubah/menghapus judul, deskripsi, kategori, prioritas, lampiran; penerima mengubah/menghapus catatan penyelesaian & bukti pengerjaan; pengalihan tujuan tiket.
+- **Hapus komentar ditolak saat terkunci** (siapa pun, termasuk penulis & Super Admin) — komentar adalah bukti.
+- **Hapus tiket**: bila terkunci **hanya penerima tiket**; bila belum terkunci tetap pelapor atau Super Admin (`_can_delete`).
+- Respons detail/update/daftar kini mengirim `is_locked` & `can_delete`; `can_edit` dan `can_reassign` otomatis `false` saat terkunci.
+- Alur pemulihan: penerima mengubah status (mis. Selesai → Diproses) → tiket terbuka → pelapor kembali dapat menyunting isi & menghapus komentarnya.
+Frontend:
+- Kartu ringkasan menampilkan **banner kunci** (`ticket-locked-note`, ikon Lock) berisi penjelasan.
+- Kartu **Penanganan** saat terkunci hanya menampilkan pilihan **Status** (catatan penyelesaian & bukti pengerjaan disembunyikan) + petunjuk "Simpan status baru (mis. Diproses) untuk membuka penyuntingan…".
+- Tombol hapus komentar disembunyikan saat terkunci; kartu Lampiran/Informasi/Ditujukan tidak menampilkan ikon sunting.
+- Halaman daftar: menu **Hapus** hanya muncul bila `can_delete` (jadi tiket Selesai/Ditutup hanya bisa dihapus penerima).
+Verifikasi: skrip baru `backend/scripts/verify_ticket_lock.py` → **15 skenario lolos** (3 percobaan manipulasi pelapor 403, hapus komentar 403, hapus tiket pelapor 403, penerima ubah catatan/bukti 403, alih tujuan 403, buka kembali 200, sunting setelah dibuka 200, `can_delete` pelapor False vs penerima True, penerima hapus tiket terkunci 200). UI diverifikasi via screenshot: banner kunci tampil, 0 tombol sunting selain Penanganan (hanya Status), 0 tombol hapus komentar. `design-guard.sh` exit 0. Tiket demo & data uji dibersihkan.

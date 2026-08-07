@@ -77,6 +77,22 @@ async def _get(ticket_id: str, user: dict) -> dict:
     raise HTTPException(status_code=403, detail="Akses ditolak")
 
 
+LOCKED_STATUSES = ("Selesai", "Ditutup")
+
+
+def _is_locked(t: dict) -> bool:
+    """Tiket Selesai/Ditutup dikunci: bukti tidak boleh diubah/dihapus sampai penerima membuka status."""
+    return t.get("status") in LOCKED_STATUSES
+
+
+def _can_delete(user: dict, t: dict) -> bool:
+    """Tiket terkunci hanya boleh dihapus penerima; selain itu pelapor atau Super Admin."""
+    uid = user.get("id")
+    if _is_locked(t):
+        return (t.get("assignee") or {}).get("user_id") == uid
+    return t.get("created_by") == uid or is_admin(user)
+
+
 def _is_handler(user: dict, t: dict) -> bool:
     """Penerima tiket (atau Super Admin) yang berhak mengubah status pengerjaan."""
     return is_admin(user) or (t.get("assignee") or {}).get("user_id") == user.get("id")
@@ -120,7 +136,8 @@ async def list_tickets(status: Optional[str] = None, mine: Optional[str] = None,
         q["assignee.user_id"] = user["id"]
     elif mine == "created":
         q["created_by"] = user["id"]
-    return await db.help_tickets.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    items = await db.help_tickets.find(q, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return [{**t, "is_locked": _is_locked(t), "can_delete": _can_delete(user, t)} for t in items]
 
 
 @router.get("/{ticket_id}")
@@ -129,8 +146,10 @@ async def get_ticket(ticket_id: str, user: dict = Depends(get_current_user)):
     return {
         **t,
         "can_handle": _is_handler(user, t),
-        "can_reassign": await _can_reassign(user, t),
-        "can_edit": is_admin(user) or t.get("created_by") == user.get("id"),
+        "can_reassign": (not _is_locked(t)) and await _can_reassign(user, t),
+        "can_edit": (not _is_locked(t)) and (is_admin(user) or t.get("created_by") == user.get("id")),
+        "can_delete": _can_delete(user, t),
+        "is_locked": _is_locked(t),
     }
 
 
@@ -175,6 +194,13 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
     handler = _is_handler(user, t)
     owner = t.get("created_by") == user.get("id") or is_admin(user)
     patch = {k: v for k, v in body.model_dump(exclude_unset=True).items() if v is not None}
+
+    if _is_locked(t) and set(patch) - {"status"}:
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tiket berstatus {t.get('status')} terkunci. Penerima tiket harus mengubah "
+                   "status lebih dulu sebelum data tiket dapat diubah.",
+        )
 
     if "status" in patch:
         if not handler:
@@ -247,15 +273,23 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
     return {
         **updated,
         "can_handle": _is_handler(user, updated),
-        "can_reassign": await _can_reassign(user, updated),
-        "can_edit": is_admin(user) or updated.get("created_by") == user.get("id"),
+        "can_reassign": (not _is_locked(updated)) and await _can_reassign(user, updated),
+        "can_edit": (not _is_locked(updated))
+        and (is_admin(user) or updated.get("created_by") == user.get("id")),
+        "can_delete": _can_delete(user, updated),
+        "is_locked": _is_locked(updated),
     }
 
 
 @router.delete("/{ticket_id}")
 async def delete_ticket(ticket_id: str, user: dict = Depends(get_current_user)):
     t = await _get(ticket_id, user)
-    if t.get("created_by") != user.get("id") and not is_admin(user):
+    if not _can_delete(user, t):
+        if _is_locked(t):
+            raise HTTPException(
+                status_code=403,
+                detail=f"Tiket berstatus {t.get('status')} hanya dapat dihapus oleh penerima tiket",
+            )
         raise HTTPException(status_code=403, detail="Hanya pelapor atau Super Admin yang dapat menghapus")
     await db.help_tickets.update_one({"id": ticket_id},
                                      {"$set": {"is_deleted": True, "deleted_at": now_iso()}})
@@ -295,6 +329,11 @@ async def delete_comment(ticket_id: str, comment_id: str, user: dict = Depends(g
     comment = next((c for c in t.get("comments", []) if c["id"] == comment_id), None)
     if not comment:
         raise HTTPException(status_code=404, detail="Komentar tidak ditemukan")
+    if _is_locked(t):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Tiket berstatus {t.get('status')} terkunci — komentar tidak dapat dihapus",
+        )
     if comment["author_id"] != user["id"] and not is_admin(user):
         raise HTTPException(status_code=403, detail="Hanya penulis komentar yang dapat menghapus")
     await db.help_tickets.update_one({"id": ticket_id}, {"$pull": {"comments": {"id": comment_id}}})

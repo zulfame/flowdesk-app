@@ -169,14 +169,18 @@ const buildColumns = ({ onOpen, onDelete }) => [
               <DropdownMenuItem onClick={() => onOpen(t)} data-testid={`btn-detail-ticket-${t.id}`}>
                 <Eye aria-hidden="true" /> {ACTION.detail}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() => onDelete(t)}
-                className="text-destructive focus:text-destructive"
-                data-testid={`btn-delete-ticket-${t.id}`}
-              >
-                <Trash2 aria-hidden="true" /> {ACTION.delete}
-              </DropdownMenuItem>
+              {t.can_delete ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDelete(t)}
+                    className="text-destructive focus:text-destructive"
+                    data-testid={`btn-delete-ticket-${t.id}`}
+                  >
+                    <Trash2 aria-hidden="true" /> {ACTION.delete}
+                  </DropdownMenuItem>
+                </>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
         </div>

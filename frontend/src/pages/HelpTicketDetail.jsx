@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Link2,
   Loader2,
+  Lock,
   Paperclip,
   Send,
   Trash2,
@@ -186,6 +187,7 @@ export default function HelpTicketDetail() {
   }
   if (!ticket) return null;
 
+  const isLocked = Boolean(ticket.is_locked);
   const isOwner = ticket.created_by === user?.id || isAdminUser(user);
   const canEdit = Boolean(ticket.can_edit);
   const comments = ticket.comments || [];
@@ -254,6 +256,16 @@ export default function HelpTicketDetail() {
                   <p className="whitespace-pre-wrap text-muted-foreground" data-testid="ticket-description">
                     {ticket.description || "Tanpa deskripsi."}
                   </p>
+                  {isLocked ? (
+                    <p
+                      className="flex items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+                      data-testid="ticket-locked-note"
+                    >
+                      <Lock className="size-3.5 shrink-0" aria-hidden="true" />
+                      Tiket berstatus {ticket.status} — data, lampiran, dan komentar terkunci sebagai
+                      bukti. Penerima tiket harus mengubah status lebih dulu bila masih ada keluhan.
+                    </p>
+                  ) : null}
                   {ticket.resolution ? (
                     <div className="rounded-md border bg-muted/30 px-3 py-2">
                       <p className="text-xs text-muted-foreground">Catatan Penyelesaian</p>
@@ -303,7 +315,13 @@ export default function HelpTicketDetail() {
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-[var(--item-gap)]">
+                  {isLocked ? (
+                    <p className="text-xs text-muted-foreground">
+                      Tiket terkunci. Simpan status baru (mis. Diproses) untuk membuka penyuntingan
+                      catatan penyelesaian, bukti pengerjaan, dan data tiket.
+                    </p>
+                  ) : null}
+                  <div className={isLocked ? "hidden" : "space-y-[var(--item-gap)]"}>
                     <Label htmlFor="ticket-resolution">Catatan Penyelesaian</Label>
                     <Textarea
                       id="ticket-resolution"
@@ -314,7 +332,7 @@ export default function HelpTicketDetail() {
                       data-testid="ticket-resolution-input"
                     />
                   </div>
-                  <div className="space-y-[var(--item-gap)]">
+                  <div className={isLocked ? "hidden" : "space-y-[var(--item-gap)]"}>
                     <div className="flex items-center justify-between">
                       <Label>Bukti Pengerjaan ({handling.resolution_attachments.length})</Label>
                       <div className="flex items-center gap-2">
@@ -426,7 +444,7 @@ export default function HelpTicketDetail() {
                       </div>
                     ) : null}
                   </div>
-                  {c.author_id === user?.id || isAdminUser(user) ? (
+                  {!isLocked && (c.author_id === user?.id || isAdminUser(user)) ? (
                     <Button
                       variant="ghost"
                       size="icon"
