@@ -39,10 +39,12 @@ class TicketUpdate(BaseModel):
     status: Optional[str] = None
     resolution: Optional[str] = None
     attachments: Optional[List[Dict[str, Any]]] = None
+    resolution_attachments: Optional[List[Dict[str, Any]]] = None
 
 
 class CommentBody(BaseModel):
-    message: str
+    message: str = ""
+    attachments: List[Dict[str, Any]] = []
 
 
 async def _next_number() -> str:
@@ -128,7 +130,7 @@ async def get_ticket(ticket_id: str, user: dict = Depends(get_current_user)):
         **t,
         "can_handle": _is_handler(user, t),
         "can_reassign": await _can_reassign(user, t),
-        "can_edit": is_admin(user) or t.get("created_by") == user.get("id") or _is_handler(user, t),
+        "can_edit": is_admin(user) or t.get("created_by") == user.get("id"),
     }
 
 
@@ -147,6 +149,7 @@ async def create_ticket(body: TicketCreate, user: dict = Depends(get_current_use
         "status": "Ditugaskan" if (assignee or {}).get("user_id") else "Baru",
         "assignee": assignee,
         "attachments": _norm_atts(body.attachments),
+        "resolution_attachments": [],
         "comments": [],
         "resolution": "",
         "resolved_at": None,
@@ -181,8 +184,23 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
         patch["resolved_at"] = now_iso() if patch["status"] in ("Selesai", "Ditutup") else None
     if "attachments" in patch:
         patch["attachments"] = _norm_atts(patch["attachments"])
-    if {"title", "description", "category", "priority", "attachments"} & patch.keys() and not (owner or handler):
-        raise HTTPException(status_code=403, detail="Hanya pelapor atau penerima yang dapat mengubah tiket")
+    if {"title", "description", "category", "priority", "attachments"} & patch.keys() and not owner:
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya pelapor tiket yang dapat mengubah isi tiket",
+        )
+    if "resolution" in patch and not handler:
+        raise HTTPException(
+            status_code=403,
+            detail="Hanya penerima tiket yang dapat mengisi catatan penyelesaian",
+        )
+    if "resolution_attachments" in patch:
+        if not handler:
+            raise HTTPException(
+                status_code=403,
+                detail="Hanya penerima tiket yang dapat mengunggah bukti pengerjaan",
+            )
+        patch["resolution_attachments"] = _norm_atts(patch["resolution_attachments"])
     if "assignee" in patch:
         if not await _can_reassign(user, t):
             raise HTTPException(
@@ -230,7 +248,7 @@ async def update_ticket(ticket_id: str, body: TicketUpdate, user: dict = Depends
         **updated,
         "can_handle": _is_handler(user, updated),
         "can_reassign": await _can_reassign(user, updated),
-        "can_edit": is_admin(user) or updated.get("created_by") == user.get("id") or _is_handler(user, updated),
+        "can_edit": is_admin(user) or updated.get("created_by") == user.get("id"),
     }
 
 
@@ -248,11 +266,13 @@ async def delete_ticket(ticket_id: str, user: dict = Depends(get_current_user)):
 @router.post("/{ticket_id}/comments")
 async def add_comment(ticket_id: str, body: CommentBody, user: dict = Depends(get_current_user)):
     t = await _get(ticket_id, user)
-    if not body.message.strip():
-        raise HTTPException(status_code=400, detail="Komentar tidak boleh kosong")
+    attachments = _norm_atts(body.attachments)
+    if not body.message.strip() and not attachments:
+        raise HTTPException(status_code=400, detail="Komentar atau lampiran wajib diisi")
     comment = {
         "id": new_id(),
         "message": body.message.strip(),
+        "attachments": attachments,
         "author_id": user["id"],
         "author_name": user["name"],
         "created_at": now_iso(),
@@ -263,7 +283,8 @@ async def add_comment(ticket_id: str, body: CommentBody, user: dict = Depends(ge
     targets = {t.get("created_by"), (t.get("assignee") or {}).get("user_id")} - {user["id"], None}
     for uid in targets:
         await create_notification(uid, "Komentar Baru pada Tiket",
-                                  f"{t.get('number')} · {user['name']}: {comment['message'][:80]}",
+                                  f"{t.get('number')} · {user['name']}: "
+                                  f"{comment['message'][:80] or f'{len(attachments)} lampiran'}",
                                   "info", f"/help-tickets/{ticket_id}")
     return comment
 

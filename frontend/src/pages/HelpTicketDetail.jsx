@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   Link2,
   Loader2,
+  Paperclip,
   Send,
   Trash2,
   Upload,
@@ -27,7 +28,7 @@ import UserSelect from "@/components/UserSelect";
 import { EditableCard } from "@/components/composite/EditableCard";
 import { PriorityBadge, PRIORITY_META } from "@/components/composite/TaskBadges";
 import { TicketStatusBadge, TICKET_STATUS_META } from "@/components/composite/TicketBadges";
-import { api, apiError } from "@/lib/api";
+import { api, apiError, fileDownloadUrl } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import { isAdminUser } from "@/lib/perms";
 import { useAuth } from "@/context/AuthContext";
@@ -50,6 +51,25 @@ const fmtDateTime = (iso) =>
     ? new Date(iso).toLocaleString("id-ID", { dateStyle: "medium", timeStyle: "short" })
     : "\u2014";
 
+/** Chip lampiran ringkas (dipakai di komentar). */
+function AttachmentChip({ doc }) {
+  const isUrl = doc.kind === "url";
+  const href = isUrl ? doc.url : fileDownloadUrl(doc.file_id);
+  const text = isUrl ? doc.label || doc.url : doc.filename;
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-md border px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+      data-testid={`attachment-chip-${doc.id}`}
+    >
+      <Paperclip className="size-3 shrink-0" aria-hidden="true" />
+      <span className="truncate">{text}</span>
+    </a>
+  );
+}
+
 function InfoRow({ label, children }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1">
@@ -68,9 +88,19 @@ export default function HelpTicketDetail() {
   const [loading, setLoading] = useState(true);
   const [head, setHead] = useState({ title: "", description: "" });
   const [info, setInfo] = useState({ category: "Lainnya", priority: "Medium" });
-  const [handling, setHandling] = useState({ status: "Baru", resolution: "" });
+  const [handling, setHandling] = useState({
+    status: "Baru",
+    resolution: "",
+    resolution_attachments: [],
+  });
+  const proofDocsRef = useRef(null);
   const [assignee, setAssignee] = useState(null);
   const [comment, setComment] = useState("");
+  const [commentAtts, setCommentAtts] = useState([]);
+  const [sending, setSending] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
+  const commentDocsRef = useRef(null);
+  const commentDraftId = useRef(`comment-${Date.now()}`);
   const [allUsers, setAllUsers] = useState([]);
   const [subUsers, setSubUsers] = useState([]);
   const docsRef = useRef(null);
@@ -115,22 +145,35 @@ export default function HelpTicketDetail() {
   };
 
   const addComment = async () => {
-    if (!comment.trim()) return;
+    if (sending) return;
+    if (!comment.trim() && commentAtts.length === 0) return;
+    setSending(true);
     try {
-      await api.post(`/help-tickets/${id}/comments`, { message: comment.trim() });
+      await api.post(`/help-tickets/${id}/comments`, {
+        message: comment.trim(),
+        attachments: commentAtts,
+      });
       setComment("");
-      load();
+      setCommentAtts([]);
+      commentDraftId.current = `comment-${Date.now()}`;
+      await load();
     } catch (err) {
       notify.error(apiError(err));
+    } finally {
+      setSending(false);
     }
   };
 
   const removeComment = async (commentId) => {
+    if (deletingId) return;
+    setDeletingId(commentId);
     try {
       await api.delete(`/help-tickets/${id}/comments/${commentId}`);
-      load();
+      await load();
     } catch (err) {
       notify.error(apiError(err));
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -224,6 +267,134 @@ export default function HelpTicketDetail() {
             }
           </EditableCard>
 
+          <EditableCard
+            title="Penanganan"
+            canEdit={Boolean(ticket.can_handle)}
+            testid="ticket-handling"
+            onEditStart={() =>
+              setHandling({
+                status: ticket.status,
+                resolution: ticket.resolution || "",
+                resolution_attachments: ticket.resolution_attachments || [],
+              })
+            }
+            onSave={() => patch(handling, "Penanganan tiket diperbarui.")}
+          >
+            {(editing) =>
+              editing ? (
+                <div className="form-dense space-y-[var(--field-gap)]">
+                  <div className="grid gap-[var(--field-gap)] sm:grid-cols-2">
+                    <div className="space-y-[var(--item-gap)]">
+                      <Label>Status</Label>
+                      <Select
+                        value={handling.status}
+                        onValueChange={(v) => setHandling({ ...handling, status: v })}
+                      >
+                        <SelectTrigger data-testid="ticket-status-select">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {STATUSES.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {s}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="space-y-[var(--item-gap)]">
+                    <Label htmlFor="ticket-resolution">Catatan Penyelesaian</Label>
+                    <Textarea
+                      id="ticket-resolution"
+                      rows={4}
+                      value={handling.resolution}
+                      onChange={(e) => setHandling({ ...handling, resolution: e.target.value })}
+                      placeholder="Tuliskan tindakan yang dilakukan..."
+                      data-testid="ticket-resolution-input"
+                    />
+                  </div>
+                  <div className="space-y-[var(--item-gap)]">
+                    <div className="flex items-center justify-between">
+                      <Label>Bukti Pengerjaan ({handling.resolution_attachments.length})</Label>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => proofDocsRef.current?.addUrl()}
+                          data-testid="btn-proof-url"
+                        >
+                          <Link2 className="size-4" /> URL
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => proofDocsRef.current?.pickFile()}
+                          data-testid="btn-proof-file"
+                        >
+                          <Upload className="size-4" /> {ACTION.upload}
+                        </Button>
+                      </div>
+                    </div>
+                    <DocumentManager
+                      ref={proofDocsRef}
+                      taskId={ticket.id}
+                      documents={handling.resolution_attachments}
+                      onChange={(docs) =>
+                        setHandling({ ...handling, resolution_attachments: docs })
+                      }
+                      idPrefix="ticket_proof"
+                      label="Bukti Pengerjaan"
+                      emptyText="Belum ada bukti pengerjaan"
+                      canRespond={false}
+                      hideHeaderTitle
+                      hideActions
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  <dl className="divide-y">
+                    <InfoRow label="Status">
+                      <TicketStatusBadge status={ticket.status} />
+                    </InfoRow>
+                    <InfoRow label="Penerima">
+                      {(ticket.assignee || {}).name || "Belum ditujukan"}
+                    </InfoRow>
+                    <InfoRow label="Diselesaikan">{fmtDateTime(ticket.resolved_at)}</InfoRow>
+                  </dl>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Catatan Penyelesaian</p>
+                    <p className="whitespace-pre-wrap" data-testid="ticket-resolution-text">
+                      {ticket.resolution || "Belum ada catatan penyelesaian."}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">
+                      Bukti Pengerjaan ({(ticket.resolution_attachments || []).length})
+                    </p>
+                    {(ticket.resolution_attachments || []).length ? (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {ticket.resolution_attachments.map((a) => (
+                          <AttachmentChip key={a.id} doc={a} />
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">Belum ada bukti pengerjaan.</p>
+                    )}
+                  </div>
+                  {!ticket.can_handle ? (
+                    <p className="text-xs text-muted-foreground">
+                      Hanya penerima tiket yang dapat mengubah status & mengunggah bukti pengerjaan.
+                    </p>
+                  ) : null}
+                </div>
+              )
+            }
+          </EditableCard>
+
           <Card data-testid="card-ticket-comments">
             <CardHeader>
               <CardTitle className="text-base">Komentar ({comments.length})</CardTitle>
@@ -244,7 +415,16 @@ export default function HelpTicketDetail() {
                         · {fmtDateTime(c.created_at)}
                       </span>
                     </p>
-                    <p className="whitespace-pre-wrap text-muted-foreground">{c.message}</p>
+                    {c.message ? (
+                      <p className="whitespace-pre-wrap text-muted-foreground">{c.message}</p>
+                    ) : null}
+                    {(c.attachments || []).length ? (
+                      <div className="mt-1 flex flex-wrap gap-1.5">
+                        {c.attachments.map((a) => (
+                          <AttachmentChip key={a.id} doc={a} />
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                   {c.author_id === user?.id || isAdminUser(user) ? (
                     <Button
@@ -253,89 +433,81 @@ export default function HelpTicketDetail() {
                       className="size-7 shrink-0"
                       aria-label={ACTION.delete}
                       onClick={() => removeComment(c.id)}
+                      disabled={deletingId === c.id}
                       data-testid={`btn-delete-comment-${c.id}`}
                     >
-                      <Trash2 className="size-3.5" />
+                      {deletingId === c.id ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="size-3.5" />
+                      )}
                     </Button>
                   ) : null}
                 </div>
               ))}
             </CardContent>
-            <CardFooter className="gap-2">
-              <Input
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addComment()}
-                placeholder="Tulis balasan..."
-                className="flex-1"
-                data-testid="ticket-comment-input"
-              />
-              <Button size="sm" onClick={addComment} data-testid="btn-add-ticket-comment">
-                <Send className="size-4" /> {ACTION.send}
-              </Button>
+            <CardFooter className="flex-col items-stretch gap-2">
+              <div className={commentAtts.length ? "" : "sr-only"}>
+                <DocumentManager
+                  ref={commentDocsRef}
+                  taskId={commentDraftId.current}
+                  documents={commentAtts}
+                  onChange={setCommentAtts}
+                  idPrefix="ticket_comment"
+                  label="Lampiran komentar"
+                  emptyText="Belum ada lampiran"
+                  canRespond={false}
+                  hideHeaderTitle
+                  hideActions
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Input
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addComment()}
+                  placeholder="Tulis balasan..."
+                  className="flex-1"
+                  disabled={sending}
+                  data-testid="ticket-comment-input"
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => commentDocsRef.current?.pickFile()}
+                  disabled={sending}
+                  data-testid="btn-comment-attach-file"
+                >
+                  <Paperclip className="size-4" /> Lampiran
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => commentDocsRef.current?.addUrl()}
+                  disabled={sending}
+                  data-testid="btn-comment-attach-url"
+                >
+                  <Link2 className="size-4" /> URL
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={addComment}
+                  disabled={sending || (!comment.trim() && commentAtts.length === 0)}
+                  data-testid="btn-add-ticket-comment"
+                >
+                  {sending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Send className="size-4" />
+                  )}
+                  {sending ? "Mengirim..." : ACTION.send}
+                </Button>
+              </div>
             </CardFooter>
           </Card>
         </div>
 
         <div className="space-y-6">
-          <EditableCard
-            title="Penanganan"
-            canEdit={Boolean(ticket.can_handle)}
-            testid="ticket-handling"
-            onEditStart={() =>
-              setHandling({ status: ticket.status, resolution: ticket.resolution || "" })
-            }
-            onSave={() => patch(handling, "Status tiket diperbarui.")}
-          >
-            {(editing) =>
-              editing ? (
-                <div className="form-dense space-y-[var(--field-gap)]">
-                  <div className="space-y-[var(--item-gap)]">
-                    <Label>Status</Label>
-                    <Select
-                      value={handling.status}
-                      onValueChange={(v) => setHandling({ ...handling, status: v })}
-                    >
-                      <SelectTrigger data-testid="ticket-status-select">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {STATUSES.map((s) => (
-                          <SelectItem key={s} value={s}>
-                            {s}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-[var(--item-gap)]">
-                    <Label htmlFor="ticket-resolution">Catatan Penyelesaian</Label>
-                    <Textarea
-                      id="ticket-resolution"
-                      rows={4}
-                      value={handling.resolution}
-                      onChange={(e) => setHandling({ ...handling, resolution: e.target.value })}
-                      placeholder="Tuliskan tindakan yang dilakukan..."
-                      data-testid="ticket-resolution-input"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <dl className="divide-y">
-                  <InfoRow label="Status">
-                    <TicketStatusBadge status={ticket.status} />
-                  </InfoRow>
-                  <InfoRow label="Diselesaikan">{fmtDateTime(ticket.resolved_at)}</InfoRow>
-                  {!ticket.can_handle ? (
-                    <p className="pt-2 text-xs text-muted-foreground">
-                      Hanya penerima tiket yang dapat mengubah status penanganan.
-                    </p>
-                  ) : null}
-                </dl>
-              )
-            }
-          </EditableCard>
-
           <EditableCard
             title="Ditujukan"
             canEdit={Boolean(ticket.can_reassign)}
