@@ -618,12 +618,30 @@ export default function AppSettings() {
           )}
         />
 
-        <p className="text-xs text-muted-foreground">
-          Pratinjau disajikan dari server <code>/api/og/render</code> untuk crawler WhatsApp,
-          Facebook, Telegram, dan X. Perubahan di sini langsung dipakai tanpa build ulang. Setelah
-          mengubah, minta ulang pratinjau di aplikasi chat (cache crawler bisa bertahan beberapa
-          jam).
-        </p>
+        <div className="space-y-2 rounded-md border bg-muted/30 p-3">
+          <p className="text-xs text-muted-foreground">
+            Gambar di atas sudah dipakai otomatis oleh pratinjau tautan (lewat
+            <code> /api/og/image</code>). Agar <strong>judul &amp; deskripsi</strong> di sini juga
+            terpakai saat tautan dibagikan, reverse proxy server perlu mengarahkan crawler
+            (WhatsApp, Facebook, Telegram, X) ke <code>/api/og/render</code> — tambahkan blok berikut
+            pada konfigurasi Nginx domain Anda:
+          </p>
+          <pre className="thin-scroll overflow-auto rounded-md border bg-background p-3 text-xs">
+{`map $http_user_agent $is_crawler {
+  default 0;
+  "~*(facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Googlebot)" 1;
+}
+
+location = / {
+  if ($is_crawler) { proxy_pass http://backend:8001/api/og/render; }
+  try_files $uri /index.html;
+}`}
+          </pre>
+          <p className="text-xs text-muted-foreground">
+            Setelah mengubah, minta ulang pratinjau di aplikasi chat — cache crawler bisa bertahan
+            beberapa jam.
+          </p>
+        </div>
 
         <div className="max-w-md overflow-hidden rounded-md border" data-testid="og-preview">
           <div className="flex aspect-[1200/630] items-center justify-center bg-muted/40">

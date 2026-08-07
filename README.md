@@ -14,10 +14,11 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 7. [Menjalankan Secara Lokal (Pengembangan)](#menjalankan-secara-lokal-pengembangan)
 8. [Seeder / Reset Data Awal](#seeder--reset-data-awal)
 9. [Deploy via Control Panel (Nexus Panel / Docker)](#deploy-via-control-panel-nexus-panel--docker)
-10. [Deploy di Server Produksi (Ubuntu 22.04 LTS)](#deploy-di-server-produksi-ubuntu-2204-lts)
-11. [Deploy dengan Cloudflare Tunnel (Zero Trust)](#deploy-dengan-cloudflare-tunnel-zero-trust)
-12. [Backup & Restore](#backup--restore)
-13. [Notifikasi](#notifikasi)
+10. [Pratinjau Tautan (Open Graph)](#pratinjau-tautan-open-graph-di-whatsapptelegramfacebook)
+11. [Deploy di Server Produksi (Ubuntu 22.04 LTS)](#deploy-di-server-produksi-ubuntu-2204-lts)
+12. [Deploy dengan Cloudflare Tunnel (Zero Trust)](#deploy-dengan-cloudflare-tunnel-zero-trust)
+13. [Backup & Restore](#backup--restore)
+14. [Notifikasi](#notifikasi)
 
 ---
 
@@ -150,6 +151,35 @@ Panel meng-clone repo lalu membangun backend & frontend dengan Docker yang ia ha
 - Sediakan variabel **wajib** (lihat [Environment Variables](#environment-variables)): `MONGO_URL`, `DB_NAME`, `JWT_SECRET`, `REACT_APP_BACKEND_URL`.
 - Mount volume persisten ke `LOCAL_STORAGE_DIR` (default `/app/data`) agar lampiran (`/app/data/uploads`) & backup DB lokal (`/app/data/backups`) tidak hilang saat rebuild.
 - Semua endpoint backend berawalan `/api`; arahkan reverse-proxy path `/api` → backend `:8001`, sisanya → frontend statis.
+
+## Pratinjau Tautan (Open Graph) di WhatsApp/Telegram/Facebook
+Konfigurasi **Kelola Aplikasi → Pratinjau Tautan** disajikan server-side di `GET /api/og/render`,
+dan gambarnya di `GET /api/og/image` (redirect ke gambar terbaru).
+
+- **Gambar** sudah otomatis dinamis: `frontend/public/index.html` menunjuk
+  `og:image` ke `%REACT_APP_BACKEND_URL%/api/og/image`, jadi mengganti gambar di
+  Kelola Aplikasi langsung terpakai (tanpa build ulang).
+- **Judul & deskripsi** hanya bisa dinamis bila crawler diarahkan ke `/api/og/render`,
+  karena crawler tidak menjalankan JavaScript. Tambahkan pada Nginx domain Anda:
+
+```nginx
+map $http_user_agent $is_crawler {
+    default 0;
+    "~*(facebookexternalhit|WhatsApp|Twitterbot|TelegramBot|Slackbot|LinkedInBot|Discordbot|Googlebot)" 1;
+}
+
+server {
+    # ... konfigurasi lain
+
+    location = / {
+        if ($is_crawler) { proxy_pass http://backend:8001/api/og/render; }
+        try_files $uri /index.html;
+    }
+}
+```
+
+Tanpa blok di atas, judul/deskripsi memakai nilai statis di `frontend/public/index.html`.
+Cache crawler bisa bertahan beberapa jam — minta ulang pratinjau di aplikasi chat setelah mengubah.
 
 ## Deploy di Server Produksi (Ubuntu 22.04 LTS)
 OS rekomendasi: **Ubuntu Server 22.04 LTS** (juga cocok untuk 24.04 LTS).

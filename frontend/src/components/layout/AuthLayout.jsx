@@ -36,7 +36,9 @@ export const AuthLayout = ({ children }) => {
   const description =
     branding?.meta_description ||
     "Sederhana untuk digunakan, kuat di balik layar. Pahami dalam lima menit.";
-  const copyright = `\u00A9 ${new Date().getFullYear()} ${appName}`;
+  const copyright =
+    branding?.footer_text || `\u00A9 ${new Date().getFullYear()} ${appName}`;
+  const supportEmail = branding?.support_email || "";
   const logoUrl = branding?.logo || "";
 
   return (
@@ -143,6 +145,26 @@ export const AuthLayout = ({ children }) => {
           </div>
 
           {children}
+
+          {/* Kontak & Footer — dari Kelola Aplikasi */}
+          <div
+            className="mt-8 space-y-1 text-center text-xs text-muted-foreground"
+            data-testid="auth-footer"
+          >
+            {supportEmail ? (
+              <p>
+                Butuh bantuan?{" "}
+                <a
+                  href={`mailto:${supportEmail}`}
+                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                  data-testid="auth-support-email"
+                >
+                  {supportEmail}
+                </a>
+              </p>
+            ) : null}
+            <p data-testid="auth-footer-text">{copyright}</p>
+          </div>
         </div>
       </main>
     </div>
