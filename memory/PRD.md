@@ -543,3 +543,11 @@ Audit seluruh repo (impor silang untuk frontend, daftar router untuk backend). D
 - **Kartu grafik**: "Tiket per Kategori/Prioritas" → **"Tiket Kategori"** & **"Tiket Prioritas"**, tinggi grafik dipatok 220px keduanya sehingga kedua kartu presisi sama (terukur 796×303 px).
 - **Baris "Tiket Perlu Ditangani"**: urutan info ditukar — **nomor tiket** (tabular-nums, panjang seragam) di baris atas, judul + kategori di baris bawah.
 - Verifikasi: data demo (8 tugas + 5 tiket) dibuat sementara untuk menguji scroll & keselarasan, screenshot light/dark + dialog memperlihatkan header/footer abu; **semua data demo, notifikasi, dan log demo dihapus kembali** (sisa: 1 tiket contoh user, 0 tugas). `design-guard.sh` exit 0.
+
+## Update (2026-06-08l) — Latar header/footer = warna sidebar + warna grafik dibedakan (E10)
+- **FD14 disesuaikan**: latar `CardHeader/CardFooter`, `DialogHeader/DialogFooter`, `AlertDialogHeader/Footer` diubah dari `bg-muted` → **`bg-sidebar`** (token `--sidebar-background` = neutral-50 di terang / neutral-900 di gelap) atas permintaan user agar lebih terang & senada dengan sidebar.
+- **E10 (pengecualian baru, disetujui user "boleh mengabaikan monokrom untuk grafik")** — warna grafik dibedakan agar mudah dibaca:
+  - **Tren Mingguan**: batang "Dibuat" = `--ev-meeting` (biru), "Selesai" = `--success` (hijau) — sebelumnya abu vs hitam.
+  - **Tiket Kategori**: setiap kategori memakai warna berbeda dari palet `--chart-1..5` (siklus) lewat `<Cell>`.
+  - **Tiket Prioritas**: tetap memakai hue prioritas (`--pr-urgent/high/medium/low`) sehingga konsisten dengan `PriorityBadge`.
+- Verifikasi: data demo (10 tiket 5 kategori + 3 tugas) dipakai sementara untuk melihat semua warna, screenshot memperlihatkan grafik multi-warna; **seluruh data demo dihapus kembali** (sisa 1 tiket contoh user, 0 tugas). `design-guard.sh` exit 0.

@@ -457,13 +457,13 @@ export default function Dashboard() {
               <Bar
                 dataKey="created"
                 name="Dibuat"
-                fill="hsl(var(--muted-foreground))"
+                fill="hsl(var(--ev-meeting))"
                 radius={[3, 3, 0, 0]}
               />
               <Bar
                 dataKey="completed"
                 name="Selesai"
-                fill="hsl(var(--primary))"
+                fill="hsl(var(--success))"
                 radius={[3, 3, 0, 0]}
               />
             </BarChart>
@@ -499,13 +499,11 @@ export default function Dashboard() {
                     stroke="hsl(var(--muted-foreground))"
                   />
                   <Tooltip content={<ChartTip />} cursor={{ fill: "hsl(var(--muted-foreground))", fillOpacity: 0.08 }} />
-                  <Bar
-                    dataKey="count"
-                    name="Tiket"
-                    fill="hsl(var(--muted-foreground))"
-                    radius={[0, 3, 3, 0]}
-                    barSize={14}
-                  />
+                  <Bar dataKey="count" name="Tiket" radius={[0, 3, 3, 0]} barSize={14}>
+                    {byCategory.map((c, i) => (
+                      <Cell key={c.label} fill={`hsl(var(--chart-${(i % 5) + 1}))`} />
+                    ))}
+                  </Bar>
                 </BarChart>
               </ResponsiveContainer>
             ) : (
