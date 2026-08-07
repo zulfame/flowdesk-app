@@ -14,6 +14,8 @@
 | E8 | R05 — monochrome token-only | Ditambahkan token **umpan balik** `--success` & `--warning` (juga dipakai untuk centang "diizinkan" pada Matriks Hak Akses) (+ `hsl` di Tailwind) di samping `--destructive` yang sudah ada. | Status hasil aksi (sukses/peringatan/gagal) harus terbaca instan; monokrom saja membuat semua toast terlihat sama. Warna dipakai **hanya** pada elemen status (aksen & ikon toast, badge status), tidak untuk chrome/dekorasi. |
 | E7 | 2B.8 — `CardHeader`/`CardFooter` `px-6 py-4` + `space-y-1.5` | **`px-6 py-3`** (padding vertikal 12px) dan `CardHeader space-y-1`. `CardContent` tetap `px-6 py-4`. | Permintaan pemilik produk: header & footer kartu terasa terlalu tinggi untuk target UI compact (FD1). Padding vertikal header & footer tetap **seragam 12px** sehingga jarak dari divider konsisten. |
 | E5 | 2C.14 — guard atas seluruh `src` | Daftar `LEGACY` di `design-guard.sh` kini **KOSONG** — guard mengawasi seluruh kode fitur (`pages`, `composite`, `layout`, `auth`). Hanya `components/ui/*` (primitive shadcn) yang tetap dikecualikan. | Redesign sudah tuntas; pengecualian bertahap tidak lagi diperlukan. |
+| E10 | R05 — token only / monochrome | **Grafik berwarna** (lihat bagian E10 di bawah): Tren Mingguan biru/hijau, Tiket Kategori palet `--chart-1..5`, Tiket Prioritas memakai hue prioritas. Tetap token-only (tanpa hex/kelas Tailwind). | Grafik monokrom membuat seri/kategori tidak terbedakan; disetujui pemilik produk demi keterbacaan data. |
+| E11 | 2B.8 — Card `bg-card` seragam | **Header & footer** Card/Dialog/AlertDialog memakai `bg-sidebar` (lihat FD14), badan tetap `bg-card`. | Permintaan pemilik produk: area judul & aksi harus terlihat sebagai bingkai, senada dengan warna sidebar. |
 
 ## Aturan Wajib Tambahan FlowDesk (Non-Negotiable)
 
@@ -73,6 +75,22 @@ Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
   ("9 hari lagi"), tanggal asli ada di `title`.
 - Sisa UI tetap monokrom. Warna lain hanya untuk data buatan pengguna (E2).
 
+### E10 — Warna pada grafik (dikecualikan dari monokrom)
+Disetujui user ("boleh mengabaikan konsep monokrom untuk grafik"): setiap grafik
+memakai warna berbeda agar seri/kategori dapat dibedakan sekilas.
+- **Tren Mingguan** (`Dashboard`): batang "Dibuat" = `--ev-meeting` (biru),
+  "Selesai" = `--success` (hijau).
+- **Tiket Kategori**: setiap kategori memakai warna berbeda dari palet
+  `--chart-1` … `--chart-5` (siklus, lewat `<Cell>`).
+- **Tiket Prioritas**: memakai hue prioritas yang sama dengan `PriorityBadge`
+  (`--pr-urgent/-high/-medium/-low`) supaya grafik & badge tidak bertentangan.
+- Wajib token: `fill="hsl(var(--nama-token))"`. **DILARANG** hex atau kelas warna
+  Tailwind (`fill-blue-500`) di komponen grafik. Dijaga guard **#24**.
+- Tooltip grafik memakai komponen bertoken (`ChartTip`: `bg-card`, `border`, 12px)
+  dan sorotan batang `cursor={{ fill: "hsl(var(--muted-foreground))", fillOpacity: 0.08 }}`
+  (menggantikan blok abu tebal bawaan recharts). Sumbu memakai
+  `stroke="hsl(var(--muted-foreground))"`, `tick fontSize 11`.
+
 ### FD11 — Detail sebagai satu-satunya tempat sunting (WAJIB untuk modul beritem)
 - Modul yang punya sub-item (Tugas) **tidak boleh punya halaman "Ubah" terpisah**: halaman
   Detail = baca + sunting. Alasan: halaman Ubah lama hanya duplikat Detail dan justru
@@ -118,6 +136,33 @@ Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
   R47.7) karena tanpa slack, 2px membuat label menempel ke kontrol.
 - **DILARANG** menyetel `space-y`/margin manual per `FormItem` atau per label
   untuk mengatur jarak ini — ubah token `--item-gap` bila perlu. Dijaga guard #20.
+
+### FD14 — Latar header & footer Card/Dialog = warna sidebar (WAJIB)
+Keputusan user: area **judul** dan area **aksi** harus terbaca sebagai "bingkai"
+yang terpisah dari badan konten.
+- `CardHeader` / `CardFooter` (`ui/card.jsx`), `DialogHeader` / `DialogFooter`
+  (`ui/dialog.jsx`), dan `AlertDialogHeader` / `AlertDialogFooter`
+  (`ui/alert-dialog.jsx`) memakai **`bg-sidebar`** (token `--sidebar-background`:
+  neutral-50 di tema terang, neutral-900 di tema gelap) + sudut membulat senada
+  (`rounded-t-xl`/`rounded-b-xl` untuk Card, `sm:rounded-t-lg`/`sm:rounded-b-lg`
+  untuk Dialog & AlertDialog). `CardContent`/`DialogBody` tetap `bg-card`.
+  Dijaga guard **#23**.
+- Perubahan HANYA dilakukan di **primitive** sehingga berlaku otomatis di seluruh
+  aplikasi. **DILARANG** menimpa latar header/footer per halaman
+  (mis. `className="bg-white"`, `bg-muted`, `bg-transparent`).
+- Padding FD6 tidak berubah (Card `py-3`, Dialog `py-4`).
+
+### FD15 — Kartu daftar tinggi tetap + scroll (WAJIB untuk kartu daftar Dashboard)
+- Kartu daftar (Dashboard: Tenggat Terdekat, Tiket Perlu Ditangani, Rapat Hari Ini,
+  Rapat Mendatang) **tidak boleh memanjang** mengikuti jumlah data. Baris grid
+  diberi tinggi terkunci (`lg:h-[31.5rem]`, atau `lg:h-[40rem]` bila kartu tiket
+  tampil), kartu memakai `flex flex-col`, `CardContent` = `min-h-0 flex-1 p-0`,
+  dan `ListShell` = `h-full overflow-y-auto thin-scroll divide-y`.
+- Konsekuensi wajib: baris padat (`px-6 py-2`, 13px), EmptyState **terpusat**
+  (`flex h-full items-center justify-center`), dan jumlah item ditampilkan sebagai
+  `Badge` di judul kartu.
+- Kartu grafik yang berdampingan **wajib tinggi grafik identik** (mis. 220px)
+  agar kedua kartu presisi sama.
 
 ### FD6 — Tinggi Card compact (WAJIB)
 - `CardHeader` dan `CardFooter` memakai **`px-6 py-3`** (padding vertikal **12px**),
@@ -183,7 +228,8 @@ Disetujui user: status/prioritas wajib cepat terbaca, jadi badge-nya BERWARNA.
 | 5b | Pembersihan sisa desain lama: `components/{Layout,Modal,ConfirmDialog,ImageUpload,common}.jsx` & `context/ThemeContext.jsx` dihapus; daftar `LEGACY` di `design-guard.sh` **kosong** (guard kini mengawasi SELURUH kode fitur) | ✅ Selesai |
 | 2a-1 | Penyempurnaan Profil: tinggi `CardHeader`/`CardFooter` dikecilkan (E7), urutan field sandi (Saat Ini di baris atas sendiri; Baru + Konfirmasi di baris berikutnya), foto profil tampil di footer sidebar & dropdown pengguna | ✅ Selesai |
 | 2a | **Profil Pengguna** (`pages/Profile.jsx`) → pola konfigurasi R51 (section cards + save bar), rhf+zod, `AvatarUpload` composite baru | ✅ Selesai |
-| 4 | Halaman konfigurasi (R51) + Kalender + Dashboard | ⏳ Belum |
+| 5c | Dashboard diperluas: KPI **Tiket**, kartu **Tiket Perlu Ditangani**, grafik **Tiket Kategori** & **Tiket Prioritas** (E10); tinggi kartu daftar dikunci + scroll (FD15) | ✅ Selesai |
+| 5d | Header/footer Card, Dialog & AlertDialog memakai `bg-sidebar` (FD14, E11) — diterapkan di primitive sehingga berlaku menyeluruh | ✅ Selesai |
 
 ## FD13 — Setiap tombol wajib berikon, termasuk Batal/Tutup (WAJIB)
 Semua tombol memakai ikon lucide di sebelah kiri label (FD5). Ini **termasuk tombol sekunder**

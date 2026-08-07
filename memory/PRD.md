@@ -551,3 +551,9 @@ Audit seluruh repo (impor silang untuk frontend, daftar router untuk backend). D
   - **Tiket Kategori**: setiap kategori memakai warna berbeda dari palet `--chart-1..5` (siklus) lewat `<Cell>`.
   - **Tiket Prioritas**: tetap memakai hue prioritas (`--pr-urgent/high/medium/low`) sehingga konsisten dengan `PriorityBadge`.
 - Verifikasi: data demo (10 tiket 5 kategori + 3 tugas) dipakai sementara untuk melihat semua warna, screenshot memperlihatkan grafik multi-warna; **seluruh data demo dihapus kembali** (sisa 1 tiket contoh user, 0 tugas). `design-guard.sh` exit 0.
+
+## Update (2026-06-08m) — Dokumentasi design system disinkronkan (pra-push GitHub)
+- `frontend/docs/FLOWDESK_EXCEPTIONS.md`: **FD14** (header/footer Card/Dialog/AlertDialog = `bg-sidebar` di primitive, dilarang ditimpa per halaman), **FD15** (kartu daftar Dashboard tinggi terkunci + `ListShell` scroll, grafik berdampingan wajib tinggi identik), **E10** (warna grafik: Tren Mingguan biru/hijau, Tiket Kategori `--chart-1..5`, Tiket Prioritas hue prioritas; token-only), **E11** (pengecualian `bg-card` seragam) + status migrasi fase **5c/5d**.
+- `frontend/docs/design-guard.sh`: 2 pemeriksaan baru — **#23** larangan menimpa latar header/footer Card/Dialog, **#24** larangan hex/kelas Tailwind pada `fill`/`stroke` grafik. Total 24 cek, exit 0.
+- `/app/design_guidelines.json` **ditulis ulang** (sebelumnya masih menggambarkan desain lama indigo/rounded-2xl/Poppins): sekarang memuat filosofi compact monokrom token-first, palet token nyata (termasuk `--sidebar`, status, prioritas, chart), tipografi 14/13/12/16px, daftar composite, aturan tombol berikon & data-testid, serta rujukan ke dokumen SSOT dan `design-guard.sh`.
+- `README.md`: bullet Dashboard diperbarui (KPI tugas & tiket, tiket perlu ditangani, tren mingguan, grafik tiket kategori & prioritas).

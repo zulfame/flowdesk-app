@@ -124,6 +124,14 @@ report "Teks tombol tidak konsisten (FD5: pakai ACTION dari src/constants/labels
 m=$(grep -rn 'ACTION\.\(cancel\|close\)' $DIRS --include=*.jsx 2>/dev/null | grep -vE "$EXCLUDE" | grep -v 'X className' | grep -vE '//\s*guard-allow')
 report "Tombol Batal/Tutup tanpa ikon (FD13: WAJIB <X className=\"size-4\" /> sebelum label)" "$m"
 
+# 23) FD14 — Header/footer Card & Dialog memakai bg-sidebar dari primitive; jangan ditimpa per halaman.
+m=$(scan '(Card|Dialog|AlertDialog)(Header|Footer)[^>]*className="[^"]*bg-(card|white|muted|background|transparent)')
+report "Latar header/footer Card/Dialog ditimpa (FD14: WAJIB bg-sidebar dari primitive)" "$m"
+
+# 24) E10 — Warna grafik wajib token: dilarang hex atau kelas warna Tailwind pada fill/stroke.
+m=$(scan '(fill|stroke)=("#|"(red|blue|green|amber|orange|purple|indigo|rose|emerald|teal|slate|gray|zinc)-[0-9])')
+report "Warna grafik memakai hex/kelas Tailwind (E10: WAJIB hsl(var(--token)))" "$m"
+
 # 14) FD1 — Compact is the ONLY density: no toggle/provider/data-density anywhere.
 m=$(grep -rnE 'DensityToggle|density-provider|density-toggle|data-density' "$SRC" --include=*.jsx --include=*.js --include=*.css 2>/dev/null | grep -vE '//\s*guard-allow')
 report "Mekanisme density ditemukan (FD1: compact WAJIB & satu-satunya \u2014 tanpa toggle/provider/data-density)" "$m"

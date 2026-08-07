@@ -22,7 +22,7 @@ FlowDesk adalah aplikasi web untuk mengelola pekerjaan operasional harian: tugas
 ---
 
 ## Fitur Utama
-- **Dashboard** — ringkasan beban kerja, tren, dan rapat mendatang.
+- **Dashboard** — ringkasan beban kerja (KPI tugas & tiket), tenggat terdekat, rapat hari ini/mendatang, tiket yang perlu Anda tangani, tren mingguan, serta grafik tiket per kategori & prioritas.
 - **Kelola Tugas** — daftar (DataTable) + detail sunting-inline, checklist berdetail dengan persetujuan pemilik, dokumen bertingkat (Revisi/Final), progres & status otomatis, template, duplikasi, @mention.
 - **Kelola Rapat** — notulen kaya teks, agenda, keputusan, action item; action item dapat dikonversi menjadi Tugas (tertaut).
 - **Kelola Catatan** — catatan bersama dengan tag & warna.
