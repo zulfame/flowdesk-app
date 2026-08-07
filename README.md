@@ -73,7 +73,7 @@ Tabel lengkap seluruh variabel yang dibaca aplikasi (backend & frontend). Hanya 
 
 | Variable | Required/Optional | Default Value | Description |
 |----------|-------------------|---------------|-------------|
-| `MONGO_URL` | Required | - | MongoDB connection string (mis. `mongodb://localhost:27017`). |
+| `MONGO_URL` | Optional | `mongodb://localhost:27017` | MongoDB connection string. WAJIB diisi bila Mongo bukan di localhost (mis. `mongodb://mongodb:27017` pada Docker). |
 | `DB_NAME` | Optional | `flowdesk` | Nama database MongoDB. |
 | `JWT_SECRET` | Required | - | Kunci rahasia untuk menandatangani & memverifikasi token JWT. |
 | `REACT_APP_BACKEND_URL` | Required | - | Base URL backend saat build frontend, **tanpa** `/api` (mis. `https://app.example.com`). |
@@ -81,7 +81,8 @@ Tabel lengkap seluruh variabel yang dibaca aplikasi (backend & frontend). Hanya 
 | `ADMIN_PASSWORD` | Optional | `admin123` | Kata sandi superadmin awal (disimpan ter-hash). Ganti di produksi. |
 | `CORS_ORIGINS` | Optional | `*` | Daftar origin yang diizinkan, dipisah koma. |
 | `LOCAL_STORAGE_DIR` | Optional | `/app/data` | Folder berkas persisten: lampiran (`/uploads`) & backup DB lokal (`/backups`). |
-| `APP_ENCRYPTION_KEY` | Optional | - | Kunci Fernet (base64 32-byte) untuk mengenkripsi API key pihak ketiga (mis. Authty) di database. Bila kosong, nilai disimpan apa adanya dan API key terenkripsi lama tidak dapat dibaca. |
+| `APP_ENCRYPTION_KEY` | Optional | - | Kunci enkripsi API key pihak ketiga (mis. Authty) di database. Idealnya kunci Fernet (`python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"`); kunci bebas (mis. hex) tetap diterima dan diturunkan otomatis via SHA-256. Bila kosong, nilai disimpan apa adanya. |
+| `MONGO_TIMEOUT_MS` | Optional | `5000` | Batas waktu (ms) pemilihan server MongoDB, agar backend tidak menggantung saat Mongo belum siap. |
 | `EMERGENT_LLM_KEY` | Optional | - | Kunci integrasi Emergent. Bila diisi, lampiran memakai Object Storage Emergent; bila kosong, lampiran disimpan di filesystem lokal di `LOCAL_STORAGE_DIR`. |
 | `DISABLE_ESLINT_PLUGIN` | Optional | `true` | Flag build frontend. Skrip `yarn build` sudah memaksa `DISABLE_ESLINT_PLUGIN=true CI=false` agar build tetap sukses walau ada peringatan ESLint. |
 | `WDS_SOCKET_PORT` | Optional | - | (Hanya dev) port websocket dev-server CRA. Tidak dipakai pada build produksi. |

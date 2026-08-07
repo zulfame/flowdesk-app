@@ -16,7 +16,12 @@ import s3_storage
 router = APIRouter(prefix="/database", tags=["database"])
 
 BACKUP_DIR = Path(os.environ.get("LOCAL_STORAGE_DIR", "/app/data")) / "backups"
-BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _ensure_backup_dir() -> Path:
+    """Folder backup dibuat saat dibutuhkan agar import modul tidak gagal bila volume belum siap."""
+    BACKUP_DIR.mkdir(parents=True, exist_ok=True)
+    return BACKUP_DIR
 
 # Collections included in a full backup (login attempts & backups meta excluded)
 BACKUP_COLLECTIONS = [
@@ -73,7 +78,7 @@ async def run_backup(destination: str, by_name: str, admin: dict = None):
         "created_at": now_iso(), "created_by_name": by_name,
     }
     if destination == "local":
-        (BACKUP_DIR / f"{bid}.json.gz").write_bytes(raw)
+        (_ensure_backup_dir() / f"{bid}.json.gz").write_bytes(raw)
     else:
         cfg = await _get_storage_cfg()
         if not s3_storage.is_configured(cfg):

@@ -114,6 +114,28 @@ async def _migrate_notif_wording():
 
 @app.on_event("startup")
 async def startup():
+    """App langsung melayani; bootstrap (indeks, seed, loop) berjalan di latar & menunggu MongoDB siap."""
+    import asyncio as _asyncio
+
+    _asyncio.create_task(_bootstrap_with_retry())
+
+
+async def _bootstrap_with_retry():
+    import asyncio as _asyncio
+
+    for attempt in range(1, 21):
+        try:
+            await _bootstrap()
+            logger.info("Bootstrap selesai")
+            return
+        except Exception as e:
+            logger.error(f"Bootstrap gagal (percobaan {attempt}/20): {e}")
+            await _asyncio.sleep(3)
+    logger.error("Bootstrap tidak selesai: MongoDB tidak dapat dihubungi. "
+                 "Periksa MONGO_URL/DB_NAME lalu restart backend.")
+
+
+async def _bootstrap():
     await db.users.create_index("email", unique=True)
     await db.users.create_index("id", unique=True)
     await db.login_attempts.create_index("identifier")

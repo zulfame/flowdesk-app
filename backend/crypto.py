@@ -1,10 +1,32 @@
+import base64
+import hashlib
+import logging
 import os
 
 from cryptography.fernet import Fernet, InvalidToken
 
 PREFIX = "enc:v1:"
-_key = os.environ.get("APP_ENCRYPTION_KEY")
-_fernet = Fernet(_key.encode()) if _key else None
+logger = logging.getLogger(__name__)
+
+
+def _build_fernet():
+    """Terima kunci Fernet apa adanya; kunci bebas (mis. hex) diturunkan, tidak membuat app crash."""
+    key = os.environ.get("APP_ENCRYPTION_KEY")
+    if not key:
+        return None
+    try:
+        return Fernet(key.encode())
+    except ValueError:
+        derived = base64.urlsafe_b64encode(hashlib.sha256(key.encode()).digest())
+        logger.warning(
+            "APP_ENCRYPTION_KEY bukan kunci Fernet (32 byte base64 url-safe); "
+            "kunci diturunkan otomatis via SHA-256. Untuk kunci baku jalankan: "
+            "python -c \"from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())\""
+        )
+        return Fernet(derived)
+
+
+_fernet = _build_fernet()
 
 
 def encrypt(value):
