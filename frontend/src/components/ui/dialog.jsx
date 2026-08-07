@@ -49,7 +49,7 @@ const DialogHeader = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col space-y-1.5 border-b border-border px-6 py-4 text-center sm:text-left", className)}
+    className={cn("flex flex-col space-y-1.5 border-b border-border bg-sidebar px-6 py-4 text-center sm:rounded-t-lg sm:text-left", className)}
     {...props} />
 )
 DialogHeader.displayName = "DialogHeader"
@@ -59,7 +59,7 @@ const DialogFooter = ({
   ...props
 }) => (
   <div
-    className={cn("flex flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-between", className)}
+    className={cn("flex flex-col-reverse gap-2 border-t border-border bg-sidebar px-6 py-4 sm:flex-row sm:justify-between sm:rounded-b-lg", className)}
     {...props} />
 )
 DialogFooter.displayName = "DialogFooter"

@@ -91,16 +91,19 @@ function ChartTip({ active, payload, label }) {
   );
 }
 
-/** Baris daftar padat — tetap rapi walau isinya ratusan (divide-y + area scroll). */
+/** Baris daftar padat — tinggi kartu tetap, isi berlebih otomatis dapat di-scroll. */
 function ListShell({ children, empty, emptyText, testid }) {
   if (empty)
     return (
-      <p className="px-6 py-8 text-center text-muted-foreground" data-testid={`${testid}-empty`}>
+      <p
+        className="flex h-full items-center justify-center px-6 py-8 text-center text-muted-foreground"
+        data-testid={`${testid}-empty`}
+      >
         {emptyText}
       </p>
     );
   return (
-    <div className="thin-scroll max-h-[26rem] divide-y overflow-y-auto" data-testid={testid}>
+    <div className="thin-scroll h-full divide-y overflow-y-auto" data-testid={testid}>
       {children}
     </div>
   );
@@ -199,8 +202,13 @@ export default function Dashboard() {
         />
       </div>
 
-      <div className="grid items-start gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
+      <div
+        className={cn(
+          "grid gap-6 lg:grid-cols-3",
+          myTickets.length ? "lg:h-[40rem]" : "lg:h-[31.5rem]"
+        )}
+      >
+        <Card className="flex flex-col lg:col-span-2">
           <CardHeader className="flex flex-col gap-3 space-y-0 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
               Tenggat Terdekat
@@ -221,7 +229,7 @@ export default function Dashboard() {
               </Button>
             </div>
           </CardHeader>
-          <CardContent className="p-0">
+          <CardContent className="min-h-0 flex-1 p-0">
             <ListShell
               empty={dueSoon.length === 0}
               emptyText="Tidak ada tugas aktif bertenggat. Selamat, meja Anda bersih."
@@ -281,9 +289,9 @@ export default function Dashboard() {
           </CardFooter>
         </Card>
 
-        <div className="space-y-6">
+        <div className="flex flex-col gap-6 lg:min-h-0">
           {myTickets.length ? (
-            <Card data-testid="card-my-tickets">
+            <Card className="flex min-h-0 flex-1 flex-col" data-testid="card-my-tickets">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base">
                   Tiket Perlu Ditangani
@@ -292,7 +300,7 @@ export default function Dashboard() {
                   </Badge>
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-0">
+              <CardContent className="min-h-0 flex-1 p-0">
                 <ListShell empty={false} testid="my-tickets">
                   {myTickets.map((t) => (
                     <button
@@ -304,10 +312,11 @@ export default function Dashboard() {
                     >
                       <LifeBuoy className="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-[13px] font-medium">{t.title}</span>
+                        <span className="block truncate text-[13px] font-medium tabular-nums">
+                          {t.number}
+                        </span>
                         <span className="block truncate text-xs text-muted-foreground">
-                          {t.number} · {t.category}
-                          {t.created_by_name ? ` · ${t.created_by_name}` : ""}
+                          {t.title} · {t.category}
                         </span>
                       </span>
                       <span className="shrink-0">
@@ -330,7 +339,7 @@ export default function Dashboard() {
             </Card>
           ) : null}
 
-          <Card>
+          <Card className="flex min-h-0 flex-1 flex-col">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
                 Rapat Hari Ini
@@ -339,7 +348,7 @@ export default function Dashboard() {
                 </Badge>
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="min-h-0 flex-1 p-0">
               <ListShell
                 empty={todayMeetings.length === 0}
                 emptyText="Tidak ada rapat hari ini."
@@ -376,11 +385,11 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="flex min-h-0 flex-1 flex-col">
             <CardHeader>
               <CardTitle className="text-base">Rapat Mendatang</CardTitle>
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent className="min-h-0 flex-1 p-0">
               <ListShell
                 empty={upcoming.length === 0}
                 emptyText="Tidak ada rapat terjadwal."

@@ -41,7 +41,7 @@ const AlertDialogHeader = ({
 }) => (
   <div
     className={cn(
-      "flex flex-col space-y-1.5 border-b border-border px-6 py-4 text-center sm:text-left",
+      "flex flex-col space-y-1.5 border-b border-border bg-sidebar px-6 py-4 text-center sm:rounded-t-lg sm:text-left",
       className
     )}
     {...props} />
@@ -54,7 +54,7 @@ const AlertDialogFooter = ({
 }) => (
   <div
     className={cn(
-      "flex flex-col-reverse gap-2 border-t border-border px-6 py-4 sm:flex-row sm:justify-between",
+      "flex flex-col-reverse gap-2 border-t border-border bg-sidebar px-6 py-4 sm:flex-row sm:justify-between sm:rounded-b-lg",
       className
     )}
     {...props} />
